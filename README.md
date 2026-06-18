@@ -59,7 +59,9 @@ This project is a Python-based AI assistant designed to help automate aspects of
       ```                                                                                                                                                                                                                                     
       This will run the script once, performing the job search, matching, and printing results.                                                                                                                                           
   ### **Key Areas for Further Development**                                                                                                                                                                                                 
-  The provided scripts offer a solid foundation, but for a robust, automated solution, consider these enhancements:                                                             1.  **Advanced Web Scraping:** The `job_fetcher.py` script has basic URL fetching. For effective job searching, you'll need to implement site-specific parsers using libraries like BeautifulSoup to extract actual job listings (titles,   
+  The provided scripts offer a solid foundation, but for a robust, automated solution, consider these enhancements:  
+  
+  1.  **Advanced Web Scraping:** The `job_fetcher.py` script has basic URL fetching. For effective job searching, you'll need to implement site-specific parsers using libraries like BeautifulSoup to extract actual job listings (titles,   
 descriptions, application links, dates) from the HTML content of each target URL. This is the most complex part and requires continuous maintenance as websites change. 
   2.  **Resume Parsing for PDFs/DOCX:** Integrate libraries like `PyPDF2` or `python-docx` into `resume_parser.py` to handle common resume file formats beyond plain text.
   3.  **Sophisticated Matching:** Enhance `job_matcher.py` for more nuanced scoring, perhaps using NLP techniques to understand context and semantic similarity between your resume and job descriptions.                                     
