@@ -22,6 +22,8 @@ import sys
 import json
 import re
 import smtplib
+import imaplib
+import email
 import argparse
 import requests
 import cloudscraper
@@ -30,6 +32,16 @@ from dotenv import load_dotenv
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+# Lazy import for Playwright (headless browser for JS-rendered sites)
+_playwright_browser = None
+def _get_browser():
+    global _playwright_browser
+    if _playwright_browser is None:
+        from playwright.sync_api import sync_playwright
+        _pw = sync_playwright().start()
+        _playwright_browser = _pw.chromium.launch(headless=True)
+    return _playwright_browser
 
 load_dotenv()
 
@@ -218,6 +230,23 @@ JOB_SOURCES = [
     {"name": "Arbeitnow Visa Sponsorship", "url": "https://www.arbeitnow.com/visa-sponsorship-jobs", "region": "DE", "type": "board"},
     {"name": "EuroTechJobs", "url": "https://www.eurotechjobs.com/job_search", "region": "EU", "type": "board"},
     {"name": "relocate.me", "url": "https://relocate.me/international-jobs", "region": "EU", "type": "board"},
+    # --- Job boards from resume portal lists ---
+    {"name": "RemoteOK", "url": "https://remoteok.com/remote-jobs", "region": "Global", "type": "board"},
+    {"name": "Remotive", "url": "https://remotive.com/remote-jobs", "region": "Global", "type": "board"},
+    {"name": "Stack Overflow Jobs", "url": "https://stackoverflow.com/jobs", "region": "Global", "type": "board"},
+    {"name": "Jobspresso", "url": "https://jobspresso.co", "region": "Global", "type": "board"},
+    {"name": "Working Nomads", "url": "https://www.workingnomads.com/jobs", "region": "Global", "type": "board"},
+    {"name": "Europe Remotely", "url": "https://europeremotely.com/jobs", "region": "EU", "type": "board"},
+    {"name": "NoDesk", "url": "https://nodesk.co/remote-jobs", "region": "Global", "type": "board"},
+    {"name": "Pangian", "url": "https://pangian.com/job-search", "region": "Global", "type": "board"},
+    {"name": "Y Combinator Jobs", "url": "https://www.ycombinator.com/jobs", "region": "Global", "type": "board"},
+    {"name": "FlexJobs", "url": "https://www.flexjobs.com/search", "region": "Global", "type": "board"},
+    {"name": "Virtual Vocations", "url": "https://www.virtualvocations.com", "region": "Global", "type": "board"},
+    {"name": "Skip The Drive", "url": "https://skipthedrive.com", "region": "Global", "type": "board"},
+    {"name": "RemoteHabits", "url": "https://remotehabits.com", "region": "Global", "type": "board"},
+    {"name": "Remote4Me", "url": "https://remote4me.com", "region": "Global", "type": "board"},
+    {"name": "We Work Remotely", "url": "https://weworkremotely.com", "region": "Global", "type": "board"},
+    {"name": "SimplyHired", "url": "https://www.simplyhired.com", "region": "Global", "type": "board"},
 ]
 
 RECRUITER_AGENCIES = [
@@ -765,6 +794,71 @@ def search_womenintech(query, location="UK", max_results=25):
     return jobs
 
 
+def search_weworkremotely(query, location="Remote", max_results=25):
+    """Search We Work Remotely for jobs matching a query."""
+    jobs = []
+    scraper = cloudscraper.create_scraper()
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    term = query.replace(" ", "+")
+    try:
+        resp = scraper.get(f"https://weworkremotely.com/remote-jobs/search?term={term}", headers=headers, timeout=20)
+        if resp.status_code != 200:
+            print(f"  [weworkremotely] HTTP {resp.status_code}")
+            return jobs
+        html = resp.text
+        titles = re.findall(r'class="title"[^>]*>\s*([^<]+?)\s*</a>', html)
+        companies = re.findall(r'class="company"[^>]*>\s*([^<]+)', html)
+        links = re.findall(r'href="(/remote-jobs/[^"]+)"', html)
+        min_len = min(len(titles), len(companies))
+        for i in range(min(min_len, max_results)):
+            t = titles[i].strip()
+            if t.lower() in ("search remote jobs", "post a job", ""):
+                continue
+            url = f"https://weworkremotely.com{links[i]}" if i < len(links) else ""
+            jobs.append({
+                "title": t, "company": companies[i].strip(),
+                "location": "Remote", "url": url,
+                "description": f"WeWorkRemotely: {t} at {companies[i].strip()}",
+            })
+        if jobs:
+            print(f"  [weworkremotely] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [weworkremotely] Error: {e}")
+    return jobs
+
+
+def search_simplyhired(query, location="India", max_results=25):
+    """Search SimplyHired for jobs matching a query."""
+    jobs = []
+    scraper = cloudscraper.create_scraper()
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    q = query.replace(" ", "+")
+    try:
+        resp = scraper.get(f"https://www.simplyhired.com/search?q={q}", headers=headers, timeout=20)
+        if resp.status_code != 200:
+            print(f"  [simplyhired] HTTP {resp.status_code}")
+            return jobs
+        html = resp.text
+        titles = re.findall(r'<h2[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
+        companies = re.findall(r'data-testid="companyName"[^>]*>\s*([^<]+)', html)
+        locs = re.findall(r'data-testid="searchSerpJobLocation"[^>]*>\s*([^<]+)', html)
+        links = re.findall(r'href="(/job/[^"]+)"', html)
+        min_len = min(len(titles), len(companies))
+        for i in range(min(min_len, max_results)):
+            url = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
+            l = locs[i].strip() if i < len(locs) else location
+            jobs.append({
+                "title": titles[i].strip(), "company": companies[i].strip(),
+                "location": l, "url": url,
+                "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
+            })
+        if jobs:
+            print(f"  [simplyhired] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [simplyhired] Error: {e}")
+    return jobs
+
+
 def search_glassdoor(query, location="India", max_results=25):
     """Search Glassdoor for jobs matching a query."""
     jobs = []
@@ -805,6 +899,98 @@ def search_glassdoor(query, location="India", max_results=25):
             print(f"  [glassdoor] No jobs parsed for '{query}' in {location}")
     except Exception as e:
         print(f"  [glassdoor] Error searching '{query}': {e}")
+    return jobs
+
+
+def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
+    """Generic helper to scrape JS-rendered pages using Playwright."""
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=30000, wait_until="networkidle")
+        if wait_selector:
+            page.wait_for_selector(wait_selector, timeout=10000)
+        results = page.eval_on_selector_all(selector, extract_fn)
+        page.close()
+        return results
+    except Exception as e:
+        return []
+
+
+def search_remoteok(query, location="Remote", max_results=25):
+    """Search RemoteOK using Playwright headless browser."""
+    jobs = []
+    term = query.replace(" ", "+").lower()
+    url = f"https://remoteok.com/remote-{term}-jobs"
+    try:
+        titles = _playwright_scrape(
+            url,
+            "a[href*='/remote-jobs/'] h2, a[href*='/remote-jobs/'] span[itemprop='title']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)"
+        )
+        companies = _playwright_scrape(
+            url,
+            "span[itemprop='name'], div.company",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        links = _playwright_scrape(
+            url,
+            "a[href*='/remote-jobs/']",
+            "els => els.map(e => e.href).filter(h => h.includes('/remote-jobs/'))"
+        )
+        min_len = min(len(titles), len(companies), len(links))
+        for i in range(min(min_len, max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "Unknown",
+                "location": "Remote", "url": links[i],
+                "description": f"RemoteOK: {titles[i]}",
+            })
+        if jobs:
+            print(f"  [remoteok] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [remoteok] Error: {e}")
+    return jobs
+
+
+def search_workatstartup(query, location="Remote", max_results=25):
+    """Search WorkAtAStartup (YC) using Playwright with profile-based filters."""
+    jobs = []
+    exp = PROFILE["years_experience"]
+    min_exp = max(0, exp - 1)
+    top_skills = PROFILE["core_skills"][:3]
+    is_sap = any("sap" in s.lower() for s in top_skills)
+    role = "swe" if is_sap else "eng"
+    role_type = "be"  # backend
+    url = (
+        f"https://www.workatastartup.com/companies?"
+        f"demographic=any&hasEquity=any&hasSalary=any&industry=any"
+        f"&interviewProcess=any&jobType=fulltime&layout=list-compact"
+        f"&role={role}&role_type={role_type}&sortBy=created_desc"
+        f"&tab=any&usVisaNotRequired=any&minExperience={min_exp}"
+    )
+    try:
+        titles = _playwright_scrape(
+            url,
+            "a[href*='/companies/'] div.font-bold, a[href*='/companies/'] h3",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)"
+        )
+        links = _playwright_scrape(
+            url,
+            "a[href*='/companies/']",
+            "els => els.map(e => e.href).filter(h => h.includes('/companies/'))"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i],
+                "company": "YC Startup",
+                "location": "Remote/US",
+                "url": links[i] if i < len(links) else url,
+                "description": f"WorkAtAStartup: {titles[i]}",
+            })
+        if jobs:
+            print(f"  [workatstartup] {len(jobs)} jobs")
+    except Exception as e:
+        print(f"  [workatstartup] Error: {e}")
     return jobs
 
 
@@ -1034,7 +1220,133 @@ def parse_resume_pdf(path):
 
 
 # ---------------------------------------------------------------------------
-# 6. MAIN
+# 6. JOB TRACKER - persistent status tracking + email rejection detection
+# ---------------------------------------------------------------------------
+
+TRACKER_FILE = "job_tracker.json"
+
+class JobTracker:
+    """Tracks job application status to avoid re-recommending applied/rejected jobs."""
+
+    def __init__(self, path=TRACKER_FILE):
+        self.path = path
+        self.data = self._load()
+
+    def _load(self):
+        try:
+            with open(self.path) as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {"jobs": {}}
+
+    def _save(self):
+        with open(self.path, "w") as f:
+            json.dump(self.data, f, indent=2)
+
+    def job_key(self, title, company):
+        return f"{company.lower()}|{title.lower()}"
+
+    def is_known(self, title, company):
+        key = self.job_key(title, company)
+        entry = self.data["jobs"].get(key)
+        return entry and entry.get("status") in ("applied", "rejected", "offer")
+
+    def get_status(self, title, company):
+        key = self.job_key(title, company)
+        entry = self.data["jobs"].get(key, {})
+        return entry.get("status", "new")
+
+    def add_job(self, title, company, url="", score=0, status="new"):
+        key = self.job_key(title, company)
+        if key not in self.data["jobs"]:
+            self.data["jobs"][key] = {
+                "title": title, "company": company, "url": url,
+                "score": score, "status": status,
+                "date_found": datetime.now().isoformat(),
+                "date_updated": datetime.now().isoformat(),
+            }
+            self._save()
+
+    def update_status(self, title, company, status, notes=""):
+        key = self.job_key(title, company)
+        if key in self.data["jobs"]:
+            self.data["jobs"][key]["status"] = status
+            self.data["jobs"][key]["date_updated"] = datetime.now().isoformat()
+            if notes:
+                self.data["jobs"][key]["notes"] = notes
+            self._save()
+            return True
+        return False
+
+    def scan_email_for_rejections(self, gmail_user, gmail_pass, days_back=7):
+        """
+        Scan Gmail inbox for rejection emails and update tracker status.
+        Returns list of newly detected rejections.
+        """
+        rejections = []
+        try:
+            mail = imaplib.IMAP4_SSL("imap.gmail.com")
+            mail.login(gmail_user, gmail_pass)
+            mail.select("inbox")
+
+            since_date = (datetime.now().isoformat()[:10].replace("-", "-"))
+            search_criteria = f'(SINCE {since_date})'
+
+            rejection_keywords = [
+                "unfortunately", "not moving forward", "position has been filled",
+                "regret to inform", "not selected", "decided to move forward with other candidates",
+                "we will not be moving forward", "application status", "update on your application",
+                "your application at", "thank you for your interest",
+            ]
+
+            result, data = mail.search(None, search_criteria)
+            if result != "OK":
+                return rejections
+
+            for num in data[0].split():
+                try:
+                    result, msg_data = mail.fetch(num, "(RFC822)")
+                    if result != "OK":
+                        continue
+                    raw_email = msg_data[0][1]
+                    msg = email.message_from_bytes(raw_email)
+                    subject = msg["subject"] or ""
+                    body = ""
+                    if msg.is_multipart():
+                        for part in msg.walk():
+                            if part.get_content_type() == "text/plain":
+                                body = part.get_payload(decode=True) or b""
+                                body = body.decode("utf-8", errors="ignore")
+                                break
+                    else:
+                        body = msg.get_payload(decode=True) or b""
+                        body = body.decode("utf-8", errors="ignore")
+
+                    full_text = (subject + " " + body).lower()
+                    is_rejection = any(kw in full_text for kw in rejection_keywords)
+
+                    if is_rejection:
+                        # Try to identify which company
+                        for key, entry in self.data["jobs"].items():
+                            if entry.get("status") != "applied":
+                                continue
+                            company = entry["company"].lower()
+                            if company in full_text and len(company) > 3:
+                                self.update_status(entry["title"], entry["company"], "rejected",
+                                                   notes=f"Auto-detected from email: {subject[:80]}")
+                                rejections.append((entry["title"], entry["company"], subject))
+                                break
+                except Exception:
+                    continue
+
+            mail.logout()
+        except Exception as e:
+            print(f"  [tracker] Email scan error: {e}")
+        return rejections
+
+
+# ---------------------------------------------------------------------------
+# 7. MAIN
 # ---------------------------------------------------------------------------
 
 def main():
@@ -1091,10 +1403,29 @@ def main():
     print(f"Profile: {PROFILE['name']}, {PROFILE['years_experience']}yr, {len(PROFILE['core_skills'])} skills")
     all_matches = []
 
+    # --- Load job tracker ---
+    tracker = JobTracker()
+    print(f"  [tracker] {len(tracker.data['jobs'])} tracked jobs loaded")
+    # Run email rejection scanner
+    gmail_user = os.environ.get("GMAIL_ADDRESS", "")
+    gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
+    if gmail_user and gmail_pass:
+        rejections = tracker.scan_email_for_rejections(gmail_user, gmail_pass)
+        if rejections:
+            print(f"  [tracker] Auto-detected {len(rejections)} rejections from email")
+            for t, c, s in rejections:
+                print(f"    {t} @ {c} - {s[:50]}")
+
+    # Helper to check tracker before adding a match
+    def should_include(job):
+        return not tracker.is_known(job["title"], job["company"])
+
     for source in JOB_SOURCES:
         print(f"Scanning: {source['name']} ({source['region']})")
         jobs = fetch_jobs_from_source(source)
         for job in jobs:
+            if not should_include(job):
+                continue
             score, relocation_note = score_job(job["title"], job["description"], job["company"])
             if score >= args.threshold:
                 resume = pick_resume(job["company"])
@@ -1113,6 +1444,8 @@ def main():
         ("Indeed", search_indeed),
         ("Naukri", search_naukri),
         ("Glassdoor", search_glassdoor),
+        ("SimplyHired", search_simplyhired),
+        ("WeWorkRemotely", search_weworkremotely),
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
     ]
@@ -1125,6 +1458,8 @@ def main():
             for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
                 jobs = board_fn(query, location=region)
                 for job in jobs:
+                    if not should_include(job):
+                        continue
                     score, relocation_note = score_job(job["title"], job["description"], job["company"])
                     if score >= args.threshold:
                         resume = pick_resume(job["company"])
@@ -1132,9 +1467,39 @@ def main():
                         all_matches.append({**job, "score": score, "resume": resume,
                                             "relocation_note": relocation_note, "suggestions": suggestions})
 
+    # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
+    is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
+    exp = PROFILE["years_experience"]
+    if is_sap_profile:
+        pw_scrapers = [("RemoteOK", search_remoteok, None)]
+    else:
+        pw_scrapers = [
+            ("RemoteOK", search_remoteok, None),
+            ("WorkAtAStartup", search_workatstartup, None),
+        ]
+    for pw_name, pw_fn, pw_query in pw_scrapers:
+        try:
+            jobs = pw_fn(pw_query or "", location="Remote")
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    all_matches.append({**job, "score": score, "resume": resume,
+                                        "relocation_note": relocation_note, "suggestions": suggestions})
+        except Exception as e:
+            print(f"  [{pw_name.lower()}] Error: {e}")
+
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
+    # --- Save new matches to tracker ---
+    for m in all_matches:
+        tracker.add_job(m["title"], m["company"], m.get("url", ""), m["score"])
+
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
+    print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
 
     html = build_email_html(all_matches)
     send_email(html, subject=f"Daily Job Matches - {len(all_matches)} new roles")
