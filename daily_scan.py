@@ -220,33 +220,6 @@ JOB_SOURCES = [
     {"name": "Booking.com", "url": "https://careers.booking.com", "region": "NL", "type": "company"},
     {"name": "Picnic", "url": "https://jobs.picnic.app", "region": "NL", "type": "company"},
     {"name": "Personio", "url": "https://www.personio.com/career/", "region": "DE", "type": "company"},
-    # --- Job boards (manual check - no public API available) ---
-    {"name": "LinkedIn Jobs", "url": "https://www.linkedin.com/jobs", "region": "Global", "type": "board"},
-    {"name": "Wellfound", "url": "https://wellfound.com/jobs", "region": "Global", "type": "board"},
-    {"name": "Glassdoor", "url": "https://www.glassdoor.com/Jobs", "region": "Global", "type": "board"},
-    {"name": "Naukri", "url": "https://www.naukri.com", "region": "IN", "type": "board"},
-    {"name": "Instahyre", "url": "https://www.instahyre.com", "region": "IN", "type": "board"},
-    {"name": "Hiring.cafe", "url": "https://hiring.cafe", "region": "Global", "type": "board"},
-    {"name": "Arbeitnow Visa Sponsorship", "url": "https://www.arbeitnow.com/visa-sponsorship-jobs", "region": "DE", "type": "board"},
-    {"name": "EuroTechJobs", "url": "https://www.eurotechjobs.com/job_search", "region": "EU", "type": "board"},
-    {"name": "relocate.me", "url": "https://relocate.me/international-jobs", "region": "EU", "type": "board"},
-    # --- Job boards from resume portal lists ---
-    {"name": "RemoteOK", "url": "https://remoteok.com/remote-jobs", "region": "Global", "type": "board"},
-    {"name": "Remotive", "url": "https://remotive.com/remote-jobs", "region": "Global", "type": "board"},
-    {"name": "Stack Overflow Jobs", "url": "https://stackoverflow.com/jobs", "region": "Global", "type": "board"},
-    {"name": "Jobspresso", "url": "https://jobspresso.co", "region": "Global", "type": "board"},
-    {"name": "Working Nomads", "url": "https://www.workingnomads.com/jobs", "region": "Global", "type": "board"},
-    {"name": "Europe Remotely", "url": "https://europeremotely.com/jobs", "region": "EU", "type": "board"},
-    {"name": "NoDesk", "url": "https://nodesk.co/remote-jobs", "region": "Global", "type": "board"},
-    {"name": "Pangian", "url": "https://pangian.com/job-search", "region": "Global", "type": "board"},
-    {"name": "Y Combinator Jobs", "url": "https://www.ycombinator.com/jobs", "region": "Global", "type": "board"},
-    {"name": "FlexJobs", "url": "https://www.flexjobs.com/search", "region": "Global", "type": "board"},
-    {"name": "Virtual Vocations", "url": "https://www.virtualvocations.com", "region": "Global", "type": "board"},
-    {"name": "Skip The Drive", "url": "https://skipthedrive.com", "region": "Global", "type": "board"},
-    {"name": "RemoteHabits", "url": "https://remotehabits.com", "region": "Global", "type": "board"},
-    {"name": "Remote4Me", "url": "https://remote4me.com", "region": "Global", "type": "board"},
-    {"name": "We Work Remotely", "url": "https://weworkremotely.com", "region": "Global", "type": "board"},
-    {"name": "SimplyHired", "url": "https://www.simplyhired.com", "region": "Global", "type": "board"},
 ]
 
 RECRUITER_AGENCIES = [
@@ -952,6 +925,184 @@ def search_remoteok(query, location="Remote", max_results=25):
     return jobs
 
 
+def search_skipthedrive(query, location="Remote", max_results=25):
+    """Search SkipTheDrive for remote jobs using HTTP."""
+    jobs = []
+    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
+    q = query.replace(" ", "+")
+    try:
+        resp = scraper.get(f"https://www.skipthedrive.com/?s={q}", timeout=20)
+        if resp.status_code != 200:
+            return jobs
+        html = resp.text
+        titles = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
+        links = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^"]*href="([^"]+)"', html)
+        for i in range(min(len(titles), max_results)):
+            t = titles[i].strip()
+            t = re.sub(r'&#8211;', '-', t)
+            t = re.sub(r'&#\d+;', '', t)
+            jobs.append({
+                "title": t, "company": "SkipTheDrive",
+                "location": "Remote", "url": links[i] if i < len(links) else "",
+                "description": f"SkipTheDrive: {t}",
+            })
+        if jobs:
+            print(f"  [skipthedrive] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [skipthedrive] Error: {e}")
+    return jobs
+
+
+def search_workingnomads(query, location="Remote", max_results=25):
+    """Search WorkingNomads using Playwright headless browser."""
+    jobs = []
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto("https://www.workingnomads.com/jobs", timeout=30000, wait_until="networkidle")
+        page.wait_for_timeout(3000)
+        links = page.eval_on_selector_all(
+            'a[href*="/jobs/"]',
+            '''els => els.map(e => ({
+                text: e.innerText.trim(),
+                href: e.href
+            })).filter(j => j.text.length > 3 && j.href.includes('/jobs/'))'''
+        )
+        page.close()
+        q_lower = query.lower()
+        q_terms = q_lower.split()
+        for l in links[:max_results * 2]:
+            text_lower = l['text'].lower()
+            if not all(term in text_lower for term in q_terms):
+                continue
+            title_parts = l['text'].split('\n')
+            title = title_parts[0].strip()
+            company = title_parts[1].strip() if len(title_parts) > 1 else "WorkingNomads"
+            jobs.append({
+                "title": title, "company": company,
+                "location": "Remote", "url": l['href'],
+                "description": f"WorkingNomads: {title}",
+            })
+            if len(jobs) >= max_results:
+                break
+        if jobs:
+            print(f"  [workingnomads] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [workingnomads] Error: {e}")
+    return jobs
+
+
+def search_jobspresso(query, location="Remote", max_results=25):
+    """Search Jobspresso using Playwright."""
+    jobs = []
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto("https://jobspresso.co/remote-work/", timeout=30000, wait_until="load")
+        page.wait_for_timeout(3000)
+        items = page.eval_on_selector_all(
+            'li.job_listing',
+            '''els => els.map(el => ({
+                title: el.getAttribute('data-title') || '',
+                href: el.getAttribute('data-href') || ''
+            })).filter(j => j.title.length > 3)'''
+        )
+        page.close()
+        q_lower = query.lower()
+        q_terms = q_lower.split()
+        for item in items[:max_results * 2]:
+            if not all(term in item['title'].lower() for term in q_terms):
+                continue
+            t = item['title']
+            # Try to extract company name from "Title at Company" pattern
+            company = "Jobspresso"
+            if " at " in t:
+                parts = t.rsplit(" at ", 1)
+                t = parts[0].strip()
+                company = parts[1].strip()
+            jobs.append({
+                "title": t, "company": company,
+                "location": "Remote", "url": item['href'],
+                "description": f"Jobspresso: {t}",
+            })
+            if len(jobs) >= max_results:
+                break
+        if jobs:
+            print(f"  [jobspresso] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [jobspresso] Error: {e}")
+    return jobs
+
+
+def search_englishjobsearch(query, location="Remote", max_results=25):
+    """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto(f"https://englishjobsearch.ch/jobs/{q}", timeout=30000, wait_until="networkidle")
+        page.wait_for_timeout(3000)
+        links = page.eval_on_selector_all(
+            'a[href*="/clickout/"]',
+            '''els => els.slice(0, 30).map(e => ({
+                text: e.innerText.trim(),
+                href: e.href
+            })).filter(j => j.text.length > 5)'''
+        )
+        page.close()
+        for l in links[:max_results]:
+            t = l['text']
+            company = "EnglishJobSearch"
+            if " at " in t:
+                parts = t.rsplit(" at ", 1)
+                t = parts[0].strip()
+                company = parts[1].strip()
+            jobs.append({
+                "title": t, "company": company,
+                "location": "Switzerland/EU", "url": l['href'],
+                "description": f"EnglishJobSearch: {t}",
+            })
+        if jobs:
+            print(f"  [englishjobsearch] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [englishjobsearch] Error: {e}")
+    return jobs
+
+
+def search_bulldogjob(query, location="Remote", max_results=25):
+    """Search BulldogJob.pl for tech jobs in Poland/EU."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto(f"https://bulldogjob.pl/companies/jobs/s/skills,{q}", timeout=30000, wait_until="networkidle")
+        page.wait_for_timeout(3000)
+        links = page.eval_on_selector_all(
+            'a[href*="/companies/jobs/"]',
+            '''els => els.slice(0, 30).map(e => ({
+                text: e.innerText.trim(),
+                href: e.href
+            })).filter(j => j.text.length > 5 && !j.text.includes('Praca'))'''
+        )
+        page.close()
+        for l in links[:max_results]:
+            t_parts = l['text'].split('\n')
+            title = t_parts[0].strip()
+            company = t_parts[1].strip() if len(t_parts) > 1 else "BulldogJob"
+            jobs.append({
+                "title": title, "company": company,
+                "location": "Poland/EU", "url": l['href'],
+                "description": f"BulldogJob: {title}",
+            })
+        if jobs:
+            print(f"  [bulldogjob] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [bulldogjob] Error: {e}")
+    return jobs
+
+
 def search_workatstartup(query, location="Remote", max_results=25):
     """Search WorkAtAStartup (YC) using Playwright with profile-based filters."""
     jobs = []
@@ -1289,7 +1440,8 @@ class JobTracker:
             mail.login(gmail_user, gmail_pass)
             mail.select("inbox")
 
-            since_date = (datetime.now().isoformat()[:10].replace("-", "-"))
+            from datetime import timedelta
+            since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
             search_criteria = f'(SINCE {since_date})'
 
             rejection_keywords = [
@@ -1471,15 +1623,25 @@ def main():
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
     exp = PROFILE["years_experience"]
     if is_sap_profile:
-        pw_scrapers = [("RemoteOK", search_remoteok, None)]
+        pw_scrapers = [
+            ("RemoteOK", search_remoteok, None),
+        ]
     else:
         pw_scrapers = [
             ("RemoteOK", search_remoteok, None),
             ("WorkAtAStartup", search_workatstartup, None),
         ]
-    for pw_name, pw_fn, pw_query in pw_scrapers:
+    # Batch scrapers (HTTP + Playwright) that support domain-specific queries
+    pw_batch_scrapers = [
+        ("SkipTheDrive", search_skipthedrive),
+        ("WorkingNomads", search_workingnomads),
+        ("Jobspresso", search_jobspresso),
+        ("EnglishJobSearch", search_englishjobsearch),
+        ("BulldogJob", search_bulldogjob),
+    ]
+    for pw_name, pw_fn in pw_scrapers:
         try:
-            jobs = pw_fn(pw_query or "", location="Remote")
+            jobs = pw_fn("", location="Remote")
             for job in jobs:
                 if not should_include(job):
                     continue
@@ -1491,6 +1653,22 @@ def main():
                                         "relocation_note": relocation_note, "suggestions": suggestions})
         except Exception as e:
             print(f"  [{pw_name.lower()}] Error: {e}")
+    # Pass domain query to batch scrapers that support it
+    for pw_name, pw_fn in pw_batch_scrapers:
+        for query in domain_queries:
+            try:
+                jobs = pw_fn(query, location="Remote")
+                for job in jobs:
+                    if not should_include(job):
+                        continue
+                    score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                    if score >= args.threshold:
+                        resume = pick_resume(job["company"])
+                        suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                        all_matches.append({**job, "score": score, "resume": resume,
+                                            "relocation_note": relocation_note, "suggestions": suggestions})
+            except Exception as e:
+                print(f"  [{pw_name.lower()}] Error: {e}")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
