@@ -1,1 +1,1385 @@
-{"jobs": {}}
+{
+  "jobs": {
+    "datadog|senior security engineer, offensive security": {
+      "title": "Senior Security Engineer, Offensive Security",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7871543/?gh_jid=7871543",
+      "score": 100,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.878910",
+      "date_updated": "2026-06-20T01:03:41.522284",
+      "notes": "Not a fit - offensive security role, not backend engineering"
+    },
+    "datadog|senior services architect - new york": {
+      "title": "Senior Services Architect - New York",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7996907/?gh_jid=7996907",
+      "score": 100,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.879389",
+      "date_updated": "2026-06-20T01:05:33.842714",
+      "notes": "Customer-facing services/consulting role, not backend engineering"
+    },
+    "datadog|senior software engineer - synthetics platform": {
+      "title": "Senior Software Engineer - Synthetics Platform",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7950090/?gh_jid=7950090",
+      "score": 100,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.879706",
+      "date_updated": "2026-06-20T01:05:33.845553",
+      "notes": "This looks like a good fit - backend/platform engineering"
+    },
+    "datadog|services architect 3": {
+      "title": "Services Architect 3",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7807756/?gh_jid=7807756",
+      "score": 100,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.880007",
+      "date_updated": "2026-06-20T01:05:43.338222",
+      "notes": "Non-engineering role"
+    },
+    "datadog|services architect 3 - denver": {
+      "title": "Services Architect 3 - Denver",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7807783/?gh_jid=7807783",
+      "score": 100,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.880301",
+      "date_updated": "2026-06-20T01:05:43.341046",
+      "notes": "Non-engineering role"
+    },
+    "elastic|principal software developer i - distributed systems - elasticsearch": {
+      "title": "Principal Software Developer I - Distributed Systems - Elasticsearch",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7982102&gh_jid=7982102",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.880615",
+      "date_updated": "2026-06-20T00:54:12.880625"
+    },
+    "elastic|principal software engineer i - distributed systems - elasticsearch": {
+      "title": "Principal Software Engineer I - Distributed Systems - Elasticsearch",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=8002555&gh_jid=8002555",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.881206",
+      "date_updated": "2026-06-20T00:54:12.881213"
+    },
+    "elastic|senior java developer - distributed systems - elasticsearch": {
+      "title": "Senior Java Developer - Distributed Systems - Elasticsearch",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7734579&gh_jid=7734579",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.881670",
+      "date_updated": "2026-06-20T00:54:12.881677"
+    },
+    "elastic|senior java engineer - distributed systems - elasticsearch": {
+      "title": "Senior Java Engineer - Distributed Systems - Elasticsearch",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=8001192&gh_jid=8001192",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.882045",
+      "date_updated": "2026-06-20T00:54:12.882052"
+    },
+    "airbnb|staff software engineer, infrastructure": {
+      "title": "Staff Software Engineer, Infrastructure",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7702714?gh_jid=7702714",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.882702",
+      "date_updated": "2026-06-20T00:54:12.882710"
+    },
+    "datadog|senior software engineer ": {
+      "title": "Senior Software Engineer ",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/3851935/?gh_jid=3851935",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.883108",
+      "date_updated": "2026-06-20T00:54:12.883114"
+    },
+    "coinbase|software engineer": {
+      "title": "Software Engineer",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/8003605?gh_jid=8003605",
+      "score": 92,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.883548",
+      "date_updated": "2026-06-20T00:54:12.883554"
+    },
+    "gitlab|senior backend engineer, gitlab delivery: runway (platform engineering)": {
+      "title": "Senior Backend Engineer, Gitlab Delivery: Runway (Platform Engineering)",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8324132002",
+      "score": 85,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.883999",
+      "date_updated": "2026-06-20T00:54:12.884004"
+    },
+    "stripe|backend engineer, privy": {
+      "title": "Backend Engineer, Privy",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7235875",
+      "score": 85,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.884520",
+      "date_updated": "2026-06-20T00:54:12.884528"
+    },
+    "stockgro|backend engineer": {
+      "title": "Backend Engineer",
+      "company": "StockGro",
+      "url": "https://in.linkedin.com/jobs/view/backend-engineer-at-stockgro-4424704792?position=1&amp;pageNum=0&amp;refId=jvaO8W9RUuAuq38CGQZduQ%3D%3D&amp;trackingId=am04%2FvEP158u911nEtWlNg%3D%3D",
+      "score": 85,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.885093",
+      "date_updated": "2026-06-20T00:54:12.885100"
+    },
+    "mailercloud|software engineer": {
+      "title": "Software Engineer",
+      "company": "mailercloud",
+      "url": "https://in.linkedin.com/jobs/view/software-engineer-at-mailercloud-4427920806?position=10&amp;pageNum=0&amp;refId=jvaO8W9RUuAuq38CGQZduQ%3D%3D&amp;trackingId=llXdNLHFF8JllJPSjelZSQ%3D%3D",
+      "score": 85,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.885602",
+      "date_updated": "2026-06-20T00:54:12.885608"
+    },
+    "deloitte|software engineer": {
+      "title": "Software Engineer",
+      "company": "Deloitte",
+      "url": "https://in.linkedin.com/jobs/view/software-engineer-at-deloitte-4414036083?position=10&amp;pageNum=0&amp;refId=eWxuEqgsd0nlNGZNpxBwPQ%3D%3D&amp;trackingId=xREvesRMxkNhXPL5WHzKXA%3D%3D",
+      "score": 85,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.886114",
+      "date_updated": "2026-06-20T00:54:12.886120"
+    },
+    "gitlab|staff backend engineer (go), continuous delivery": {
+      "title": "Staff Backend Engineer (Go), Continuous Delivery",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8488961002",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.886675",
+      "date_updated": "2026-06-20T00:54:12.886683"
+    },
+    "elastic|senior developer advocate (video content creator)": {
+      "title": "Senior Developer Advocate (Video Content Creator)",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7190130&gh_jid=7190130",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.887303",
+      "date_updated": "2026-06-20T00:54:12.887310"
+    },
+    "airbnb|fraud intelligence lead": {
+      "title": "Fraud Intelligence Lead",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/8013185?gh_jid=8013185",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.887904",
+      "date_updated": "2026-06-20T00:54:12.887910"
+    },
+    "airbnb|operations data & technology strategy lead": {
+      "title": "Operations Data & Technology Strategy Lead",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7724155?gh_jid=7724155",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.888469",
+      "date_updated": "2026-06-20T00:54:12.888474"
+    },
+    "airbnb|senior staff software engineer, network infrastructure": {
+      "title": "Senior Staff Software Engineer, Network Infrastructure",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7600470?gh_jid=7600470",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.889120",
+      "date_updated": "2026-06-20T00:54:12.889128"
+    },
+    "airbnb|staff full stack engineer, reservations and additional products": {
+      "title": "Staff Full Stack Engineer, Reservations and Additional Products",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7763307?gh_jid=7763307",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.889977",
+      "date_updated": "2026-06-20T00:54:12.889986"
+    },
+    "dropbox|frontend product software engineer, design systems": {
+      "title": "Frontend Product Software Engineer, Design Systems",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7862086?gh_jid=7862086",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.890814",
+      "date_updated": "2026-06-20T00:54:12.890821"
+    },
+    "dropbox|principal engineer, identity & engagement": {
+      "title": "Principal Engineer, Identity & Engagement",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7739559?gh_jid=7739559",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.891937",
+      "date_updated": "2026-06-20T00:54:12.891945"
+    },
+    "dropbox|saas engineer": {
+      "title": "SaaS Engineer",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7773571?gh_jid=7773571",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.892781",
+      "date_updated": "2026-06-20T00:54:12.892787"
+    },
+    "dropbox|senior infrastructure security engineer": {
+      "title": "Senior Infrastructure Security Engineer",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7967468?gh_jid=7967468",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.893721",
+      "date_updated": "2026-06-20T00:54:12.893728"
+    },
+    "dropbox|senior infrastructure software engineer, storage core": {
+      "title": "Senior Infrastructure Software Engineer, Storage Core",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/8008893?gh_jid=8008893",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.894700",
+      "date_updated": "2026-06-20T00:54:12.894705"
+    },
+    "dropbox|systems automation & integration engineer": {
+      "title": "Systems Automation & Integration Engineer",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7872754?gh_jid=7872754",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.895886",
+      "date_updated": "2026-06-20T00:54:12.895899"
+    },
+    "datadog|country manager": {
+      "title": "Country Manager",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7975747/?gh_jid=7975747",
+      "score": 78,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.897005",
+      "date_updated": "2026-06-20T01:05:43.315847",
+      "notes": "Non-engineering role"
+    },
+    "datadog|manager i, engineering - data visualization explorations": {
+      "title": "Manager I, Engineering - Data Visualization Explorations",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7947742/?gh_jid=7947742",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.898059",
+      "date_updated": "2026-06-20T00:54:12.898067"
+    },
+    "datadog|manager i, engineering - live debugging": {
+      "title": "Manager I, Engineering - Live Debugging",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7942079/?gh_jid=7942079",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.898998",
+      "date_updated": "2026-06-20T00:54:12.899004"
+    },
+    "datadog|senior ai engineer": {
+      "title": "Senior AI Engineer",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7731292/?gh_jid=7731292",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.899956",
+      "date_updated": "2026-06-20T00:54:12.899963"
+    },
+    "datadog|senior application security engineer": {
+      "title": "Senior Application Security Engineer",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7867135/?gh_jid=7867135",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.900877",
+      "date_updated": "2026-06-20T00:54:12.900885"
+    },
+    "datadog|senior software engineer - ai code gen - agent engineer": {
+      "title": "Senior Software Engineer - AI Code Gen - Agent Engineer",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7107875/?gh_jid=7107875",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.901772",
+      "date_updated": "2026-06-20T00:54:12.901779"
+    },
+    "datadog|senior software engineer - code gen": {
+      "title": "Senior Software Engineer - Code Gen",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7993198/?gh_jid=7993198",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.903009",
+      "date_updated": "2026-06-20T00:54:12.903016"
+    },
+    "datadog|senior software engineer - environments accelerator": {
+      "title": "Senior Software Engineer - Environments Accelerator",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7966967/?gh_jid=7966967",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.903896",
+      "date_updated": "2026-06-20T00:54:12.903902"
+    },
+    "datadog|senior software engineer - infrastructure r&d": {
+      "title": "Senior Software Engineer - Infrastructure R&D",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7967161/?gh_jid=7967161",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.905150",
+      "date_updated": "2026-06-20T00:54:12.905165"
+    },
+    "coinbase|senior software engineer (eaa)": {
+      "title": "Senior Software Engineer (EAA)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7483221?gh_jid=7483221",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.906333",
+      "date_updated": "2026-06-20T00:54:12.906344"
+    },
+    "coinbase|senior software engineer - trading": {
+      "title": "Senior Software Engineer - Trading",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7866674?gh_jid=7866674",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.907381",
+      "date_updated": "2026-06-20T00:54:12.907388"
+    },
+    "coinbase|senior staff software engineer - blockchain platform": {
+      "title": "Senior Staff Software Engineer - Blockchain Platform",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7366208?gh_jid=7366208",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.908279",
+      "date_updated": "2026-06-20T00:54:12.908284"
+    },
+    "coinbase|senior staff software engineer, data platform": {
+      "title": "Senior Staff Software Engineer, Data Platform",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7711287?gh_jid=7711287",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.909228",
+      "date_updated": "2026-06-20T00:54:12.909235"
+    },
+    "coinbase|staff software engineer, backend - payments platform": {
+      "title": "Staff Software Engineer, Backend - Payments Platform",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7993066?gh_jid=7993066",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.910204",
+      "date_updated": "2026-06-20T00:54:12.910212"
+    },
+    "coinbase|staff software engineer, backend - platform (payment rails)": {
+      "title": "Staff Software Engineer, Backend - Platform (Payment Rails)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7789395?gh_jid=7789395",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.911217",
+      "date_updated": "2026-06-20T00:54:12.911227"
+    },
+    "coinbase|staff software engineer (tech lead, backend - platform (overseer)": {
+      "title": "Staff Software Engineer (Tech Lead, Backend - Platform (Overseer)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7991011?gh_jid=7991011",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.912352",
+      "date_updated": "2026-06-20T00:54:12.912361"
+    },
+    "coinbase|staff software engineer - trading": {
+      "title": "Staff Software Engineer - Trading",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7866623?gh_jid=7866623",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.913303",
+      "date_updated": "2026-06-20T00:54:12.913309"
+    },
+    "google|software engineer iii, google cloud": {
+      "title": "Software Engineer III, Google Cloud",
+      "company": "Google",
+      "url": "https://in.linkedin.com/jobs/view/software-engineer-iii-google-cloud-at-google-4412985419?position=8&amp;pageNum=0&amp;refId=8gF0ucNWoh8FBQKLaScGtg%3D%3D&amp;trackingId=lOYP1ZDni%2BYOfXrZtV5sAA%3D%3D",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.914235",
+      "date_updated": "2026-06-20T00:54:12.914241"
+    },
+    "gitlab|professional services, technical architect - west ": {
+      "title": "Professional Services, Technical Architect - West ",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8452994002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.915165",
+      "date_updated": "2026-06-20T00:54:12.915170"
+    },
+    "gitlab|senior manager, engagement management": {
+      "title": "Senior Manager, Engagement Management",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8476671002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.916247",
+      "date_updated": "2026-06-20T00:54:12.916253"
+    },
+    "gitlab|senior manager, professional services technical architect": {
+      "title": "Senior Manager, Professional Services Technical Architect",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8597809002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.917330",
+      "date_updated": "2026-06-20T00:54:12.917337"
+    },
+    "gitlab|staff backend engineer (ruby on rails/ai), verify": {
+      "title": "Staff Backend Engineer (Ruby on Rails/AI), Verify",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8448283002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.918315",
+      "date_updated": "2026-06-20T00:54:12.918321"
+    },
+    "gitlab|staff backend engineer, sscs: ai governance": {
+      "title": "Staff Backend Engineer, SSCS: AI Governance",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8480531002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.919448",
+      "date_updated": "2026-06-20T00:54:12.919454"
+    },
+    "gitlab|staff infrastructure security engineer (apac, emea, or us)": {
+      "title": "Staff Infrastructure Security Engineer (APAC, EMEA, or US)",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8514960002",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.920643",
+      "date_updated": "2026-06-20T00:54:12.920650"
+    },
+    "elastic|senior developer advocate": {
+      "title": "Senior Developer Advocate",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7190138&gh_jid=7190138",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.921649",
+      "date_updated": "2026-06-20T00:54:12.921655"
+    },
+    "elastic|senior solution architect": {
+      "title": "Senior Solution Architect",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7817941&gh_jid=7817941",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.922799",
+      "date_updated": "2026-06-20T00:54:12.922806"
+    },
+    "elastic|senior solution architect, mumbai": {
+      "title": "Senior Solution Architect, Mumbai",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7817945&gh_jid=7817945",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.923872",
+      "date_updated": "2026-06-20T00:54:12.923879"
+    },
+    "elastic|senior solution architect, thailand": {
+      "title": "Senior Solution Architect, Thailand",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7817931&gh_jid=7817931",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.925073",
+      "date_updated": "2026-06-20T00:54:12.925080"
+    },
+    "airbnb|principal software engineer, performance": {
+      "title": "Principal Software Engineer, Performance",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7826679?gh_jid=7826679",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.926234",
+      "date_updated": "2026-06-20T00:54:12.926240"
+    },
+    "airbnb|senior full-stack engineer, app experience and frameworks (frontend-heavy)": {
+      "title": "Senior Full-Stack Engineer, App Experience and Frameworks (Frontend-Heavy)",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7551863?gh_jid=7551863",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.927335",
+      "date_updated": "2026-06-20T00:54:12.927342"
+    },
+    "airbnb|senior software engineer, infrastructure": {
+      "title": "Senior Software Engineer, Infrastructure",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7490348?gh_jid=7490348",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.928444",
+      "date_updated": "2026-06-20T00:54:12.928450"
+    },
+    "airbnb|senior staff software engineer, payments": {
+      "title": "Senior Staff Software Engineer, Payments",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7525479?gh_jid=7525479",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.929592",
+      "date_updated": "2026-06-20T00:54:12.929598"
+    },
+    "airbnb|staff software engineer, unified data store": {
+      "title": "Staff Software Engineer, Unified Data Store",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7867435?gh_jid=7867435",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.930808",
+      "date_updated": "2026-06-20T00:54:12.930814"
+    },
+    "dropbox|principal software engineer, core sharing & collaboration": {
+      "title": "Principal Software Engineer, Core Sharing & Collaboration",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/8006972?gh_jid=8006972",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.931965",
+      "date_updated": "2026-06-20T00:54:12.931971"
+    },
+    "datadog|manager, commercial sales": {
+      "title": "Manager, Commercial Sales",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7463769/?gh_jid=7463769",
+      "score": 70,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.933123",
+      "date_updated": "2026-06-20T01:05:43.318097",
+      "notes": "Non-engineering role"
+    },
+    "datadog|manager i, engineering - orgstore blueprint": {
+      "title": "Manager I, Engineering - OrgStore Blueprint",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7586019/?gh_jid=7586019",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.934291",
+      "date_updated": "2026-06-20T00:54:12.934297"
+    },
+    "datadog|manager i, engineering - subscriptions": {
+      "title": "Manager I, Engineering - Subscriptions",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7761803/?gh_jid=7761803",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.935380",
+      "date_updated": "2026-06-20T00:54:12.935385"
+    },
+    "datadog|product strategy and corporate development lead (emea)": {
+      "title": "Product Strategy and Corporate Development Lead (EMEA)",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7413847/?gh_jid=7413847",
+      "score": 70,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.936586",
+      "date_updated": "2026-06-20T01:05:43.335739",
+      "notes": "Non-engineering role"
+    },
+    "datadog|senior people business partner": {
+      "title": "Senior People Business Partner",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7461043/?gh_jid=7461043",
+      "score": 70,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:12.938089",
+      "date_updated": "2026-06-20T01:05:43.320830",
+      "notes": "Non-engineering role"
+    },
+    "datadog|senior security engineer - cloud siem": {
+      "title": "Senior Security Engineer - Cloud SIEM",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/8000258/?gh_jid=8000258",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.939489",
+      "date_updated": "2026-06-20T00:54:12.939497"
+    },
+    "datadog|senior software engineer - linux/ebpf": {
+      "title": "Senior Software Engineer - Linux/eBPF",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7957461/?gh_jid=7957461",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.940702",
+      "date_updated": "2026-06-20T00:54:12.940710"
+    },
+    "datadog|staff application security engineer": {
+      "title": "Staff Application Security Engineer",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7777798/?gh_jid=7777798",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.941961",
+      "date_updated": "2026-06-20T00:54:12.941969"
+    },
+    "datadog|staff software engineer - logs observability pipelines ": {
+      "title": "Staff Software Engineer - Logs Observability Pipelines ",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7743369/?gh_jid=7743369",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.943244",
+      "date_updated": "2026-06-20T00:54:12.943251"
+    },
+    "datadog|technical escalations engineer 2 (apm - java/proxy/c++) - mexico city": {
+      "title": "Technical Escalations Engineer 2 (APM - Java/Proxy/C++) - Mexico City",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7991271/?gh_jid=7991271",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.944732",
+      "date_updated": "2026-06-20T00:54:12.944740"
+    },
+    "coinbase|senior counsel, shareholder litigation": {
+      "title": "Senior Counsel, Shareholder Litigation",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7994338?gh_jid=7994338",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.946021",
+      "date_updated": "2026-06-20T00:54:12.946028"
+    },
+    "coinbase|senior software engineer": {
+      "title": "Senior Software Engineer",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7961318?gh_jid=7961318",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.947520",
+      "date_updated": "2026-06-20T00:54:12.947529"
+    },
+    "coinbase|senior software engineer - ai platform team": {
+      "title": "Senior Software Engineer - AI Platform Team",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7997420?gh_jid=7997420",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.948846",
+      "date_updated": "2026-06-20T00:54:12.948852"
+    },
+    "coinbase|senior software engineer, backend (consumer - risk)": {
+      "title": "Senior Software Engineer, Backend (Consumer - Risk)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7930686?gh_jid=7930686",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.950189",
+      "date_updated": "2026-06-20T00:54:12.950194"
+    },
+    "coinbase|senior software engineer infra - compute platform": {
+      "title": "Senior Software Engineer Infra - Compute Platform",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7701645?gh_jid=7701645",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.951560",
+      "date_updated": "2026-06-20T00:54:12.951567"
+    },
+    "coinbase|senior software engineer, infra - compute platform": {
+      "title": "Senior Software Engineer, Infra - Compute Platform",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7701651?gh_jid=7701651",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.952857",
+      "date_updated": "2026-06-20T00:54:12.952863"
+    },
+    "coinbase|staff software engineer, backend (consumer - risk)": {
+      "title": "Staff Software Engineer, Backend (Consumer - Risk)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7990660?gh_jid=7990660",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.954249",
+      "date_updated": "2026-06-20T00:54:12.954255"
+    },
+    "coinbase|staff software engineer, frontend (consumer - advanced trading)": {
+      "title": "Staff Software Engineer, Frontend (Consumer - Advanced Trading)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7629141?gh_jid=7629141",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.955643",
+      "date_updated": "2026-06-20T00:54:12.955652"
+    },
+    "coinbase|staff software engineer (platform - fineng)": {
+      "title": "Staff Software Engineer (Platform - FinEng)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7773776?gh_jid=7773776",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.957004",
+      "date_updated": "2026-06-20T00:54:12.957010"
+    },
+    "syfe|backend engineer (sde ii) - india": {
+      "title": "Backend Engineer (SDE II) - India",
+      "company": "Syfe",
+      "url": "https://in.linkedin.com/jobs/view/backend-engineer-sde-ii-india-at-syfe-4409793191?position=2&amp;pageNum=0&amp;refId=jvaO8W9RUuAuq38CGQZduQ%3D%3D&amp;trackingId=2TkWCkSj9QY6lXHoMB8gJA%3D%3D",
+      "score": 70,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.958642",
+      "date_updated": "2026-06-20T00:54:12.958650"
+    },
+    "gitlab|field strategist, forward deployed engineer ": {
+      "title": "Field Strategist, Forward Deployed Engineer ",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8497078002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.960298",
+      "date_updated": "2026-06-20T00:54:12.960312"
+    },
+    "gitlab|forward deployed engineer - uk": {
+      "title": "Forward Deployed Engineer - UK",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8522265002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.961875",
+      "date_updated": "2026-06-20T00:54:12.961883"
+    },
+    "gitlab|forward deployed engnieer - meta": {
+      "title": "Forward Deployed Engnieer - META",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8524783002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.963339",
+      "date_updated": "2026-06-20T00:54:12.963345"
+    },
+    "gitlab|professional services engagement manager": {
+      "title": "Professional Services Engagement Manager",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8579044002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.964723",
+      "date_updated": "2026-06-20T00:54:12.964729"
+    },
+    "gitlab|senior backend engineer(go), continuous delivery": {
+      "title": "Senior Backend Engineer(Go), Continuous Delivery",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8488966002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.966291",
+      "date_updated": "2026-06-20T00:54:12.966297"
+    },
+    "gitlab|senior contracts manager ": {
+      "title": "Senior Contracts Manager ",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8545882002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.967822",
+      "date_updated": "2026-06-20T00:54:12.967828"
+    },
+    "gitlab|senior executive business partner": {
+      "title": "Senior Executive Business Partner",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8535309002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.969353",
+      "date_updated": "2026-06-20T00:54:12.969359"
+    },
+    "gitlab|staff backend engineer, gitlab delivery: upgrades": {
+      "title": "Staff Backend Engineer, Gitlab Delivery: Upgrades",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8463922002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.970884",
+      "date_updated": "2026-06-20T00:54:12.970890"
+    },
+    "gitlab|staff backend engineer,  software supply chain security": {
+      "title": "Staff Backend Engineer,  Software Supply Chain Security",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8480559002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.972506",
+      "date_updated": "2026-06-20T00:54:12.972512"
+    },
+    "gitlab|staff forward deployed engineer": {
+      "title": "Staff Forward Deployed Engineer",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8517171002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.974083",
+      "date_updated": "2026-06-20T00:54:12.974089"
+    },
+    "elastic|abm regional manager, amer": {
+      "title": "ABM Regional Manager, AMER",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=8001092&gh_jid=8001092",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.975721",
+      "date_updated": "2026-06-20T00:54:12.975729"
+    },
+    "elastic|customer architect": {
+      "title": "Customer Architect",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7725620&gh_jid=7725620",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.977445",
+      "date_updated": "2026-06-20T00:54:12.977457"
+    },
+    "elastic|customer architect - emea central ": {
+      "title": "Customer Architect - EMEA Central ",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7798319&gh_jid=7798319",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.979064",
+      "date_updated": "2026-06-20T00:54:12.979073"
+    },
+    "elastic|elastic ai engineer": {
+      "title": "Elastic AI Engineer",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7607148&gh_jid=7607148",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.980752",
+      "date_updated": "2026-06-20T00:54:12.980774"
+    },
+    "elastic|software engineer ii, frontend - brazil": {
+      "title": "Software Engineer II, Frontend - Brazil",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7989431&gh_jid=7989431",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.982464",
+      "date_updated": "2026-06-20T00:54:12.982471"
+    },
+    "stripe|frontend engineer, privy": {
+      "title": "Frontend Engineer, Privy",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7656562",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.984067",
+      "date_updated": "2026-06-20T00:54:12.984076"
+    },
+    "stripe|fullstack engineer, privy": {
+      "title": "Fullstack Engineer, Privy",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7091959",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.985915",
+      "date_updated": "2026-06-20T00:54:12.985923"
+    },
+    "airbnb|community engagement lead, spain and portugal": {
+      "title": "Community Engagement Lead, Spain and Portugal",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7982715?gh_jid=7982715",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.987546",
+      "date_updated": "2026-06-20T00:54:12.987554"
+    },
+    "airbnb|gestionnaire principal\u00b7e de la planification des effectifs": {
+      "title": "Gestionnaire principal\u00b7e de la planification des effectifs",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/8001966?gh_jid=8001966",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.989184",
+      "date_updated": "2026-06-20T00:54:12.989191"
+    },
+    "airbnb|host communications strategy lead": {
+      "title": "Host Communications Strategy Lead",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7944579?gh_jid=7944579",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.990961",
+      "date_updated": "2026-06-20T00:54:12.990969"
+    },
+    "airbnb|manager, field operations, southeast": {
+      "title": "Manager, Field Operations, Southeast",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7531247?gh_jid=7531247",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.992699",
+      "date_updated": "2026-06-20T00:54:12.992707"
+    },
+    "airbnb|senior counsel, commercial & partnerships": {
+      "title": "Senior Counsel, Commercial & Partnerships",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7978155?gh_jid=7978155",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.994460",
+      "date_updated": "2026-06-20T00:54:12.994468"
+    },
+    "airbnb|senior ios software engineer, quality platform": {
+      "title": "Senior iOS Software Engineer, Quality Platform",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7453202?gh_jid=7453202",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.996284",
+      "date_updated": "2026-06-20T00:54:12.996292"
+    },
+    "airbnb|senior manager global capacity and operational planning (community support)": {
+      "title": "Senior Manager Global Capacity and Operational Planning (Community Support)",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7840101?gh_jid=7840101",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:12.998479",
+      "date_updated": "2026-06-20T00:54:12.998536"
+    },
+    "airbnb|senior manager, market management amer, experiences": {
+      "title": "Senior Manager, Market Management AMER, Experiences",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7568067?gh_jid=7568067",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.000606",
+      "date_updated": "2026-06-20T00:54:13.000619"
+    },
+    "airbnb|senior manager, revenue operations": {
+      "title": "Senior Manager, Revenue Operations",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7980044?gh_jid=7980044",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.002613",
+      "date_updated": "2026-06-20T00:54:13.002624"
+    },
+    "airbnb|senior platform manager, defense platform": {
+      "title": "Senior Platform Manager, Defense Platform",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7917687?gh_jid=7917687",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.004505",
+      "date_updated": "2026-06-20T00:54:13.004514"
+    },
+    "airbnb|senior software engineer -payments": {
+      "title": "Senior Software Engineer -Payments",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7581839?gh_jid=7581839",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.006400",
+      "date_updated": "2026-06-20T00:54:13.006409"
+    },
+    "airbnb|senior software engineer, quality platform": {
+      "title": "Senior Software Engineer, Quality Platform",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7380149?gh_jid=7380149",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.008128",
+      "date_updated": "2026-06-20T00:54:13.008134"
+    },
+    "airbnb|senior staff operations engineer, aiops": {
+      "title": "Senior Staff Operations Engineer, AIOps",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7644921?gh_jid=7644921",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.009967",
+      "date_updated": "2026-06-20T00:54:13.009973"
+    },
+    "airbnb|software engineer, infrastructure": {
+      "title": "Software Engineer, Infrastructure",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7767867?gh_jid=7767867",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.011827",
+      "date_updated": "2026-06-20T00:54:13.011833"
+    },
+    "airbnb|staff engineer, guest displays & platforms ": {
+      "title": "Staff Engineer, Guest Displays & Platforms ",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7863541?gh_jid=7863541",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.013926",
+      "date_updated": "2026-06-20T00:54:13.013937"
+    },
+    "airbnb|staff frontend engineer, client data & networking platform": {
+      "title": "Staff Frontend Engineer, Client Data & Networking Platform",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7962101?gh_jid=7962101",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.015755",
+      "date_updated": "2026-06-20T00:54:13.015760"
+    },
+    "airbnb|staff software engineer, guest & host": {
+      "title": "Staff Software Engineer, Guest & Host",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7899044?gh_jid=7899044",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.017767",
+      "date_updated": "2026-06-20T00:54:13.017773"
+    },
+    "airbnb|strategic partnerships lead, central and eastern europe": {
+      "title": "Strategic Partnerships Lead, Central and Eastern Europe",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7641058?gh_jid=7641058",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.019659",
+      "date_updated": "2026-06-20T00:54:13.019665"
+    },
+    "dropbox|senior infrastructure software engineer": {
+      "title": "Senior Infrastructure Software Engineer",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/6333181?gh_jid=6333181",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.021554",
+      "date_updated": "2026-06-20T00:54:13.021560"
+    },
+    "datadog|business value manager - sao paulo": {
+      "title": "Business Value Manager - Sao Paulo",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7517353/?gh_jid=7517353",
+      "score": 62,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:13.023557",
+      "date_updated": "2026-06-20T01:05:43.333108",
+      "notes": "Non-engineering role"
+    },
+    "datadog|distinguished architect, ai": {
+      "title": "Distinguished Architect, AI",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7966795/?gh_jid=7966795",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.026579",
+      "date_updated": "2026-06-20T00:54:13.026634"
+    },
+    "datadog|manager i, engineering - code coverage": {
+      "title": "Manager I, Engineering - Code Coverage",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7742739/?gh_jid=7742739",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.028684",
+      "date_updated": "2026-06-20T00:54:13.028694"
+    },
+    "datadog|manager i, engineering - codegen": {
+      "title": "Manager I, Engineering - CodeGen",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7629758/?gh_jid=7629758",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.030698",
+      "date_updated": "2026-06-20T00:54:13.030706"
+    },
+    "datadog|people business partner - nyc": {
+      "title": "People Business Partner - NYC",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7705443/?gh_jid=7705443",
+      "score": 62,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:13.032749",
+      "date_updated": "2026-06-20T01:05:43.323132",
+      "notes": "Non-engineering role"
+    },
+    "datadog|people business partner - paris": {
+      "title": "People Business Partner - Paris",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7781274/?gh_jid=7781274",
+      "score": 62,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:13.034629",
+      "date_updated": "2026-06-20T01:05:43.325524",
+      "notes": "Non-engineering role"
+    },
+    "datadog|senior applied scientist": {
+      "title": "Senior Applied Scientist",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/6781197/?gh_jid=6781197",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.036709",
+      "date_updated": "2026-06-20T00:54:13.036717"
+    },
+    "datadog|senior customer data science - solutions / experimentation": {
+      "title": "Senior Customer Data Science - Solutions / Experimentation",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7810544/?gh_jid=7810544",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.038646",
+      "date_updated": "2026-06-20T00:54:13.038652"
+    },
+    "datadog|senior people business partner - nyc": {
+      "title": "Senior People Business Partner - NYC",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7341691/?gh_jid=7341691",
+      "score": 62,
+      "status": "rejected",
+      "date_found": "2026-06-20T00:54:13.040971",
+      "date_updated": "2026-06-20T01:05:43.328428",
+      "notes": "Non-engineering role"
+    },
+    "datadog|senior software engineer - backend": {
+      "title": "Senior Software Engineer - Backend",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7259387/?gh_jid=7259387",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.042927",
+      "date_updated": "2026-06-20T00:54:13.042933"
+    },
+    "datadog|senior software engineer - backend ": {
+      "title": "Senior Software Engineer - Backend ",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/4599148/?gh_jid=4599148",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.044879",
+      "date_updated": "2026-06-20T00:54:13.044887"
+    },
+    "datadog|senior software engineer - observability visibility": {
+      "title": "Senior Software Engineer - Observability Visibility",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/8001760/?gh_jid=8001760",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.047296",
+      "date_updated": "2026-06-20T00:54:13.047308"
+    },
+    "datadog|staff ai engineer - notebooks": {
+      "title": "Staff AI Engineer - Notebooks",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7629288/?gh_jid=7629288",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.050075",
+      "date_updated": "2026-06-20T00:54:13.050085"
+    },
+    "datadog|staff applied scientist - agentic interfaces": {
+      "title": "Staff Applied Scientist - Agentic Interfaces",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7964141/?gh_jid=7964141",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.052784",
+      "date_updated": "2026-06-20T00:54:13.052796"
+    },
+    "datadog|staff applied scientist - dashboards": {
+      "title": "Staff Applied Scientist - Dashboards",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7984962/?gh_jid=7984962",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.054897",
+      "date_updated": "2026-06-20T00:54:13.054903"
+    },
+    "datadog|staff software engineer - logs management": {
+      "title": "Staff Software Engineer - Logs Management",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7635298/?gh_jid=7635298",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.057157",
+      "date_updated": "2026-06-20T00:54:13.057164"
+    },
+    "datadog|staff software engineer - ml observability": {
+      "title": "Staff Software Engineer - ML Observability",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7107437/?gh_jid=7107437",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.059468",
+      "date_updated": "2026-06-20T00:54:13.059476"
+    },
+    "datadog|staff statistics engineer - feature flagging and experimentation": {
+      "title": "Staff Statistics Engineer - Feature Flagging and Experimentation",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7144531/?gh_jid=7144531",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.061589",
+      "date_updated": "2026-06-20T00:54:13.061595"
+    },
+    "coinbase|senior software engineer, backend - identity": {
+      "title": "Senior Software Engineer, Backend - Identity",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7746190?gh_jid=7746190",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.063738",
+      "date_updated": "2026-06-20T00:54:13.063744"
+    },
+    "coinbase|senior staff software engineer, payments ": {
+      "title": "Senior Staff Software Engineer, Payments ",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7769273?gh_jid=7769273",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.065971",
+      "date_updated": "2026-06-20T00:54:13.065977"
+    },
+    "coinbase|software engineer, eaa integrations": {
+      "title": "Software Engineer, EAA Integrations",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7558051?gh_jid=7558051",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.068167",
+      "date_updated": "2026-06-20T00:54:13.068174"
+    },
+    "coinbase|staff software engineer": {
+      "title": "Staff Software Engineer",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7964410?gh_jid=7964410",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.070528",
+      "date_updated": "2026-06-20T00:54:13.070536"
+    },
+    "coinbase|staff software engineer, solana staking protocol ": {
+      "title": "Staff Software Engineer, Solana Staking Protocol ",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7684298?gh_jid=7684298",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.072837",
+      "date_updated": "2026-06-20T00:54:13.072844"
+    },
+    "pepper|engineering leader (ai)": {
+      "title": "Engineering Leader (AI)",
+      "company": "Pepper",
+      "url": "https://in.linkedin.com/jobs/view/engineering-leader-ai-at-pepper-4418203447?position=3&amp;pageNum=0&amp;refId=KsX68%2B%2F0mXdkIWobEWbrIA%3D%3D&amp;trackingId=e0TXHE7ZBTayo0zzcWgvSw%3D%3D",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.075120",
+      "date_updated": "2026-06-20T00:54:13.075127"
+    },
+    "igloo|backend engineer": {
+      "title": "Backend Engineer",
+      "company": "Igloo",
+      "url": "https://in.linkedin.com/jobs/view/backend-engineer-at-igloo-4412888837?position=3&amp;pageNum=0&amp;refId=jvaO8W9RUuAuq38CGQZduQ%3D%3D&amp;trackingId=6jQPPLnUg08aGAysFhSlbQ%3D%3D",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.077494",
+      "date_updated": "2026-06-20T00:54:13.077502"
+    },
+    "flipkart|senior software engineer": {
+      "title": "Senior Software Engineer",
+      "company": "Flipkart",
+      "url": "https://in.linkedin.com/jobs/view/senior-software-engineer-at-flipkart-4424376194?position=6&amp;pageNum=0&amp;refId=8bTo6oGES4NVthsGWZL9Kw%3D%3D&amp;trackingId=%2F3d%2B9%2BtrPfdVtj%2FTEtlD2A%3D%3D",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T00:54:13.079836",
+      "date_updated": "2026-06-20T00:54:13.079844"
+    },
+    "deloitte|full stack developer": {
+      "title": "Full Stack Developer",
+      "company": "Deloitte",
+      "url": "https://in.linkedin.com/jobs/view/full-stack-developer-at-deloitte-4349600916?position=1&amp;pageNum=0&amp;refId=d1W6ZWVupZrimDwYSxYd2A%3D%3D&amp;trackingId=Dggppn45jbkYc%2FDl9u2oYg%3D%3D",
+      "score": 78,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.284987",
+      "date_updated": "2026-06-20T01:21:43.285017"
+    },
+    "gitlab|intermediate backend engineer (c), tenant scale: git ": {
+      "title": "Intermediate Backend Engineer (C), Tenant Scale: Git ",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8497793002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.296532",
+      "date_updated": "2026-06-20T01:21:43.296573"
+    },
+    "gitlab|senior backend engineer (c), tenant scale: git": {
+      "title": "Senior Backend Engineer (C), Tenant Scale: Git",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8497791002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.310095",
+      "date_updated": "2026-06-20T01:21:43.310126"
+    },
+    "gitlab|senior backend engineer,  sscs: supply chain": {
+      "title": "Senior Backend Engineer,  SSCS: Supply Chain",
+      "company": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab/jobs/8480580002",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.320040",
+      "date_updated": "2026-06-20T01:21:43.320081"
+    },
+    "airbnb|staff software engineer, communication & connectivity": {
+      "title": "Staff Software Engineer, Communication & Connectivity",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7421419?gh_jid=7421419",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.330541",
+      "date_updated": "2026-06-20T01:21:43.330570"
+    },
+    "dropbox|staff backend product software engineer, commerce platform": {
+      "title": "Staff Backend Product Software Engineer, Commerce Platform",
+      "company": "Dropbox",
+      "url": "https://jobs.dropbox.com/listing/7759733?gh_jid=7759733",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.340601",
+      "date_updated": "2026-06-20T01:21:43.340626"
+    },
+    "datadog|senior software engineer - ai developer workflows": {
+      "title": "Senior Software Engineer - AI Developer Workflows",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7097751/?gh_jid=7097751",
+      "score": 62,
+      "status": "new",
+      "date_found": "2026-06-20T01:21:43.350650",
+      "date_updated": "2026-06-20T01:21:43.350674"
+    }
+  }
+}

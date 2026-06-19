@@ -86,7 +86,7 @@ PROFILE = {
         # Product / program / project management
         "product manager", "program manager", "project manager", "product owner",
         "engineering manager", "manager, engineering", "director of engineering",
-        "manager ii", "manager iii", "engineering - applied", "engineering - ai",
+        "manager i", "manager ii", "manager iii", "engineering - applied", "engineering - ai",
         # People / HR
         "recruiter", "hiring", "talent acquisition", "hr ", "hris", "workday",
         "people technology", "people operations", "people partner", "people team",
@@ -103,6 +103,9 @@ PROFILE = {
         "analytics",
         "machine learning engineer", "ml engineer", "deep learning",
         "ai research", "ai/ml", "prompt engineer", "llm engineer",
+        "ai engineer", "applied scientist", "data science",
+        "distinguished architect", "offensive security", "application security engineer",
+        "security engineer - cloud", "security software engineer",
         # Business operations / strategy / non-eng management
         "process strategy", "process optimization", "process manager",
         "operations manager", "business operations", "strategy manager",
@@ -139,6 +142,10 @@ PROFILE = {
         "stock administrator",
         "corporate counsel", "securities counsel", "legal counsel", "paralegal",
         "hr business partner", "hr coordinator", "payroll",
+        # Customer-facing services / consulting / architect roles
+        "services architect", "service architect", "implementation services",
+        "customer onboarding", "customer implementation", "professional services",
+        "services consultant", "implementation consultant", "implementation engineer",
         # Sales support / non-technical customer roles
         "inside sales", "sales support", "sales operations",
         "customer success manager", "customer support specialist",
@@ -310,6 +317,13 @@ def score_job(title, description, company, location=""):
                 lo, hi = int(m[0]), int(m[1])
                 if lo > max_allowed or hi < min_allowed:
                     return 0, f"Filtered: requires {lo}-{hi}yr, candidate range {min_allowed}-{max_allowed}"
+
+    # --- Reject roles requiring travel (not relevant for remote/backend roles) ---
+    travel_patterns = [r'\d+%\s*(?:travel|remote)', r'travel\s+up\s+to\s+\d+', r'willingness to travel',
+                       r'require[sd]?\s+travel', r'must be willing to travel', r'overnight travel',
+                       r'travel\s+\d+\s*-\s*\d+', r'able to travel']
+    if any(re.search(p, text) for p in travel_patterns):
+        return 0, "Filtered: role requires travel"
 
     # --- For roles outside India / Remote: require visa & relocation support ---
     is_outside_india = "india" not in loc_lower and "india" not in text
@@ -1624,12 +1638,12 @@ def main():
     exp = PROFILE["years_experience"]
     if is_sap_profile:
         pw_scrapers = [
-            ("RemoteOK", search_remoteok, None),
+            ("RemoteOK", search_remoteok),
         ]
     else:
         pw_scrapers = [
-            ("RemoteOK", search_remoteok, None),
-            ("WorkAtAStartup", search_workatstartup, None),
+            ("RemoteOK", search_remoteok),
+            ("WorkAtAStartup", search_workatstartup),
         ]
     # Batch scrapers (HTTP + Playwright) that support domain-specific queries
     pw_batch_scrapers = [
