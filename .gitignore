@@ -1,0 +1,6 @@
+.env
+gsheet_token.json
+__pycache__/
+*.pyc
+.DS_Store
+gsheet_service_account.json

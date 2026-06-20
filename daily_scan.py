@@ -418,6 +418,23 @@ def tailoring_suggestion(title, description, company):
 # 3. SCANNING (placeholder - wire up real scraping/APIs here)
 # ---------------------------------------------------------------------------
 
+def _parse_date(date_str):
+    """Parse ISO date string to datetime, return None if unparseable."""
+    if not date_str:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def _is_within_months(date_val, months=6):
+    """Check if date is within N months from now."""
+    if date_val is None:
+        return True  # no date = assume recent
+    cutoff = datetime.datetime.now(date_val.tzinfo if date_val.tzinfo else None) - datetime.timedelta(days=months*30)
+    return date_val >= cutoff
+
+
 def fetch_jobs_from_source(source):
     """
     Pulls live job postings from public ATS APIs where available.
@@ -445,6 +462,7 @@ def fetch_jobs_from_source(source):
                         "location": posting.get("categories", {}).get("location", "Unknown"),
                         "url": posting.get("hostedUrl", source["url"]),
                         "description": posting.get("descriptionPlain", "")[:2000],
+                        "posted_at": _parse_date(posting.get("createdAt")),
                     })
             else:
                 print(f"  [warn] Lever API returned {resp.status_code} for {source['name']}")
@@ -456,12 +474,14 @@ def fetch_jobs_from_source(source):
             if resp.status_code == 200:
                 for posting in resp.json().get("jobs", []):
                     raw_content = posting.get("content", "") or ""
+                    posted = _parse_date(posting.get("first_published")) or _parse_date(posting.get("updated_at"))
                     jobs.append({
                         "title": posting.get("title", ""),
                         "company": source["name"],
                         "location": posting.get("location", {}).get("name", "Unknown"),
                         "url": posting.get("absolute_url", source["url"]),
                         "description": strip_html(raw_content)[:2000],
+                        "posted_at": posted,
                     })
             else:
                 print(f"  [warn] Greenhouse API returned {resp.status_code} for {source['name']}")
@@ -478,6 +498,7 @@ def fetch_jobs_from_source(source):
                         "location": posting.get("location", "Unknown"),
                         "url": posting.get("jobUrl", source["url"]),
                         "description": posting.get("descriptionPlain", "")[:2000],
+                        "posted_at": _parse_date(posting.get("publishedAt")),
                     })
             else:
                 print(f"  [warn] Ashby API returned {resp.status_code} for {source['name']}")
@@ -1584,7 +1605,14 @@ def main():
 
     # Helper to check tracker before adding a match
     def should_include(job):
-        return not tracker.is_known(job["title"], job["company"])
+        if tracker.is_known(job["title"], job["company"]):
+            return False
+        # Skip jobs posted more than 6 months ago
+        posted = job.get("posted_at")
+        if posted is not None and not _is_within_months(posted, 6):
+            print(f"  [skip] {job['title'][:40]}... posted {posted.strftime('%Y-%m-%d')} (>6mo)")
+            return False
+        return True
 
     for source in JOB_SOURCES:
         print(f"Scanning: {source['name']} ({source['region']})")
@@ -1726,6 +1754,42 @@ def main():
         print(f"  [csv] Saved {len(all_matches)} matches to {csv_path}")
     except Exception as e:
         print(f"  [csv] Error saving CSV: {e}")
+
+    # --- Push to Google Sheets if service account exists ---
+    gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+    gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+    if gsheet_id and os.path.exists(gsheet_sa_path):
+        try:
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+
+            SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+            creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
+            service = build("sheets", "v4", credentials=creds)
+            sheet = service.spreadsheets()
+
+            # Build rows: header + data
+            rows = [["Score", "Title", "Company", "Location", "URL", "Resume", "Relocation Note", "Suggestions", "Status"]]
+            for m in all_matches:
+                suggestions = "; ".join(m.get("suggestions", []))
+                status = tracker.get_status(m["title"], m["company"])
+                rows.append([
+                    m["score"], m["title"], m["company"], m.get("location", ""),
+                    m.get("url", ""), m.get("resume", ""),
+                    m.get("relocation_note", ""), suggestions, status
+                ])
+
+            # First clear existing data, then write
+            sheet.values().clear(spreadsheetId=gsheet_id, range="Sheet1!A:Z").execute()
+            sheet.values().update(
+                spreadsheetId=gsheet_id,
+                range="Sheet1!A1",
+                valueInputOption="RAW",
+                body={"values": rows}
+            ).execute()
+            print(f"  [gsheet] Synced {len(all_matches)} matches to Google Sheet")
+        except Exception as e:
+            print(f"  [gsheet] Error: {e}")
 
     print("=== Scan complete ===")
 
