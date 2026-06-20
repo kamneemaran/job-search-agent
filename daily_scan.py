@@ -501,7 +501,7 @@ JOB_SOURCES = [
     {"name": "Choco", "url": "https://choco.com/careers", "region": "DE", "type": "company"},
     {"name": "Clark", "url": "https://www.clark.io/career/", "region": "DE", "type": "company"},
     {"name": "Codasip", "url": "https://apply.workable.com/codasip/", "region": "DE", "type": "company"},
-    {"name": "Constellr", "url": "https://constellr.com/careers", "region": "DE", "type": "company"},
+    {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
     {"name": "Crytek", "url": "https://www.crytek.com/career", "region": "DE", "type": "company"},
     {"name": "DHL Group", "url": "https://careers.dhl.com/global/en", "region": "DE", "type": "company"},
     {"name": "Data Guard", "url": "https://dataguard.de/en-de/career/", "region": "DE", "type": "company"},
@@ -1234,6 +1234,24 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "recruitee":
+            # Recruitee: https://{company}.recruitee.com/api/offers/
+            base_url = source["url"].rstrip("/")
+            api_url = f"{base_url}/api/offers/"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                for offer in resp.json().get("offers", []):
+                    jobs.append({
+                        "title": offer.get("title", ""),
+                        "company": source["name"],
+                        "location": offer.get("office", offer.get("location", source.get("region", ""))),
+                        "url": offer.get("careers_url", offer.get("url", source["url"])),
+                        "description": offer.get("description", "") or offer.get("title", ""),
+                        "posted_at": None,
+                    })
+            else:
+                print(f"  [warn] Recruitee API returned {resp.status_code} for {source['name']}")
 
         elif source.get("playwright"):
             jobs = _scrape_company_career_page(source)
