@@ -532,10 +532,10 @@ JOB_SOURCES = [
     {"name": "Spotify", "url": "https://www.lifeatspotify.com/", "region": "DE", "type": "company"},
     {"name": "Superchat", "url": "https://www.superchat.de/karriere", "region": "DE", "type": "company"},
     {"name": "Taxfix", "url": "https://taxfix.de/en/job-openings/", "region": "DE", "type": "company"},
-    {"name": "Trade Republic", "url": "https://traderepublic.com/en-de/careers", "region": "DE", "type": "company"},
-    {"name": "Vivenu", "url": "https://vivenu.com/careers", "region": "DE", "type": "company"},
+    {"name": "Trade Republic", "url": "https://traderepublic.com/en-de/about#career", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Vivenu", "url": "https://vivenu.com/careers?team=Product+%26+Development", "region": "DE", "type": "company", "playwright": True},
     {"name": "Yenlo", "url": "https://www.yenlo.com/careers/", "region": "DE", "type": "company"},
-    {"name": "Zalando", "url": "https://jobs.zalando.com/", "region": "DE", "type": "company"},
+    {"name": "Zalando", "url": "https://jobs.zalando.com/en/jobs", "region": "DE", "type": "company", "playwright": True},
 ]
 
 RECRUITER_AGENCIES = [
@@ -1014,6 +1014,67 @@ def _is_within_months(date_val, months=6):
     return date_val >= cutoff
 
 
+def _scrape_company_career_page(source):
+    """Use Playwright to scrape a company career page for job listings."""
+    jobs = []
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto(source["url"], timeout=30000, wait_until="domcontentloaded")
+        page.wait_for_timeout(3000)
+        # Find all links on the page that look like job postings
+        links = page.eval_on_selector_all("a[href]", """
+            els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
+                .filter(e => {
+                    const kw = ['job', 'career', 'position', 'opening', 'stellenanzeige', 'karriere'];
+                    const h = e.href.toLowerCase();
+                    const t = e.text.toLowerCase();
+                    return h.includes('job') || h.includes('position') || h.includes('opening')
+                        || t.includes('job') || t.includes('position') || t.includes('opening')
+                        || t.includes('sap') || t.includes('senior') || t.includes('manager');
+                })
+                .filter(e => e.text.length > 5 && e.text.length < 200)
+        """)
+        seen = set()
+        for link in links:
+            title = link["text"]
+            href = link["href"]
+            if href in seen:
+                continue
+            seen.add(href)
+            jobs.append({
+                "title": title,
+                "company": source["name"],
+                "location": source.get("region", ""),
+                "url": href,
+                "description": title,
+                "posted_at": None,
+            })
+        page.close()
+        if jobs:
+            print(f"  [pw] {len(jobs)} jobs from {source['name']}")
+        else:
+            fallback = page.eval_on_selector_all("h2, h3, a[class*='job'], a[class*='career']", """
+                els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
+                    .filter(e => e.text.length > 5 && e.text.length < 200)
+            """)
+            page.close()
+            for item in fallback[:20]:
+                jobs.append({
+                    "title": item["text"],
+                    "company": source["name"],
+                    "location": source.get("region", ""),
+                    "url": item["href"] or source["url"],
+                    "description": item["text"],
+                    "posted_at": None,
+                })
+            if jobs:
+                print(f"  [pw] {len(jobs)} jobs (fallback) from {source['name']}")
+    except Exception as e:
+        print(f"  [pw] Error scraping {source['name']}: {e}")
+    return jobs
+
+
 def fetch_jobs_from_source(source):
     """
     Pulls live job postings from public ATS APIs where available.
@@ -1100,6 +1161,9 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("playwright"):
+            jobs = _scrape_company_career_page(source)
 
         else:
             print(f"  [skip] {source['name']} - no public ATS API detected. "
