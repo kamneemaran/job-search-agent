@@ -469,7 +469,7 @@ JOB_SOURCES = [
     {"name": "TCS", "url": "https://www.tcs.com/careers", "region": "IN", "type": "company", "ats": "greenhouse", "ats_slug": "tcs"},
     # --- EU / NL / DE ---
     {"name": "Mollie", "url": "https://jobs.mollie.com/vacancies", "region": "NL", "type": "company", "playwright": True},
-    {"name": "Booking.com", "url": "https://careers.booking.com", "region": "NL", "type": "company"},
+    {"name": "Booking.com", "url": "https://jobs.booking.com/booking/jobs?keywords=engineer", "region": "NL", "type": "company", "playwright": True},
     {"name": "Picnic", "url": "https://jobs.picnic.app/en/tech", "region": "NL", "type": "company", "playwright": True},
     {"name": "Personio", "url": "https://www.personio.com/about-personio/careers/#see-our-open-roles", "region": "DE", "type": "company", "playwright": True},
     # --- Germany (61 English-speaking companies with visa sponsorship) ---
