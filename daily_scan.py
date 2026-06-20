@@ -1282,6 +1282,18 @@ def fetch_jobs_from_source(source):
                   f"Check manually: {source['url']}")
     except Exception as e:
         print(f"  [error] Failed to fetch {source['name']}: {e}")
+
+    if not jobs and source.get("type") == "company":
+        try:
+            loc = source.get("region", "Germany")
+            li_jobs = search_linkedin(source["name"], location=loc, max_results=15)
+            for j in li_jobs:
+                if source["name"].lower() in j.get("company", "").lower():
+                    jobs.append(j)
+            if jobs:
+                print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
+        except Exception:
+            pass
     return jobs
 
 
