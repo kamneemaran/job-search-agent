@@ -1708,6 +1708,25 @@ def main():
     with open("last_scan_results.json", "w") as f:
         json.dump(all_matches, f, indent=2)
 
+    # Also save as CSV for Google Sheets / Excel
+    csv_path = "job_matches.csv"
+    try:
+        import csv
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Score", "Title", "Company", "Location", "URL", "Resume", "Relocation Note", "Suggestions", "Status"])
+            for m in all_matches:
+                suggestions = "; ".join(m.get("suggestions", []))
+                status = tracker.get_status(m["title"], m["company"])
+                writer.writerow([
+                    m["score"], m["title"], m["company"], m.get("location", ""),
+                    m.get("url", ""), m.get("resume", ""),
+                    m.get("relocation_note", ""), suggestions, status
+                ])
+        print(f"  [csv] Saved {len(all_matches)} matches to {csv_path}")
+    except Exception as e:
+        print(f"  [csv] Error saving CSV: {e}")
+
     print("=== Scan complete ===")
 
 
