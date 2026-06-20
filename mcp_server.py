@@ -94,7 +94,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="search_jobs",
-            description="Search for jobs across company ATS APIs (Greenhouse, Lever, Ashby), job boards (LinkedIn, Indeed, Naukri, Instahyre, Glassdoor, etc.), and remote job boards",
+            description="Search for jobs across company ATS APIs + 15+ job boards. You can set your preferences (threshold, exclusions, focus) each time, or leave blank for defaults.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -106,6 +106,20 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "string",
                         "description": "Location filter (default: 'Remote')",
                         "default": "Remote",
+                    },
+                    "threshold": {
+                        "type": "number",
+                        "description": "Minimum match score 0-100 (default: 65). Only jobs scoring above this are returned.",
+                        "default": 65,
+                    },
+                    "exclude_companies": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: company names to exclude, e.g. ['mollie', 'acme corp']",
+                    },
+                    "focus_role": {
+                        "type": "string",
+                        "description": "Optional: role keywords to prioritize, e.g. 'senior staff backend'",
                     },
                     "max_results": {
                         "type": "number",
@@ -331,6 +345,9 @@ You're now talking to the interactive MCP interface, which lets you search, scor
 def _search_jobs(
     query: str,
     location: str = "Remote",
+    threshold: int = 65,
+    exclude_companies: list[str] | None = None,
+    focus_role: str = "",
     max_results: int = 10,
     sources: list[str] | None = None,
 ) -> str:
@@ -358,6 +375,8 @@ def _search_jobs(
     ]
 
     sources_lower = [s.lower() for s in sources] if sources else []
+    exclude_lower = [c.lower().strip() for c in exclude_companies] if exclude_companies else []
+    focus_words = focus_role.lower().split() if focus_role else []
     all_jobs = []
 
     # Company ATS sources
@@ -370,10 +389,13 @@ def _search_jobs(
                 continue
         jobs = fetch_jobs_from_source(source)
         for job in jobs:
+            company_lower = job["company"].lower().strip()
+            if exclude_lower and any(c in company_lower for c in exclude_lower):
+                continue
             score, note = score_job(
                 job["title"], job["description"], job["company"], job.get("location", "")
             )
-            if score > 0:
+            if score >= threshold:
                 all_jobs.append({**job, "score": score, "relocation_note": note})
 
     # Job board scrapers
@@ -383,16 +405,16 @@ def _search_jobs(
         try:
             jobs = board_fn(query, location=location, max_results=max_results)
             for job in jobs:
+                company_lower = job["company"].lower().strip()
+                if exclude_lower and any(c in company_lower for c in exclude_lower):
+                    continue
                 score, note = score_job(
                     job["title"], job["description"], job["company"], job.get("location", "")
                 )
-                if score > 0:
+                if score >= threshold:
                     all_jobs.append({**job, "score": score, "relocation_note": note})
         except Exception as e:
-            all_jobs.append({
-                "title": f"[error] {board_name}: {e}", "company": "", "location": "",
-                "url": "", "description": "", "score": 0, "relocation_note": "",
-            })
+            pass
 
     # Playwright scrapers
     for pw_name, pw_fn in pw_scrapers:
@@ -401,16 +423,16 @@ def _search_jobs(
         try:
             jobs = pw_fn(query, location=location, max_results=max_results)
             for job in jobs:
+                company_lower = job["company"].lower().strip()
+                if exclude_lower and any(c in company_lower for c in exclude_lower):
+                    continue
                 score, note = score_job(
                     job["title"], job["description"], job["company"], job.get("location", "")
                 )
-                if score > 0:
+                if score >= threshold:
                     all_jobs.append({**job, "score": score, "relocation_note": note})
         except Exception as e:
-            all_jobs.append({
-                "title": f"[error] {pw_name}: {e}", "company": "", "location": "",
-                "url": "", "description": "", "score": 0, "relocation_note": "",
-            })
+            pass
 
     # Deduplicate by (title, company)
     seen = set()
@@ -420,19 +442,36 @@ def _search_jobs(
         if key not in seen and j["company"]:
             seen.add(key)
             unique.append(j)
+            if len(unique) >= max_results * 2:
+                break
 
     if not unique:
-        return f"No matching jobs found for '{query}' in {location}."
+        parts = [f"# No matching jobs found for '{query}' in {location}"]
+        parts.append(f"\nYour settings: threshold={threshold}%")
+        if exclude_companies:
+            parts.append(f"Excluded companies: {', '.join(exclude_companies)}")
+        parts.append("\nTry lowering the threshold or removing exclusions.")
+        return "\n".join(parts)
 
     lines = [f"# Job Search Results — '{query}' in {location}"]
+    lines.append(f"Settings: threshold={threshold}%")
+    if exclude_companies:
+        lines.append(f"Excluded: {', '.join(exclude_companies)}")
+    if focus_role:
+        lines.append(f"Focus role: {focus_role}")
     lines.append(f"Found {len(unique)} matching jobs.\n")
-    for j in unique[:max_results * 2]:
+
+    for j in unique[:max_results]:
         score = j.get("score", 0)
         relo = f" — {j['relocation_note']}" if j.get("relocation_note") else ""
-        lines.append(f"**{j['title']}** @ {j['company']}")
+        match_tag = " ★" if focus_words and any(w in j["title"].lower() for w in focus_words) else ""
+        lines.append(f"**{j['title']}** @ {j['company']}{match_tag}")
         lines.append(f"   Score: {score}%  |  Location: {j.get('location', 'N/A')}")
         lines.append(f"   URL: {j.get('url', 'N/A')}{relo}")
         lines.append("")
+
+    if len(unique) > max_results:
+        lines.append(f"*... and {len(unique) - max_results} more.*")
     return "\n".join(lines)
 
 
