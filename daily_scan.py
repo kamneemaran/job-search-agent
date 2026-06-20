@@ -522,7 +522,7 @@ JOB_SOURCES = [
     {"name": "JetBrains", "url": "https://www.jetbrains.com/careers/", "region": "DE", "type": "company"},
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
     {"name": "Limehome", "url": "https://www.limehome.com/careers", "region": "DE", "type": "company"},
-    {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company"},
+    {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "OneFootball", "url": "https://company.onefootball.com/careers", "region": "DE", "type": "company"},
     {"name": "Payabl.", "url": "https://payabl.com/careers", "region": "DE", "type": "company"},
     {"name": "RealStudio", "url": "https://realstudio.de/", "region": "DE", "type": "company"},
