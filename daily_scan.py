@@ -2017,5 +2017,54 @@ def main():
     print("=== Scan complete ===")
 
 
+def sync_tracker_to_gsheet(tracker_instance=None):
+    """
+    Push all tracked jobs with their current statuses to Google Sheets.
+    Can be called standalone (e.g. from MCP server after status updates).
+    Returns True on success, False otherwise.
+    """
+    gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+    gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+    if not gsheet_id or not os.path.exists(gsheet_sa_path):
+        return False
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        if tracker_instance is None:
+            tracker_instance = JobTracker()
+
+        SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+
+        rows = [["Score", "Title", "Company", "Location", "URL", "Company Link", "Status"]]
+        for key, entry in tracker_instance.data.get("jobs", {}).items():
+            status = entry.get("status", "new")
+            rows.append([
+                entry.get("score", ""),
+                entry.get("title", ""),
+                entry.get("company", ""),
+                "",
+                entry.get("url", ""),
+                company_url(entry.get("company", "")),
+                status,
+            ])
+
+        sheet.values().clear(spreadsheetId=gsheet_id, range="Sheet1!A:Z").execute()
+        sheet.values().update(
+            spreadsheetId=gsheet_id,
+            range="Sheet1!A1",
+            valueInputOption="RAW",
+            body={"values": rows}
+        ).execute()
+        print(f"  [gsheet] Synced {len(rows)-1} tracked jobs to Google Sheet")
+        return True
+    except Exception as e:
+        print(f"  [gsheet] Error: {e}")
+        return False
+
+
 if __name__ == "__main__":
     main()

@@ -63,6 +63,7 @@ from daily_scan import (
     search_workatstartup,
     parse_resume_pdf,
     auto_detect_title_red_flags,
+    sync_tracker_to_gsheet,
 )
 
 # ---------------------------------------------------------------------------
@@ -617,11 +618,12 @@ def _tracker_status(status: str = "", limit: int = 20) -> str:
 def _update_tracker(title: str, company: str, status: str, notes: str = "") -> str:
     key = tracker.job_key(title, company)
     if key not in tracker.data["jobs"]:
-        # Add it first
         tracker.add_job(title, company, status=status)
     ok = tracker.update_status(title, company, status, notes)
     if ok:
-        return f"✅ Updated **{title}** @ {company} → **{status}**"
+        gsheet_ok = sync_tracker_to_gsheet(tracker)
+        gsheet_msg = " + Google Sheet synced" if gsheet_ok else ""
+        return f"✅ Updated **{title}** @ {company} → **{status}**{gsheet_msg}"
     else:
         return f"⚠️ Could not find '{title}' @ {company} in tracker. Use a search first so it gets tracked."
 

@@ -1394,6 +1394,24 @@
       "status": "new",
       "date_found": "2026-06-20T15:51:00.406361",
       "date_updated": "2026-06-20T15:51:00.406372"
+    },
+    "databricks|software engineer - backend": {
+      "title": "Software Engineer - Backend",
+      "company": "Databricks",
+      "url": "https://nl.linkedin.com/jobs/view/software-engineer-backend-at-databricks-4297740909",
+      "score": 70,
+      "status": "applied",
+      "date_found": "2026-06-20T18:16:38.502343",
+      "date_updated": "2026-06-20T18:16:38.505800"
+    },
+    "salento|senior software engineer": {
+      "title": "Senior Software Engineer",
+      "company": "Salento",
+      "url": "https://nl.linkedin.com/jobs/view/senior-software-engineer-at-salento-4429299538",
+      "score": 70,
+      "status": "applied",
+      "date_found": "2026-06-20T18:16:38.507544",
+      "date_updated": "2026-06-20T18:16:38.509351"
     }
   }
 }
