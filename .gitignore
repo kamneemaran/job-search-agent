@@ -5,3 +5,8 @@ __pycache__/
 .DS_Store
 gsheet_service_account.json
 credentials.json
+*.csv
+*.html
+.venv/
+last_scan_results.json
+job_tracker.json
