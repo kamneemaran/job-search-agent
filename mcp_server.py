@@ -38,6 +38,8 @@ from daily_scan import (
     NO_RELOCATION_FLAGS,
     RESUME_VERSIONS,
     COMPANY_RESUME_MAP,
+    ROLE_DOMAINS,
+    UNIVERSAL_RED_FLAGS,
     JobTracker,
     score_job,
     pick_resume,
@@ -60,6 +62,7 @@ from daily_scan import (
     search_bulldogjob,
     search_workatstartup,
     parse_resume_pdf,
+    auto_detect_title_red_flags,
 )
 
 # ---------------------------------------------------------------------------
@@ -178,7 +181,7 @@ async def handle_list_tools() -> list[types.Tool]:
         types.Tool(
             name="parse_resume",
             title="Parse a resume PDF",
-            description="Extract name, email, skills, and experience years from a PDF resume file",
+            description="Extract name, email, current role, skills, and experience from a PDF resume. Validates that current_role, years_experience, and core_skills are present. Auto-configures title filters based on detected role domain.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -510,41 +513,86 @@ def _update_tracker(title: str, company: str, status: str, notes: str = "") -> s
         return f"⚠️ Could not find '{title}' @ {company} in tracker. Use a search first so it gets tracked."
 
 
+_REQUIRED_RESUME_FIELDS = {
+    "current_role": "Most recent job title (e.g. 'Senior Backend Engineer')",
+    "years_experience": "Years of professional experience (e.g. 10)",
+    "core_skills": "Technical skills list (e.g. Java, Python, AWS, Kubernetes)",
+}
+
+
 def _parse_resume(path: str) -> str:
     if not os.path.exists(path):
-        return f"File not found: {path}"
+        return f"Error: File not found at {path}"
     try:
-        profile = parse_resume_pdf(path)
+        profile, missing = parse_resume_pdf(path)
+        if missing:
+            parts = ["## Resume Parsing Failed — Required Parameters Missing"]
+            for field in missing:
+                parts.append(f"\n**{field}** is missing from your resume")
+                parts.append(f"  Expected: {_REQUIRED_RESUME_FIELDS.get(field, '')}")
+            parts.append("\nTo continue, update your resume to include the missing fields and try again.")
+            return "\n".join(parts)
+
+        # Auto-configure title filters based on detected role
+        PROFILE["title_red_flags"] = auto_detect_title_red_flags(profile["core_skills"])
+        PROFILE["name"] = profile.get("name", PROFILE["name"])
+        PROFILE["current_role"] = profile.get("current_role", "")
+        PROFILE["years_experience"] = profile.get("years_experience", PROFILE["years_experience"])
+        if profile.get("core_skills"):
+            PROFILE["core_skills"] = profile["core_skills"]
+
+        # Detect domain(s) for display
+        skill_set = set(s.lower() for s in PROFILE["core_skills"])
+        detected_domains = [
+            d for d, cfg in ROLE_DOMAINS.items()
+            if len(skill_set & cfg["skills"]) >= 2
+        ]
+        domain_label = ", ".join(detected_domains) if detected_domains else "auto-detected"
+
         parts = [
             f"## Resume: {profile.get('name', 'Unknown')}",
+            f"**Current Role:** {profile.get('current_role', 'N/A')}",
             f"**Email:** {profile.get('email', 'N/A')}",
-            f"**Experience:** {profile.get('years_experience', 0)} years",
+            f"**Experience:** {profile['years_experience']} years",
+            f"**Detected Domain:** {domain_label}",
             f"**Skills ({len(profile.get('core_skills', []))}):**",
         ]
         skills = profile.get("core_skills", [])
         for i in range(0, len(skills), 10):
             parts.append("  " + ", ".join(skills[i:i + 10]))
         parts.append("")
-        parts.append("*Tip: Use `get_profile` to see the active profile used for scoring.*")
+        parts.append(f"Profile updated with {len(PROFILE['title_red_flags'])} title filters "
+                     f"(universal + domain-specific).")
+        parts.append("Run `get_profile` to see the active configuration.")
         return "\n".join(parts)
     except Exception as e:
         return f"Error parsing resume: {e}"
 
 
 def _get_profile() -> str:
+    skill_set = set(s.lower() for s in PROFILE["core_skills"])
+    detected_domains = [
+        d for d, cfg in ROLE_DOMAINS.items()
+        if len(skill_set & cfg["skills"]) >= 2
+    ]
+    domain_label = ", ".join(detected_domains) if detected_domains else "general (no dominant domain detected)"
+    current_role = PROFILE.get("current_role", "")
+
     parts = [
         f"## Active Profile — {PROFILE['name']}",
+        f"**Current Role:** {current_role or 'Not set (use parse_resume)'}",
         f"**Experience:** {PROFILE['years_experience']} years",
+        f"**Detected Domain(s):** {domain_label}",
         f"**Core skills ({len(PROFILE['core_skills'])}):**",
     ]
     skills = PROFILE["core_skills"]
     for i in range(0, len(skills), 10):
         parts.append("  " + ", ".join(skills[i:i + 10]))
-    parts.append(f"\n**Red-flag titles ({len(PROFILE['title_red_flags'])} patterns):**")
-    for rf in PROFILE["title_red_flags"][:15]:
+    parts.append(f"\n**Title red flags ({len(PROFILE['title_red_flags'])} patterns):**")
+    for rf in PROFILE["title_red_flags"][:10]:
         parts.append(f"  - {rf}")
-    if len(PROFILE["title_red_flags"]) > 15:
-        parts.append(f"  ... and {len(PROFILE['title_red_flags']) - 15} more")
+    if len(PROFILE["title_red_flags"]) > 10:
+        parts.append(f"  ... and {len(PROFILE['title_red_flags']) - 10} more")
     parts.append(
         f"\n**Job sources configured:** {len(JOB_SOURCES)} company ATS feeds "
         f"+ 15+ job board scrapers"

@@ -161,6 +161,181 @@ PROFILE = {
     ],
 }
 
+# Role domains for auto-detecting relevant roles from resume skills.
+# Each domain lists skills that identify it and title patterns to FILTER OUT.
+ROLE_DOMAINS = {
+    "backend": {
+        "skills": {
+            "java", "python", "golang", "go", "rust", "scala", "node.js", "nodejs",
+            "spring", "spring boot", "django", "flask", "express", "fastapi",
+            "microservices", "distributed systems", "system design", "rest api",
+            "sql", "mysql", "postgresql", "mongodb", "redis", "kafka", "rabbitmq",
+            "grpc", "soa", "event-driven", "backend",
+        },
+        "red_flags": [
+            "frontend", "front-end", "front end", "ui engineer", "web engineer",
+            "android", "ios", "swift", "kotlin", "flutter",
+            "qa engineer", "quality assurance", "test engineer", "sdet", "automation engineer",
+            "data scientist", "data analyst", "machine learning engineer", "ml engineer",
+            "network engineer", "network architect", "devops engineer", "sre",
+            "ux designer", "ui designer", "product designer",
+        ],
+    },
+    "frontend": {
+        "skills": {
+            "javascript", "typescript", "react", "angular", "vue", "vue.js", "svelte",
+            "html", "css", "sass", "less", "webpack", "vite", "next.js", "nuxt",
+            "frontend", "front-end", "ui", "ux", "tailwind", "bootstrap",
+        },
+        "red_flags": [
+            "android", "ios", "swift", "kotlin", "flutter",
+            "qa engineer", "test engineer", "sdet", "automation engineer",
+            "data scientist", "data engineer", "ml engineer",
+            "network engineer", "devops engineer", "sre",
+            "backend engineer", "distributed systems", "microservices",
+            "cloud engineer", "infrastructure engineer",
+        ],
+    },
+    "mobile": {
+        "skills": {
+            "android", "ios", "swift", "kotlin", "flutter", "react native", "dart",
+            "mobile", "ipad", "iphone", "uikit", "jetpack",
+        },
+        "red_flags": [
+            "frontend", "ui engineer", "web engineer",
+            "backend", "distributed systems", "microservices",
+            "qa", "quality assurance", "sdet",
+            "devops", "sre", "network engineer",
+            "data scientist", "ml engineer",
+            "cloud engineer", "infrastructure",
+        ],
+    },
+    "data_ml": {
+        "skills": {
+            "machine learning", "deep learning", "data science", "tensorflow", "pytorch",
+            "pandas", "numpy", "scikit-learn", "spark", "hadoop", "airflow",
+            "nlp", "computer vision", "statistics", "llm", "openai",
+        },
+        "red_flags": [
+            "frontend", "ui engineer", "web engineer",
+            "android", "ios", "swift", "kotlin",
+            "qa engineer", "test engineer",
+            "network engineer", "sre", "devops engineer",
+            "backend engineer", "microservices",
+            "mobile developer",
+        ],
+    },
+    "devops_sre": {
+        "skills": {
+            "docker", "kubernetes", "k8s", "terraform", "ansible", "puppet", "chef",
+            "ci/cd", "jenkins", "github actions", "gitlab ci", "argocd",
+            "prometheus", "grafana", "datadog", "new relic", "splunk",
+            "helm", "istio", "envoy", "cloudformation",
+            "devops", "sre", "site reliability", "infrastructure",
+        },
+        "red_flags": [
+            "frontend", "ui engineer", "web engineer",
+            "android", "ios", "swift", "kotlin",
+            "qa engineer", "test engineer",
+            "data scientist", "ml engineer",
+            "backend engineer", "software engineer",
+            "mobile developer",
+        ],
+    },
+    "qa": {
+        "skills": {
+            "selenium", "cypress", "playwright", "testing", "test automation",
+            "jest", "mocha", "junit", "pytest", "testng",
+            "quality assurance", "qa", "sdet", "integration test",
+        },
+        "red_flags": [
+            "frontend engineer", "ui engineer",
+            "backend engineer", "distributed systems",
+            "android", "ios", "swift", "kotlin",
+            "data scientist", "ml engineer",
+            "network engineer", "sre", "devops engineer",
+            "software engineer", "full stack",
+        ],
+    },
+    "fullstack": {
+        "skills": {
+            "javascript", "typescript", "react", "node.js", "nodejs",
+            "python", "java", "go", "ruby", "php",
+            "html", "css", "rest api", "database", "sql",
+            "full stack", "fullstack",
+        },
+        "red_flags": [
+            "android", "ios", "swift", "kotlin", "flutter",
+            "qa engineer", "quality assurance", "sdet",
+            "data scientist", "ml engineer",
+            "network engineer", "sre", "devops engineer",
+            "ux designer", "product designer",
+        ],
+    },
+}
+
+# Engineering domains that should NOT filter each other out (compatible tracks)
+COMPATIBLE_DOMAINS = {
+    "backend": {"devops_sre", "fullstack"},
+    "frontend": {"fullstack"},
+    "fullstack": {"backend", "frontend"},
+    "devops_sre": {"backend"},
+    "data_ml": {"backend"},
+}
+
+# Universal filters that apply regardless of role (always-on non-engineering tracks)
+UNIVERSAL_RED_FLAGS = [
+    "account executive", "account manager", "account director",
+    "sales engineer", "sales representative", "sales development",
+    "business development", "customer success",
+    "technical account manager", "solutions engineer", "account management",
+    "product manager", "program manager", "project manager", "product owner",
+    "engineering manager", "director of engineering",
+    "recruiter", "hiring", "talent acquisition", "hr ", "hris",
+    "people operations", "people partner",
+    "marketing", "content writer", "social media", "brand ",
+    "public relations", "pr ", "communications",
+    "finance", "accounting", "legal", "lawyer", "compliance",
+    "payments risk", "risk manager", "risk analyst",
+    "operations manager", "business operations", "strategy",
+    "partner manager", "channel partner",
+    "designer", "product design", "visual design",
+    "executive assistant", "administrative", "office manager",
+    "assistant", "analyst",
+    "technical writer", "documentation", "support engineer", "it support",
+    "services architect", "implementation consultant",
+    "professional services", "customer onboarding",
+    "public policy", "government affairs", "regulatory affairs",
+    "localization", "translator", "safety", "security guard",
+    "incident manager", "incident response",
+]
+
+
+def auto_detect_title_red_flags(skills):
+    """
+    Given a list of skill keywords, detect the candidate's primary domain(s)
+    and return the appropriate title red flags: universal filters + domain-specific ones.
+    Compatible domains are kept (e.g. backend won't filter devops).
+    """
+    skill_set = set(s.lower() for s in skills)
+    detected = []
+    for domain, config in ROLE_DOMAINS.items():
+        matches = len(skill_set & config["skills"])
+        if matches >= 2:
+            detected.append(domain)
+
+    flags = list(UNIVERSAL_RED_FLAGS)
+    if detected:
+        compat = set()
+        for d in detected:
+            compat.add(d)
+            compat.update(COMPATIBLE_DOMAINS.get(d, set()))
+        for domain, config in ROLE_DOMAINS.items():
+            if domain not in compat:
+                flags.extend(config["red_flags"])
+    return flags
+
+
 # Keywords that indicate visa / relocation support in a job description
 VISA_RELOCATION_KEYWORDS = [
     "visa sponsorship", "work visa", "sponsorship available", "employment visa",
@@ -1332,24 +1507,33 @@ def extract_text_from_pdf(path):
             text += page.extract_text() + "\n"
     return text
 
+_REQUIRED_RESUME_FIELDS = {
+    "current_role": "Most recent job title (e.g. 'Senior Backend Engineer')",
+    "years_experience": "Years of professional experience (e.g. 10)",
+    "core_skills": "Technical skills list (e.g. Java, Python, AWS, Kubernetes)",
+}
+
+
 def parse_resume_pdf(path):
     """
-    Given a PDF resume path, extract name, email, skills, and experience.
-    Returns a dict suitable for PROFILE overrides.
+    Given a PDF resume path, extract name, email, current role, skills,
+    and experience. Validates that required fields are present.
+    Returns a tuple of (profile dict, missing_fields list).
     """
     raw = extract_text_from_pdf(path)
     lines = raw.split("\n")
     non_empty = [l.strip() for l in lines if l.strip()]
 
-    profile = {"name": "", "email": "", "core_skills": [], "years_experience": 0}
+    profile = {
+        "name": "", "email": "", "current_role": "",
+        "core_skills": [], "years_experience": 0,
+    }
 
     # --- Extract name (first non-title line is the name) ---
-    # Skip lines that look like job titles (contain common role keywords)
     title_keywords = ["engineer", "developer", "consultant", "architect", "manager",
                       "analyst", "specialist", "lead", "scientist"]
     for line in non_empty:
         cleaned = line.strip("|").strip().replace(" ", "")
-        # Skip if it looks like a job title (common role keyword + no spaces or short)
         is_title = any(kw in cleaned.lower() for kw in title_keywords)
         if not is_title and len(cleaned) > 2:
             profile["name"] = cleaned
@@ -1360,8 +1544,28 @@ def parse_resume_pdf(path):
     if email_match:
         profile["email"] = email_match.group(0)
 
+    # --- Extract most recent role (first job title in experience section) ---
+    role_keywords = [
+        "engineer", "developer", "architect", "manager", "lead", "intern",
+        "consultant", "specialist", "analyst", "scientist", "director",
+        "head", "principal", "staff", "sde", "swe",
+    ]
+    in_experience = False
+    for line in non_empty:
+        stripped = line.strip().lower()
+        if any(kw in stripped for kw in ["experience", "work experience", "employment",
+                                           "professional experience", "work history"]):
+            in_experience = True
+            continue
+        if in_experience and not profile["current_role"]:
+            if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
+                profile["current_role"] = line.strip()
+        if in_experience and profile["current_role"] and any(
+            kw in stripped for kw in ["education", "skills", "projects", "certifications"]
+        ):
+            break
+
     # --- Extract skills ---
-    # Look for lines near "SKILLS" / "TECHNICAL SKILLS" / "TECHNOLOGIES" section
     skill_section_text = ""
     in_skills = False
     for line in lines:
@@ -1378,11 +1582,9 @@ def parse_resume_pdf(path):
                     break
             skill_section_text += line + " "
 
-    # If no skills section found, search whole document for tech keywords
     if not skill_section_text:
         skill_section_text = raw
 
-    # Match against known tech keywords
     found_skills = set()
     text_lower = skill_section_text.lower()
     for kw in COMMON_TECH_KEYWORDS:
@@ -1391,31 +1593,38 @@ def parse_resume_pdf(path):
     profile["core_skills"] = sorted(found_skills)
 
     # --- Extract years of experience ---
-    # Patterns: "10+ years", "10 years", "1 Year 10 Months", "5 yrs exp"
     raw_lower = raw.lower()
-    # First try "X Year(s) Y Month(s)" format (with or without spaces between)
     year_month = re.findall(r"(\d+)\s*years?\s*(\d+)\s*months?", raw_lower)
     if not year_month:
         year_month = re.findall(r"(\d+)year\s*(\d+)months?", raw_lower)
     if year_month:
         profile["years_experience"] = max(int(y) + round(int(m) / 12) for y, m in year_month)
     else:
-        # Simple "X+ years", "X years ..." patterns
         exp_matches = re.findall(r"(\d+)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+exp|\s+owning|\s+in|\s+working|\s+of)?", raw_lower)
         exp_matches = [int(e) for e in exp_matches if 3 <= int(e) <= 45]
         if exp_matches:
             profile["years_experience"] = max(exp_matches)
         else:
-            # Fallback: compute from earliest → latest year in the document
             dates = re.findall(r"\b(?:19|20)\d{2}\b", raw)
             if dates:
                 dates = sorted(int(d) for d in dates)
                 span = max(dates) - min(dates) + 1
                 profile["years_experience"] = max(span, 1)
 
-    print(f"  Parsed resume: {profile['name']}, {profile['email'] or 'no email'}, "
-          f"{profile['years_experience']}yr, {len(profile['core_skills'])} skills")
-    return profile
+    # --- Validate required fields ---
+    missing = []
+    if not profile.get("current_role"):
+        missing.append("current_role")
+    if not profile.get("years_experience") or profile["years_experience"] < 1:
+        missing.append("years_experience")
+    if not profile.get("core_skills") or len(profile["core_skills"]) < 3:
+        missing.append("core_skills")
+
+    print(f"  Parsed resume: {profile['name']}, "
+          f"role={profile['current_role'] or 'MISSING'}, "
+          f"{profile['years_experience'] or 'MISSING'}yr, "
+          f"{len(profile['core_skills'])} skills")
+    return profile, missing
 
 
 # ---------------------------------------------------------------------------
