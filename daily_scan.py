@@ -478,7 +478,7 @@ JOB_SOURCES = [
     {"name": "Ada", "url": "https://adaglobal.darwinbox.com/ms/candidatev2/main/careers/allJobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adevinta", "url": "https://www.adevinta.com/careers", "region": "DE", "type": "company"},
     {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Adidas", "url": "https://careers.adidas-group.com/jobs?brand=&team=&type=&keywords=engineer&location=%5B%5D&sort=&locale=en&offset=0", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Adidas", "url": "https://careers.adidas-group.com/jobs?brand=&team=Technology&type=Full+time&keywords=&location=%5B%5D&sort=&locale=en&offset=0", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adjoe", "url": "https://adjoe.io/company/careers/", "region": "DE", "type": "company"},
     {"name": "Akeneo", "url": "https://careers.akeneo.com/", "region": "DE", "type": "company"},
     {"name": "Aldi South IT", "url": "https://it-jobs.aldi-sued.de/en", "region": "DE", "type": "company"},
@@ -1015,10 +1015,11 @@ def _is_within_months(date_val, months=6):
 
 
 def _scrape_company_career_page(source):
-    """Use Playwright to scrape a company career page for job listings."""
+    """Scrape company career page using Playwright, fallback to requests+regex."""
     jobs = []
     browser = None
     page = None
+    pw_failed = False
     try:
         browser = _get_browser()
         page = browser.new_page()
@@ -1073,14 +1074,77 @@ def _scrape_company_career_page(source):
                     "description": link["text"].split('\n')[0].strip(),
                     "posted_at": None,
                 })
-        if jobs:
-            print(f"  [pw] {len(jobs)} jobs from {source['name']}")
     except Exception as e:
-        print(f"  [pw] Error scraping {source['name']}: {e}")
+        pw_failed = True
+        print(f"  [pw] Playwright failed for {source['name']}: {e}")
     finally:
         if page:
             try: page.close()
             except: pass
+
+    if pw_failed or not jobs:
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
+        try:
+            import requests as req
+            resp = req.get(source["url"], headers=headers, timeout=15)
+            if resp.status_code == 200:
+                import re
+                html = resp.text
+                for p in ['window.__INITIAL_STATE__', 'window.__DATA__', 'window.__NEXT_DATA__']:
+                    idx = html.find(p + '=')
+                    if idx >= 0:
+                        end = html.find(';\n', idx) if html.find(';\n', idx) > 0 else html.find('\n', idx)
+                        chunk = html[idx + len(p) + 1:end]
+                        import json as _j
+                        try:
+                            data = _j.loads(chunk)
+                            items = data.get('jobs', data.get('vacancies', data.get('data', [])))
+                            if isinstance(items, dict):
+                                items = list(items.values())
+                            if isinstance(items, list):
+                                for item in items[:30]:
+                                    if isinstance(item, dict):
+                                        t = item.get('title', item.get('name', item.get('jobTitle', '')))
+                                        if t:
+                                            jobs.append({'title': t, 'company': source['name'],
+                                                         'location': item.get('location', source.get('region', '')),
+                                                         'url': item.get('url', item.get('applyUrl', source['url'])),
+                                                         'description': t, 'posted_at': None})
+                        except: pass
+                if not jobs:
+                    job_links = re.findall(r'href=[\"\']([^\"\']*/(?:job|vacancy|position|opening)/[^\"\']+)[\"\']', html, re.IGNORECASE)
+                    seen = set()
+                    for href in job_links:
+                        full = href if href.startswith('http') else source['url'].rstrip('/') + '/' + href.lstrip('/')
+                        # Strip query params for dedup
+                        clean = full.split('?')[0]
+                        if clean in seen: continue
+                        seen.add(clean)
+                        # Extract title from URL path: /job/Location-Title-With-Words/ID
+                        segs = clean.rstrip('/').split('/')
+                        title = ''
+                        for seg in segs:
+                            if seg.replace('-','').replace('.','').isdigit():
+                                continue
+                            if any(kw in seg.lower() for kw in ['job', 'vacancy', 'position', 'opening']):
+                                continue
+                            title = seg
+                        title = title.replace('-', ' ').replace('+', ' ').replace('&amp;', '&')
+                        from urllib.parse import unquote
+                        title = unquote(title)
+                        title = re.sub(r'\s+', ' ', title).strip()
+                        title = ' '.join(w.capitalize() if w.lower() not in ('and', 'or', 'the', 'of', 'in', 'for', '&') else w for w in title.split())
+                        if len(title) > 5:
+                            jobs.append({'title': title[:100], 'company': source['name'],
+                                         'location': source.get('region', ''), 'url': full.split('?')[0],
+                                         'description': title[:100], 'posted_at': None})
+            if jobs:
+                print(f"  [http] {len(jobs)} jobs from {source['name']}")
+        except Exception as e2:
+            print(f"  [http] Fallback failed for {source['name']}: {e2}")
+
+    if jobs and not pw_failed:
+        print(f"  [pw] {len(jobs)} jobs from {source['name']}")
     return jobs
 
 
