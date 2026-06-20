@@ -64,6 +64,9 @@ from daily_scan import (
     parse_resume_pdf,
     auto_detect_title_red_flags,
     sync_tracker_to_gsheet,
+    get_salary_info,
+    build_domain_queries,
+    _format_salary,
 )
 
 # ---------------------------------------------------------------------------
@@ -148,7 +151,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="search_jobs",
-            description="Search for jobs across company ATS APIs + 15+ job boards. You can set your preferences (threshold, exclusions, focus) each time, or leave blank for defaults.",
+            description="Search for jobs across company ATS APIs + 15+ job boards. Automatically expands to relevant title variants (senior/staff/principal + domain). Set preferences (threshold, exclusions, focus) each time, or leave blank for defaults. Use 'update_tracker' afterwards to track jobs — they'll be organized by resume in separate Google Sheet tabs.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -235,7 +238,7 @@ async def handle_list_tools() -> list[types.Tool]:
         types.Tool(
             name="update_tracker",
             title="Update job application status",
-            description="Update the status of a tracked job (e.g. mark as applied, rejected, offer)",
+            description="Update the status of a tracked job (e.g. mark as applied, rejected, offer). Jobs are organized by resume version in Google Sheets.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -247,6 +250,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         "enum": ["applied", "rejected", "offer"],
                     },
                     "notes": {"type": "string", "description": "Optional notes"},
+                    "resume": {"type": "string", "description": "Optional resume version used (e.g. 'Kamnee_Maran_Resume_FAANG.pdf'). Creates a separate sheet tab per resume."},
                 },
                 "required": ["title", "company", "status"],
             },
@@ -437,6 +441,11 @@ def _search_jobs(
     sources_lower = [s.lower() for s in sources] if sources else []
     exclude_lower = [c.lower().strip() for c in exclude_companies] if exclude_companies else []
     focus_words = focus_role.lower().split() if focus_role else []
+
+    # Build expanded queries from profile + user input
+    expanded_queries = build_domain_queries(prefer_role=query or focus_role or None)
+    if query and query not in expanded_queries:
+        expanded_queries.insert(0, query)
     all_jobs = []
 
     def _score(job):
@@ -460,7 +469,7 @@ def _search_jobs(
                 note = (note + " | visa confirmed from career page").strip(" |")
         return score, note
 
-    # Company ATS sources
+    # Company ATS sources (not query-dependent - fetch all)
     for source in JOB_SOURCES:
         sname = source["name"].lower()
         if sources_lower and not any(s in sname for s in sources_lower):
@@ -475,39 +484,47 @@ def _search_jobs(
                 continue
             score, note = _score(job)
             if score >= threshold:
-                all_jobs.append({**job, "score": score, "relocation_note": note})
+                salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
+                resume = pick_resume(job["company"])
+                all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
 
-    # Job board scrapers
+    # Job board scrapers — run all expanded queries, deduplicate
     for board_name, board_fn in board_scrapers:
         if sources_lower and not any(s in board_name.lower() for s in sources_lower):
             continue
-        try:
-            jobs = board_fn(query, location=location, max_results=max_results)
-            for job in jobs:
-                company_lower = job["company"].lower().strip()
-                if exclude_lower and any(c in company_lower for c in exclude_lower):
-                    continue
-                score, note = _score(job)
-                if score >= threshold:
-                    all_jobs.append({**job, "score": score, "relocation_note": note})
-        except Exception as e:
-            pass
+        for q in expanded_queries:
+            try:
+                jobs = board_fn(q, location=location, max_results=max_results)
+                for job in jobs:
+                    company_lower = job["company"].lower().strip()
+                    if exclude_lower and any(c in company_lower for c in exclude_lower):
+                        continue
+                    score, note = _score(job)
+                    if score >= threshold:
+                        salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
+                        resume = pick_resume(job["company"])
+                        all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
+            except Exception:
+                pass
 
     # Playwright scrapers
     for pw_name, pw_fn in pw_scrapers:
         if sources_lower and not any(s in pw_name.lower() for s in sources_lower):
             continue
-        try:
-            jobs = pw_fn(query, location=location, max_results=max_results)
-            for job in jobs:
-                company_lower = job["company"].lower().strip()
-                if exclude_lower and any(c in company_lower for c in exclude_lower):
-                    continue
-                score, note = _score(job)
-                if score >= threshold:
-                    all_jobs.append({**job, "score": score, "relocation_note": note})
-        except Exception as e:
-            pass
+        for q in expanded_queries:
+            try:
+                jobs = pw_fn(q, location=location, max_results=max_results)
+                for job in jobs:
+                    company_lower = job["company"].lower().strip()
+                    if exclude_lower and any(c in company_lower for c in exclude_lower):
+                        continue
+                    score, note = _score(job)
+                    if score >= threshold:
+                        salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
+                        resume = pick_resume(job["company"])
+                        all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
+            except Exception:
+                pass
 
     # Deduplicate by (title, company)
     seen = set()
@@ -521,29 +538,48 @@ def _search_jobs(
                 break
 
     if not unique:
-        parts = [f"# No matching jobs found for '{query}' in {location}"]
-        parts.append(f"\nYour settings: threshold={threshold}%")
+        qs = ", ".join(expanded_queries[:5])
+        parts = [f"# No matching jobs found for your profile"]
+        parts.append(f"Searched queries: {qs}{'...' if len(expanded_queries) > 5 else ''}")
+        parts.append(f"\nYour settings: threshold={threshold}% | location={location}")
         if exclude_companies:
             parts.append(f"Excluded companies: {', '.join(exclude_companies)}")
         parts.append("\nTry lowering the threshold or removing exclusions.")
         return "\n".join(parts)
 
-    lines = [f"# Job Search Results — '{query}' in {location}"]
-    lines.append(f"Settings: threshold={threshold}% | require_visa={'yes' if require_visa else 'no'}")
+    q_summary = ", ".join(expanded_queries[:5])
+    lines = [f"# Job Search Results ({len(unique)} matches)"]
+    lines.append(f"Queries: {q_summary}{' ...' if len(expanded_queries) > 5 else ''}")
+    lines.append(f"Settings: threshold={threshold}% | require_visa={'yes' if require_visa else 'no'} | location={location}")
     if exclude_companies:
         lines.append(f"Excluded: {', '.join(exclude_companies)}")
     if focus_role:
         lines.append(f"Focus role: {focus_role}")
-    lines.append(f"Found {len(unique)} matching jobs.\n")
+    lines.append("")
 
     for j in unique[:max_results]:
         score = j.get("score", 0)
         relo = f" — {j['relocation_note']}" if j.get("relocation_note") else ""
         match_tag = " ★" if focus_words and any(w in j["title"].lower() for w in focus_words) else ""
+
+        resume = pick_resume(j.get("company", ""))
+        salary_str = ""
+        si = j.get("salary_info")
+        if si:
+            if si["source"] == "jd":
+                salary_str = f" | Salary: {_format_salary(si)} (from JD)"
+            elif si["source"] == "levels.fyi" and si.get("median_tc"):
+                salary_str = f" | Median: {si['median_tc']} (Levels.fyi)"
+
         lines.append(f"**{j['title']}** @ {j['company']}{match_tag}")
-        lines.append(f"   Score: {score}%  |  Location: {j.get('location', 'N/A')}")
+        lines.append(f"   Score: {score}%  |  Location: {j.get('location', 'N/A')}{salary_str}")
+        lines.append(f"   Resume: {resume}")
         lines.append(f"   URL: {j.get('url', 'N/A')}{relo}")
         lines.append("")
+
+    lines.append("---")
+    lines.append("**To track a job:** use `update_tracker` with title, company, status (applied/rejected/offer), and optional resume.")
+    lines.append("Your Google Sheet will auto-organize jobs into tabs by resume version.")
 
     if len(unique) > max_results:
         lines.append(f"*... and {len(unique) - max_results} more.*")
@@ -557,6 +593,7 @@ def _score_job(title: str, description: str, company: str, location: str = "Remo
     c_url = company_url(company)
     has_visa = any(kw in (title + " " + description).lower() for kw in VISA_RELOCATION_KEYWORDS)
     in_friendly = any(co in company.lower() for co in RELOCATION_FRIENDLY)
+    salary_info = get_salary_info(company, title, description)
 
     parts = [
         f"## Score: {score}% — {title} @ {company}",
@@ -566,6 +603,16 @@ def _score_job(title: str, description: str, company: str, location: str = "Remo
         f"**Visa/relocation mentioned:** {'Yes' if has_visa else 'No'}",
         f"**Relocation-friendly company:** {'Yes' if in_friendly else 'No'}",
     ]
+    if salary_info:
+        if salary_info["source"] == "jd":
+            parts.append(f"**Salary (from JD):** {_format_salary(salary_info)}")
+        elif salary_info["source"] == "levels.fyi" and salary_info.get("median_tc"):
+            parts.append(f"**Median comp (Levels.fyi):** {salary_info['median_tc']}")
+            if salary_info.get("levels"):
+                level_lines = []
+                for lv in salary_info["levels"][:5]:
+                    level_lines.append(f"  - {lv['level']}: {lv['total']}")
+                parts.append(f"**Levels breakdown:**\n" + "\n".join(level_lines))
     if note:
         parts.append(f"**Note:** {note}")
     if suggestions:
@@ -615,15 +662,19 @@ def _tracker_status(status: str = "", limit: int = 20) -> str:
     return "\n".join(lines)
 
 
-def _update_tracker(title: str, company: str, status: str, notes: str = "") -> str:
+def _update_tracker(title: str, company: str, status: str, notes: str = "", resume: str = "") -> str:
     key = tracker.job_key(title, company)
     if key not in tracker.data["jobs"]:
-        tracker.add_job(title, company, status=status)
+        tracker.add_job(title, company, status=status, resume=resume)
+    else:
+        if resume:
+            tracker.data["jobs"][key]["resume"] = resume
     ok = tracker.update_status(title, company, status, notes)
     if ok:
+        resume_info = f" (resume: {resume})" if resume else ""
         gsheet_ok = sync_tracker_to_gsheet(tracker)
         gsheet_msg = " + Google Sheet synced" if gsheet_ok else ""
-        return f"✅ Updated **{title}** @ {company} → **{status}**{gsheet_msg}"
+        return f"✅ Updated **{title}** @ {company} → **{status}**{resume_info}{gsheet_msg}. Jobs are now organized by resume in separate sheet tabs."
     else:
         return f"⚠️ Could not find '{title}' @ {company} in tracker. Use a search first so it gets tracked."
 

@@ -27,9 +27,9 @@ Filter out these role types in `daily_scan.py` → `PROFILE["title_red_flags"]`:
   ```
 - **Tools available:**
   - `about` — describes the job search engine (sources, scoring, how it works)
-  - `search_jobs` — on-demand job search across ATS APIs + 15+ job boards
-  - `score_job` — score any job title/description against profile (0-100)
+  - `search_jobs` — on-demand job search across ATS APIs + 15+ job boards. Auto-expands to relevant title variants (senior/staff/principal + domain) based on profile. Shows salary from JD or Levels.fyi static table (35+ companies).
+  - `score_job` — score any job title/description against profile (0-100). Includes salary info.
   - `tracker_status` — view tracked jobs and their statuses
-  - `update_tracker` — update job status (applied/rejected/offer)
+  - `update_tracker` — update job status (applied/rejected/offer). Jobs go to separate Google Sheet tabs organized by resume version.
   - `parse_resume` — parse a PDF resume
   - `get_profile` — show active profile config

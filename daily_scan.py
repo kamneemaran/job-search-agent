@@ -603,7 +603,266 @@ def tailoring_suggestion(title, description, company):
 
 
 # ---------------------------------------------------------------------------
-# 3. SCANNING (placeholder - wire up real scraping/APIs here)
+# 3a. SALARY EXTRACTION + LEVELS.FYI LOOKUP
+# ---------------------------------------------------------------------------
+
+_SALARY_JD_PATTERNS = [
+    # $120k - $180k or $150k-$200k
+    (re.compile(r'\$(\d{2,3})[kK]\s*[-–to]+\s*\$?(\d{2,3})[kK]'), 'USD', True),
+    # $120k (single, no range)
+    (re.compile(r'\$(\d{2,3})[kK]\b'), 'USD', True),
+    # $120,000 - $180,000 (full dollar amounts, with commas)
+    (re.compile(r'(?:\$|USD\s+)(\d{1,3}(?:,\d{3})+)(?:\s*[-–to]+\s*(?:\$|USD\s+)?(\d{1,3}(?:,\d{3})+))?'), 'USD', False),
+    # EUR 80,000 - 100,000 or €80,000 - €100,000
+    (re.compile(r'(?:EUR\s+)?[€](\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?)(?:\s*[-–to]+\s*(?:\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?))?'), 'EUR', False),
+    (re.compile(r'EUR\s+(\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?)(?:\s*[-–to]+\s*(\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?))?'), 'EUR', False),
+    # £70,000 - £90,000 or GBP 70,000 - 90,000
+    (re.compile(r'(?:GBP\s+)?[£](\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?)(?:\s*[-–to]+\s*(?:\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?))?'), 'GBP', False),
+    (re.compile(r'GBP\s+(\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?)(?:\s*[-–to]+\s*(\d{1,3}(?:[.,]\d{3})*(?:,\d{3})?))?'), 'GBP', False),
+    # ₹20,00,000 - ₹30,00,000 or ₹20L - ₹30L
+    (re.compile(r'[₹](\d+)\s*(?:L|lakh|lacs?)\s*[-–to]+\s*[₹]?(\d+)\s*(?:L|lakh|lacs?)'), 'INR', False),
+    # salary: $150,000 or salary range: $120,000-$180,000 (generic catch-all)
+    (re.compile(r'salary\s*(?:range)?\s*:?\s*\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)(?:\s*[-–to]+\s*\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?))?'), 'USD', False),
+]
+
+def _parse_salary_amount(val):
+    """Parse a salary string like '120,000' or '120k' to int."""
+    val = val.strip()
+    if val.lower().endswith('k'):
+        return int(float(val[:-1].replace(',', '')) * 1000)
+    return int(val.replace(',', '').replace('.', '')) if val else 0
+
+def _extract_salary_from_jd(description):
+    """Extract salary range from job description text."""
+    for pattern, currency, is_k in _SALARY_JD_PATTERNS:
+        m = pattern.search(description)
+        if m:
+            g = m.groups()
+            min_raw = g[0]
+            max_raw = g[1] if len(g) > 1 else None
+            if is_k:
+                min_val = int(min_raw) * 1000 if min_raw else None
+                max_val = int(max_raw) * 1000 if max_raw else None
+            else:
+                min_val = _parse_salary_amount(min_raw) if min_raw else None
+                max_val = _parse_salary_amount(max_raw) if max_raw else min_val
+            if min_val:
+                return {
+                    "min": min_val,
+                    "max": max_val or min_val,
+                    "currency": currency,
+                    "text": m.group(0).strip(),
+                }
+    return None
+
+# Static salary data for well-known tech companies (sourced from levels.fyi).
+# Median Total Compensation for Software Engineer roles in USD or local currency.
+# Update periodically from https://www.levels.fyi
+LEVELS_STATIC_SALARIES = {
+    "databricks": {"median_tc": "$460,000", "currency": "USD", "levels": [
+        {"level": "L3", "total": "$249,532"}, {"level": "L4", "total": "$434,654"},
+        {"level": "L5", "total": "$664,790"}, {"level": "L6", "total": "$1,049,577"},
+    ], "url": "https://www.levels.fyi/companies/databricks/salaries/software-engineer"},
+    "google": {"median_tc": "$312,000", "currency": "USD", "levels": [
+        {"level": "L3", "total": "$209,679"}, {"level": "L4", "total": "$308,305"},
+        {"level": "L5", "total": "$409,536"}, {"level": "L6", "total": "$576,059"},
+    ], "url": "https://www.levels.fyi/companies/google/salaries/software-engineer"},
+    "meta": {"median_tc": "$420,000", "currency": "USD", "levels": [
+        {"level": "E3", "total": "$182,272"}, {"level": "E4", "total": "$303,298"},
+        {"level": "E5", "total": "$468,127"}, {"level": "E6", "total": "$708,559"},
+    ], "url": "https://www.levels.fyi/companies/meta/salaries/software-engineer"},
+    "stripe": {"median_tc": "$369,250", "currency": "USD", "levels": [
+        {"level": "L1", "total": "$209,323"}, {"level": "L2", "total": "$290,432"},
+        {"level": "L3", "total": "$463,543"}, {"level": "L4", "total": "$745,265"},
+    ], "url": "https://www.levels.fyi/companies/stripe/salaries/software-engineer"},
+    "coinbase": {"median_tc": "$375,000", "currency": "USD", "levels": [
+        {"level": "IC3", "total": "$205,502"}, {"level": "IC4", "total": "$261,370"},
+        {"level": "IC5", "total": "$390,708"}, {"level": "IC6", "total": "$550,985"},
+    ], "url": "https://www.levels.fyi/companies/coinbase/salaries/software-engineer"},
+    "booking.com": {"median_tc": "€137,781", "currency": "EUR", "levels": [
+        {"level": "E", "total": "€69,490"}, {"level": "F", "total": "€114,583"},
+        {"level": "G", "total": "€208,345"}, {"level": "H", "total": "€225,726"},
+    ], "url": "https://www.levels.fyi/companies/bookingcom/salaries/software-engineer"},
+    "bookingcom": {"median_tc": "€137,781", "currency": "EUR", "levels": [
+        {"level": "E", "total": "€69,490"}, {"level": "F", "total": "€114,583"},
+        {"level": "G", "total": "€208,345"}, {"level": "H", "total": "€225,726"},
+    ], "url": "https://www.levels.fyi/companies/bookingcom/salaries/software-engineer"},
+    "cruise": {"median_tc": "$411,000", "currency": "USD", "levels": [
+        {"level": "L3", "total": "$211,426"}, {"level": "L4", "total": "$314,025"},
+        {"level": "L5", "total": "$403,434"}, {"level": "L6", "total": "$641,107"},
+    ], "url": "https://www.levels.fyi/companies/cruise/salaries/software-engineer"},
+    "airbnb": {"median_tc": "$318,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/airbnb/salaries/software-engineer"},
+    "amazon": {"median_tc": "$350,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/amazon/salaries/software-engineer"},
+    "apple": {"median_tc": "$320,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/apple/salaries/software-engineer"},
+    "microsoft": {"median_tc": "$285,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/microsoft/salaries/software-engineer"},
+    "netflix": {"median_tc": "$500,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/netflix/salaries/software-engineer"},
+    "spotify": {"median_tc": "$225,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/spotify/salaries/software-engineer"},
+    "twitter": {"median_tc": "$310,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/twitter/salaries/software-engineer"},
+    "lyft": {"median_tc": "$365,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/lyft/salaries/software-engineer"},
+    "uber": {"median_tc": "$380,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/uber/salaries/software-engineer"},
+    "linkedin": {"median_tc": "$350,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/linkedin/salaries/software-engineer"},
+    "salesforce": {"median_tc": "$280,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/salesforce/salaries/software-engineer"},
+    "oracle": {"median_tc": "$250,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/oracle/salaries/software-engineer"},
+    "snowflake": {"median_tc": "$450,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/snowflake/salaries/software-engineer"},
+    "atlassian": {"median_tc": "$275,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/atlassian/salaries/software-engineer"},
+    "twilio": {"median_tc": "$260,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/twilio/salaries/software-engineer"},
+    "github": {"median_tc": "$300,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/github/salaries/software-engineer"},
+    "gitlab": {"median_tc": "$260,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/gitlab/salaries/software-engineer"},
+    "cloudflare": {"median_tc": "$275,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/cloudflare/salaries/software-engineer"},
+    "datadog": {"median_tc": "$325,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/datadog/salaries/software-engineer"},
+    "mongodb": {"median_tc": "$300,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/mongodb/salaries/software-engineer"},
+    "elastic": {"median_tc": "$280,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/elastic/salaries/software-engineer"},
+    "palantir": {"median_tc": "$350,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/palantir/salaries/software-engineer"},
+    "shopify": {"median_tc": "$220,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/shopify/salaries/software-engineer"},
+    "canonical": {"median_tc": "$200,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/canonical/salaries/software-engineer"},
+    "dropbox": {"median_tc": "$330,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/dropbox/salaries/software-engineer"},
+    "discord": {"median_tc": "$310,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/discord/salaries/software-engineer"},
+    "reddit": {"median_tc": "$290,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/reddit/salaries/software-engineer"},
+    "pinterest": {"median_tc": "$330,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/pinterest/salaries/software-engineer"},
+}
+
+def _get_static_levels_salary(company):
+    """Look up salary from static table. Returns None if unavailable."""
+    slug = company.lower().strip()
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r'\s+', '-', slug.strip()).strip('-')
+
+    direct = LEVELS_STATIC_SALARIES.get(slug) or LEVELS_STATIC_SALARIES.get(slug.replace('-', ''))
+    if direct:
+        return {**direct, "source": "levels.fyi"}
+
+    # Fuzzy match: try removing common suffixes
+    for key in slug.split('-'):
+        if key in LEVELS_STATIC_SALARIES:
+            return {**LEVELS_STATIC_SALARIES[key], "source": "levels.fyi"}
+
+    return None
+
+def get_salary_info(company, title, description):
+    """Get salary info: try JD first, fall back to static levels.fyi data."""
+    jd_salary = _extract_salary_from_jd(description)
+    if jd_salary:
+        return {**jd_salary, "source": "jd"}
+
+    levels_data = _get_static_levels_salary(company)
+    if levels_data:
+        return levels_data
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 3b. PROFILE-AWARE QUERY EXPANSION
+# ---------------------------------------------------------------------------
+
+SENIORITY_PREFIXES = {
+    0: [],
+    2: ["junior"],
+    5: ["senior", "lead"],
+    8: ["senior", "staff", "principal", "lead"],
+}
+
+ROLE_DOMAIN_QUERIES = {
+    "sap": {
+        "titles": ["SAP FICO", "SAP MM", "SAP consultant", "SAP S/4HANA", "SAP"],
+        "stems": [],
+    },
+    "backend": {
+        "titles": ["backend engineer", "software engineer", "platform engineer",
+                    "distributed systems engineer", "back-end engineer"],
+        "stems": ["backend", "software", "platform", "distributed"],
+    },
+    "frontend": {
+        "titles": ["frontend engineer", "front-end engineer", "ui engineer",
+                    "software engineer"],
+        "stems": ["frontend", "front-end", "ui", "software"],
+    },
+    "mobile": {
+        "titles": ["mobile engineer", "ios engineer", "android engineer",
+                    "mobile developer"],
+        "stems": ["mobile", "ios", "android"],
+    },
+    "data_ml": {
+        "titles": ["data engineer", "data scientist", "ml engineer",
+                    "machine learning engineer", "data platform engineer"],
+        "stems": ["data", "ml", "machine learning"],
+    },
+    "devops_sre": {
+        "titles": ["devops engineer", "sre", "site reliability engineer",
+                    "platform engineer", "infrastructure engineer"],
+        "stems": ["devops", "sre", "platform", "infrastructure"],
+    },
+    "fullstack": {
+        "titles": ["fullstack engineer", "full stack engineer",
+                    "software engineer"],
+        "stems": ["fullstack", "full stack", "software"],
+    },
+}
+
+def detect_profile_domain(skills=None):
+    """
+    Detect the primary role domain from profile skills using a scoring approach.
+    Prefers backend over devops_sre when both match (common for polyglot engineers).
+    """
+    if skills is None:
+        skills = PROFILE["core_skills"]
+    skill_set = set(s.lower() for s in skills)
+
+    if any("sap" in s or "erp" in s for s in skill_set):
+        return "sap"
+
+    domain_scores = {}
+    for domain, config in ROLE_DOMAINS.items():
+        domain_skills = config.get("skills", set())
+        if domain_skills:
+            overlap = len(skill_set & domain_skills)
+            if overlap > 0:
+                domain_scores[domain] = overlap
+
+    if not domain_scores:
+        return "backend"
+
+    # Boost backend score to avoid devops_sre/frontend taking over
+    domain_scores["backend"] = domain_scores.get("backend", 0) * 1.5
+
+    return max(domain_scores, key=domain_scores.get)
+
+def build_domain_queries(skills=None, exp_years=None, prefer_role=None):
+    """
+    Generate a list of search queries matching the profile's domain and seniority.
+    Used by both daily_scan.py and the MCP server.
+    """
+    if skills is None:
+        skills = PROFILE["core_skills"]
+    if exp_years is None:
+        exp_years = PROFILE["years_experience"]
+
+    domain = detect_profile_domain(skills)
+    config = ROLE_DOMAIN_QUERIES.get(domain, ROLE_DOMAIN_QUERIES["backend"])
+
+    prefixes = []
+    for min_exp, titles in sorted(SENIORITY_PREFIXES.items()):
+        if exp_years >= min_exp:
+            prefixes = titles
+
+    queries = set()
+    queries.add("+".join(skills[:3]))
+
+    for title in config["titles"]:
+        queries.add(title)
+        for prefix in prefixes:
+            queries.add(f"{prefix} {title}")
+
+    if prefer_role:
+        queries.add(prefer_role)
+        for prefix in prefixes:
+            queries.add(f"{prefix} {prefer_role}")
+
+    return [q for q in queries if q]
+
+
+# ---------------------------------------------------------------------------
+# 4. SCANNING (placeholder - wire up real scraping/APIs here)
 # ---------------------------------------------------------------------------
 
 def _parse_date(date_str):
@@ -1372,12 +1631,36 @@ def search_workatstartup(query, location="Remote", max_results=25):
 # 4. EMAIL DIGEST
 # ---------------------------------------------------------------------------
 
+def _salary_html(salary_info):
+    if not salary_info:
+        return ""
+    if salary_info["source"] == "jd":
+        fmt = _format_salary(salary_info)
+        return f'<p style="margin:0 0 4px;font-size:13px;color:#2e7d32;"><b>💰 {fmt}</b> (from JD)</p>'
+    if salary_info["source"] == "levels.fyi" and salary_info.get("median_tc"):
+        src = f'<a href="{salary_info["url"]}" style="color:#1a73e8;text-decoration:none;">Levels.fyi</a>'
+        return f'<p style="margin:0 0 4px;font-size:13px;color:#2e7d32;"><b>💰 Median: {salary_info["median_tc"]}</b> from {src}</p>'
+    return ""
+
+def _format_salary(s):
+    c = s.get("currency", "USD")
+    fmt_min = f"{s['min']:,}" if s.get("min") else ""
+    fmt_max = f"{s['max']:,}" if s.get("max") else ""
+    symbols = {"USD": "$", "EUR": "€", "GBP": "£", "INR": "₹"}
+    sym = symbols.get(c, c + " ")
+    if fmt_min and fmt_max and fmt_min != fmt_max:
+        return f"{sym}{fmt_min} - {sym}{fmt_max}"
+    if fmt_min:
+        return f"{sym}{fmt_min}"
+    return ""
+
 def build_email_html(matches):
     if not matches:
         return "<p>No new matches above threshold today. Sources checked, all clear.</p>"
 
     rows = ""
     for m in matches:
+        salary_line = _salary_html(m.get("salary_info"))
         rows += f"""
         <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
           <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
@@ -1386,6 +1669,7 @@ def build_email_html(matches):
             &middot; {m['location']}
           </p>
           <p style="margin:0 0 8px;font-size:14px;"><b>Fit score: {m['score']}%</b></p>
+          {salary_line}
           <p style="margin:0 0 8px;font-size:13px;color:#444;">{m['relocation_note']}</p>
           <ul style="margin:0 0 8px;font-size:13px;color:#444;">
             {''.join(f'<li>{s}</li>' for s in m['suggestions'])}
@@ -1664,15 +1948,18 @@ class JobTracker:
         entry = self.data["jobs"].get(key, {})
         return entry.get("status", "new")
 
-    def add_job(self, title, company, url="", score=0, status="new"):
+    def add_job(self, title, company, url="", score=0, status="new", resume=""):
         key = self.job_key(title, company)
         if key not in self.data["jobs"]:
             self.data["jobs"][key] = {
                 "title": title, "company": company, "url": url,
-                "score": score, "status": status,
+                "score": score, "status": status, "resume": resume,
                 "date_found": datetime.now().isoformat(),
                 "date_updated": datetime.now().isoformat(),
             }
+            self._save()
+        elif resume and not self.data["jobs"][key].get("resume"):
+            self.data["jobs"][key]["resume"] = resume
             self._save()
 
     def update_status(self, title, company, status, notes=""):
@@ -1846,6 +2133,7 @@ def main():
             if score >= args.threshold:
                 resume = pick_resume(job["company"])
                 suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                salary_info = get_salary_info(job["company"], job["title"], job["description"])
                 all_matches.append({
                     **job,
                     "score": score,
@@ -1853,6 +2141,7 @@ def main():
                     "company_url": company_url(job["company"], source.get("url")),
                     "relocation_note": relocation_note,
                     "suggestions": suggestions,
+                    "salary_info": salary_info,
                 })
 
     # --- Web search: LinkedIn, Indeed, Naukri, Instahyre ---
@@ -1866,10 +2155,7 @@ def main():
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
     ]
-    top_skills = PROFILE["core_skills"][:5]
-    is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in top_skills)
-    domain_queries = ["SAP FICO", "SAP MM", "SAP consultant", "SAP S/4HANA"] if is_sap_profile \
-        else ["+".join(top_skills[:3]), "backend engineer", "software engineer", "staff engineer", "platform engineer"]
+    domain_queries = build_domain_queries()
     for query in domain_queries:
         for board_name, board_fn in board_scrapers:
             for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
@@ -1881,8 +2167,10 @@ def main():
                     if score >= args.threshold:
                         resume = pick_resume(job["company"])
                         suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
                         all_matches.append({**job, "score": score, "resume": resume,
-                                            "relocation_note": relocation_note, "suggestions": suggestions})
+                                            "relocation_note": relocation_note, "suggestions": suggestions,
+                                            "salary_info": salary_info})
 
     # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
@@ -1914,8 +2202,10 @@ def main():
                 if score >= args.threshold:
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
                     all_matches.append({**job, "score": score, "resume": resume,
-                                        "relocation_note": relocation_note, "suggestions": suggestions})
+                                        "relocation_note": relocation_note, "suggestions": suggestions,
+                                        "salary_info": salary_info})
         except Exception as e:
             print(f"  [{pw_name.lower()}] Error: {e}")
     # Pass domain query to batch scrapers that support it
@@ -1930,16 +2220,18 @@ def main():
                     if score >= args.threshold:
                         resume = pick_resume(job["company"])
                         suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
                         all_matches.append({**job, "score": score, "resume": resume,
-                                            "relocation_note": relocation_note, "suggestions": suggestions})
+                                            "relocation_note": relocation_note, "suggestions": suggestions,
+                                            "salary_info": salary_info})
             except Exception as e:
                 print(f"  [{pw_name.lower()}] Error: {e}")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
-    # --- Save new matches to tracker ---
+    # --- Save new matches to tracker (with resume info) ---
     for m in all_matches:
-        tracker.add_job(m["title"], m["company"], m.get("url", ""), m["score"])
+        tracker.add_job(m["title"], m["company"], m.get("url", ""), m["score"], resume=m.get("resume", ""))
 
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
@@ -1965,12 +2257,14 @@ def main():
         import csv
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["Score", "Title", "Company", "Location", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"])
+            writer.writerow(["Score", "Title", "Company", "Location", "Salary", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"])
             for m in all_matches:
                 suggestions = "; ".join(m.get("suggestions", []))
                 status = tracker.get_status(m["title"], m["company"])
+                salary_str = _format_salary(m.get("salary_info", {})) if m.get("salary_info") else ""
                 writer.writerow([
                     m["score"], m["title"], m["company"], m.get("location", ""),
+                    salary_str,
                     m.get("url", ""), m.get("company_url", company_url(m["company"])),
                     m.get("relocation_note", ""), suggestions, status
                 ])
@@ -1992,12 +2286,14 @@ def main():
             sheet = service.spreadsheets()
 
             # Build rows: header + data
-            rows = [["Score", "Title", "Company", "Location", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"]]
+            rows = [["Score", "Title", "Company", "Location", "Salary", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"]]
             for m in all_matches:
                 suggestions = "; ".join(m.get("suggestions", []))
                 status = tracker.get_status(m["title"], m["company"])
+                salary_str = _format_salary(m.get("salary_info", {})) if m.get("salary_info") else ""
                 rows.append([
                     m["score"], m["title"], m["company"], m.get("location", ""),
+                    salary_str,
                     m.get("url", ""), m.get("company_url", company_url(m["company"])),
                     m.get("relocation_note", ""), suggestions, status
                 ])
@@ -2017,9 +2313,21 @@ def main():
     print("=== Scan complete ===")
 
 
+def _gsheet_tab_name(resume_name, existing_tabs):
+    """Generate a valid sheet tab name (<=100 chars, unique)."""
+    base = re.sub(r'[\/\?\*\[\]]', '', resume_name or "All Jobs")
+    base = base[:95]
+    name = base
+    n = 2
+    while name in existing_tabs:
+        name = f"{base[:92]} ({n})"
+        n += 1
+    return name
+
 def sync_tracker_to_gsheet(tracker_instance=None):
     """
-    Push all tracked jobs with their current statuses to Google Sheets.
+    Push all tracked jobs with their current statuses to Google Sheets,
+    organized into tabs by resume version. A main "All Jobs" tab is also created.
     Can be called standalone (e.g. from MCP server after status updates).
     Returns True on success, False otherwise.
     """
@@ -2039,27 +2347,71 @@ def sync_tracker_to_gsheet(tracker_instance=None):
         service = build("sheets", "v4", credentials=creds)
         sheet = service.spreadsheets()
 
-        rows = [["Score", "Title", "Company", "Location", "URL", "Company Link", "Status"]]
+        # Get existing tabs
+        spreadsheet = sheet.get(spreadsheetId=gsheet_id).execute()
+        existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
+
+        # Group jobs by resume
+        jobs_by_resume = {}
         for key, entry in tracker_instance.data.get("jobs", {}).items():
-            status = entry.get("status", "new")
-            rows.append([
+            resume = entry.get("resume", "") or "No Resume"
+            jobs_by_resume.setdefault(resume, []).append(entry)
+
+        # Build rows per resume group
+        header = ["Score", "Title", "Company", "Location", "URL", "Company Link", "Status", "Date Found"]
+        resume_tabs = {}
+        for resume_name, jobs in jobs_by_resume.items():
+            rows = [header]
+            for j in jobs:
+                rows.append([
+                    j.get("score", ""),
+                    j.get("title", ""),
+                    j.get("company", ""),
+                    "",
+                    j.get("url", ""),
+                    company_url(j.get("company", "")),
+                    j.get("status", "new"),
+                    j.get("date_found", "")[:10],
+                ])
+            tab_name = _gsheet_tab_name(resume_name, existing_tabs)
+            resume_tabs[tab_name] = rows
+
+        # Also make an "All Jobs" tab
+        all_rows = [header]
+        for key, entry in tracker_instance.data.get("jobs", {}).items():
+            all_rows.append([
                 entry.get("score", ""),
                 entry.get("title", ""),
                 entry.get("company", ""),
                 "",
                 entry.get("url", ""),
                 company_url(entry.get("company", "")),
-                status,
+                entry.get("status", "new"),
+                entry.get("date_found", "")[:10],
             ])
+        all_tab = _gsheet_tab_name("All Jobs", existing_tabs)
+        resume_tabs[all_tab] = all_rows
 
-        sheet.values().clear(spreadsheetId=gsheet_id, range="Sheet1!A:Z").execute()
-        sheet.values().update(
-            spreadsheetId=gsheet_id,
-            range="Sheet1!A1",
-            valueInputOption="RAW",
-            body={"values": rows}
-        ).execute()
-        print(f"  [gsheet] Synced {len(rows)-1} tracked jobs to Google Sheet")
+        # Clear and write each tab
+        for tab_name, rows in resume_tabs.items():
+            if tab_name in existing_tabs:
+                sheet.values().clear(spreadsheetId=gsheet_id, range=f"'{tab_name}'!A:Z").execute()
+            else:
+                sheet.batchUpdate(spreadsheetId=gsheet_id, body={
+                    "requests": [{
+                        "addSheet": {"properties": {"title": tab_name}}
+                    }]
+                }).execute()
+                existing_tabs.append(tab_name)
+
+            sheet.values().update(
+                spreadsheetId=gsheet_id,
+                range=f"'{tab_name}'!A1",
+                valueInputOption="RAW",
+                body={"values": rows}
+            ).execute()
+
+        print(f"  [gsheet] Synced {len(all_rows)-1} jobs across {len(resume_tabs)} tabs: {', '.join(resume_tabs.keys())}")
         return True
     except Exception as e:
         print(f"  [gsheet] Error: {e}")
