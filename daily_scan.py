@@ -378,6 +378,70 @@ RELOCATION_FRIENDLY = {
     "datadog": "Global hiring - sponsorship possible",
     "coinbase": "Remote - US/global roles with limited sponsorship",
     "airbnb": "Global - sponsorship for critical roles",
+    # --- German companies (61 English-friendly with visa sponsorship) ---
+    "3d spark": "Germany visa sponsorship + English-friendly",
+    "aampere": "Germany visa sponsorship + English-friendly",
+    "ada": "Germany visa sponsorship + English-friendly",
+    "adevinta": "Germany visa sponsorship + English-friendly",
+    "adidas": "Germany visa sponsorship + English-friendly",
+    "adjoe": "Germany visa sponsorship + English-friendly",
+    "aeyde": "Germany visa sponsorship + English-friendly",
+    "akeneo": "Germany visa sponsorship + English-friendly",
+    "aldi south it": "Germany visa sponsorship + English-friendly",
+    "amazon": "Germany visa sponsorship + English-friendly",
+    "applike": "Germany visa sponsorship + English-friendly",
+    "arup deutschland": "Germany visa sponsorship + English-friendly",
+    "awin": "Germany visa sponsorship + English-friendly",
+    "bit capital": "Germany visa sponsorship + English-friendly",
+    "bmw": "Germany visa sponsorship + English-friendly",
+    "babbel": "Germany visa sponsorship + English-friendly",
+    "bigpoint": "Germany visa sponsorship + English-friendly",
+    "billie": "Germany visa sponsorship + English-friendly",
+    "black forest labs": "Germany visa sponsorship + English-friendly",
+    "bolt": "Germany visa sponsorship + English-friendly",
+    "bonial": "Germany visa sponsorship + English-friendly",
+    "bosch": "Germany visa sponsorship + English-friendly",
+    "brainlab": "Germany visa sponsorship + English-friendly",
+    "celonis": "Germany visa sponsorship + English-friendly",
+    "celus": "Germany visa sponsorship + English-friendly",
+    "choco": "Germany visa sponsorship + English-friendly",
+    "clark": "Germany visa sponsorship + English-friendly",
+    "codasip": "Germany visa sponsorship + English-friendly",
+    "constellr": "Germany visa sponsorship + English-friendly",
+    "crytek": "Germany visa sponsorship + English-friendly",
+    "dhl group": "Germany visa sponsorship + English-friendly",
+    "data guard": "Germany visa sponsorship + English-friendly",
+    "deepl": "Germany visa sponsorship + English-friendly",
+    "delivery hero": "Germany visa sponsorship + English-friendly",
+    "deutsche telekom": "Germany visa sponsorship + English-friendly",
+    "dexter health": "Germany visa sponsorship + English-friendly",
+    "distribusion": "Germany visa sponsorship + English-friendly",
+    "doctrine": "Germany visa sponsorship + English-friendly",
+    "dr. oetker": "Germany visa sponsorship + English-friendly",
+    "e.on": "Germany visa sponsorship + English-friendly",
+    "ecosia": "Germany visa sponsorship + English-friendly",
+    "elunic": "Germany visa sponsorship + English-friendly",
+    "emma - the sleep co": "Germany visa sponsorship + English-friendly",
+    "innogames": "Germany visa sponsorship + English-friendly",
+    "intermate group": "Germany visa sponsorship + English-friendly",
+    "join": "Germany visa sponsorship + English-friendly",
+    "jetbrains": "Germany visa sponsorship + English-friendly",
+    "keller executive search": "Germany visa sponsorship + English-friendly",
+    "limehome": "Germany visa sponsorship + English-friendly",
+    "moia": "Germany visa sponsorship + English-friendly",
+    "onefootball": "Germany visa sponsorship + English-friendly",
+    "payabl.": "Germany visa sponsorship + English-friendly",
+    "realstudio": "Germany visa sponsorship + English-friendly",
+    "sap fioneer": "Germany visa sponsorship + English-friendly",
+    "sony music": "Germany visa sponsorship + English-friendly",
+    "speechify": "Germany visa sponsorship + English-friendly",
+    "spotify": "Germany visa sponsorship + English-friendly",
+    "superchat": "Germany visa sponsorship + English-friendly",
+    "taxfix": "Germany visa sponsorship + English-friendly",
+    "trade republic": "Germany visa sponsorship + English-friendly",
+    "vivenu": "Germany visa sponsorship + English-friendly",
+    "yenlo": "Germany visa sponsorship + English-friendly",
+    "zalando": "Germany visa sponsorship + English-friendly",
 }
 
 # Job sources to scan. Each entry: name, url, region, type (board/company/agency)
@@ -408,6 +472,69 @@ JOB_SOURCES = [
     {"name": "Booking.com", "url": "https://careers.booking.com", "region": "NL", "type": "company"},
     {"name": "Picnic", "url": "https://jobs.picnic.app", "region": "NL", "type": "company"},
     {"name": "Personio", "url": "https://www.personio.com/career/", "region": "DE", "type": "company"},
+    # --- Germany (61 English-speaking companies with visa sponsorship) ---
+    {"name": "3D Spark", "url": "https://3dspark.de/career", "region": "DE", "type": "company"},
+    {"name": "Aampere", "url": "https://www.aampere.com/career", "region": "DE", "type": "company"},
+    {"name": "Ada", "url": "https://ada.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Adevinta", "url": "https://www.adevinta.com/careers", "region": "DE", "type": "company"},
+    {"name": "Adidas", "url": "https://careers.adidas-group.com/", "region": "DE", "type": "company"},
+    {"name": "Adjoe", "url": "https://adjoe.io/company/careers/", "region": "DE", "type": "company"},
+    {"name": "Akeneo", "url": "https://careers.akeneo.com/", "region": "DE", "type": "company"},
+    {"name": "Aldi South IT", "url": "https://it-jobs.aldi-sued.de/en", "region": "DE", "type": "company"},
+    {"name": "Amazon", "url": "https://www.amazon.jobs/en/locations/germany", "region": "DE", "type": "company"},
+    {"name": "Applike", "url": "https://applike-group.com/jobs/", "region": "DE", "type": "company"},
+    {"name": "Arup Deutschland", "url": "https://www.arup.com/careers", "region": "DE", "type": "company"},
+    {"name": "Awin", "url": "https://www.awin.com/careers", "region": "DE", "type": "company"},
+    {"name": "BIT Capital", "url": "https://bitcap.com/en/careers-en/", "region": "DE", "type": "company"},
+    {"name": "BMW", "url": "https://bmwgroup.jobs/de/en.html", "region": "DE", "type": "company"},
+    {"name": "Babbel", "url": "https://jobs.babbel.com/", "region": "DE", "type": "company"},
+    {"name": "Bigpoint", "url": "https://bigpoint.net/careers/", "region": "DE", "type": "company"},
+    {"name": "Billie", "url": "https://billie.io/en/jobs", "region": "DE", "type": "company"},
+    {"name": "Black Forest Labs", "url": "https://blackforestlabs.ai/#careers", "region": "DE", "type": "company"},
+    {"name": "Bolt", "url": "https://bolt.eu/en/careers/positions/", "region": "DE", "type": "company"},
+    {"name": "Bonial", "url": "https://bonial.recruitee.com/", "region": "DE", "type": "company"},
+    {"name": "Bosch", "url": "https://www.bosch.de/karriere/", "region": "DE", "type": "company"},
+    {"name": "Brainlab", "url": "https://www.brainlab.com/career/jobs/?country=germany", "region": "DE", "type": "company"},
+    {"name": "Celonis", "url": "https://www.celonis.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company"},
+    {"name": "Choco", "url": "https://choco.com/careers", "region": "DE", "type": "company"},
+    {"name": "Clark", "url": "https://www.clark.io/career/", "region": "DE", "type": "company"},
+    {"name": "Codasip", "url": "https://apply.workable.com/codasip/", "region": "DE", "type": "company"},
+    {"name": "Constellr", "url": "https://constellr.com/careers", "region": "DE", "type": "company"},
+    {"name": "Crytek", "url": "https://www.crytek.com/career", "region": "DE", "type": "company"},
+    {"name": "DHL Group", "url": "https://careers.dhl.com/global/en", "region": "DE", "type": "company"},
+    {"name": "Data Guard", "url": "https://dataguard.de/en-de/career/", "region": "DE", "type": "company"},
+    {"name": "DeepL", "url": "https://jobs.deepl.com/", "region": "DE", "type": "company"},
+    {"name": "Delivery Hero", "url": "https://careers.deliveryhero.com/", "region": "DE", "type": "company"},
+    {"name": "Deutsche Telekom", "url": "https://careers.telekom.com/en/jobs", "region": "DE", "type": "company"},
+    {"name": "Dexter Health", "url": "https://join.com/companies/dexter-health", "region": "DE", "type": "company"},
+    {"name": "Distribusion", "url": "https://careers.distribusion.com/", "region": "DE", "type": "company"},
+    {"name": "Doctrine", "url": "https://www.doctrine.fr/careers", "region": "DE", "type": "company"},
+    {"name": "Dr. Oetker", "url": "https://www.oetker.de/karriere", "region": "DE", "type": "company"},
+    {"name": "E.ON", "url": "https://www.eon.com/en/about-us/careers.html", "region": "DE", "type": "company"},
+    {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
+    {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
+    {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/job", "region": "DE", "type": "company"},
+    {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company"},
+    {"name": "Intermate Group", "url": "https://www.intermate-group.de/jobs", "region": "DE", "type": "company"},
+    {"name": "JOIN", "url": "https://join.com/careers", "region": "DE", "type": "company"},
+    {"name": "JetBrains", "url": "https://www.jetbrains.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Limehome", "url": "https://www.limehome.com/careers", "region": "DE", "type": "company"},
+    {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company"},
+    {"name": "OneFootball", "url": "https://company.onefootball.com/careers", "region": "DE", "type": "company"},
+    {"name": "Payabl.", "url": "https://payabl.com/careers", "region": "DE", "type": "company"},
+    {"name": "RealStudio", "url": "https://realstudio.de/", "region": "DE", "type": "company"},
+    {"name": "SAP Fioneer", "url": "https://www.sapfioneer.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Sony Music", "url": "https://www.sonymusic.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Speechify", "url": "https://speechify.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Spotify", "url": "https://www.lifeatspotify.com/", "region": "DE", "type": "company"},
+    {"name": "Superchat", "url": "https://www.superchat.de/karriere", "region": "DE", "type": "company"},
+    {"name": "Taxfix", "url": "https://taxfix.de/en/job-openings/", "region": "DE", "type": "company"},
+    {"name": "Trade Republic", "url": "https://traderepublic.com/en-de/careers", "region": "DE", "type": "company"},
+    {"name": "Vivenu", "url": "https://vivenu.com/careers", "region": "DE", "type": "company"},
+    {"name": "Yenlo", "url": "https://www.yenlo.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Zalando", "url": "https://jobs.zalando.com/", "region": "DE", "type": "company"},
 ]
 
 RECRUITER_AGENCIES = [
@@ -1977,68 +2104,78 @@ class JobTracker:
         """
         Scan Gmail inbox for rejection emails and update tracker status.
         Returns list of newly detected rejections.
+        Timeout after 30s to avoid hanging the scan.
         """
-        rejections = []
-        try:
-            mail = imaplib.IMAP4_SSL("imap.gmail.com")
-            mail.login(gmail_user, gmail_pass)
-            mail.select("inbox")
+        def _run():
+            result_list = []
+            try:
+                mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=15)
+                mail.login(gmail_user, gmail_pass)
+                mail.select("inbox")
 
-            from datetime import timedelta
-            since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
-            search_criteria = f'(SINCE {since_date})'
+                from datetime import timedelta
+                since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
+                search_criteria = f'(SINCE {since_date})'
 
-            rejection_keywords = [
-                "unfortunately", "not moving forward", "position has been filled",
-                "regret to inform", "not selected", "decided to move forward with other candidates",
-                "we will not be moving forward", "application status", "update on your application",
-                "your application at", "thank you for your interest",
-            ]
+                rejection_keywords = [
+                    "unfortunately", "not moving forward", "position has been filled",
+                    "regret to inform", "not selected", "decided to move forward with other candidates",
+                    "we will not be moving forward", "application status", "update on your application",
+                    "your application at", "thank you for your interest",
+                ]
 
-            result, data = mail.search(None, search_criteria)
-            if result != "OK":
-                return rejections
+                result, data = mail.search(None, search_criteria)
+                if result != "OK":
+                    return result_list
 
-            for num in data[0].split():
-                try:
-                    result, msg_data = mail.fetch(num, "(RFC822)")
-                    if result != "OK":
+                for num in data[0].split():
+                    try:
+                        result, msg_data = mail.fetch(num, "(RFC822)")
+                        if result != "OK":
+                            continue
+                        raw_email = msg_data[0][1]
+                        msg = email.message_from_bytes(raw_email)
+                        subject = msg["subject"] or ""
+                        body = ""
+                        if msg.is_multipart():
+                            for part in msg.walk():
+                                if part.get_content_type() == "text/plain":
+                                    body = part.get_payload(decode=True) or b""
+                                    body = body.decode("utf-8", errors="ignore")
+                                    break
+                        else:
+                            body = msg.get_payload(decode=True) or b""
+                            body = body.decode("utf-8", errors="ignore")
+
+                        full_text = (subject + " " + body).lower()
+                        is_rejection = any(kw in full_text for kw in rejection_keywords)
+
+                        if is_rejection:
+                            for key, entry in self.data["jobs"].items():
+                                if entry.get("status") != "applied":
+                                    continue
+                                company = entry["company"].lower()
+                                if company in full_text and len(company) > 3:
+                                    self.update_status(entry["title"], entry["company"], "rejected",
+                                                       notes=f"Auto-detected from email: {subject[:80]}")
+                                    result_list.append((entry["title"], entry["company"], subject))
+                                    break
+                    except Exception:
                         continue
-                    raw_email = msg_data[0][1]
-                    msg = email.message_from_bytes(raw_email)
-                    subject = msg["subject"] or ""
-                    body = ""
-                    if msg.is_multipart():
-                        for part in msg.walk():
-                            if part.get_content_type() == "text/plain":
-                                body = part.get_payload(decode=True) or b""
-                                body = body.decode("utf-8", errors="ignore")
-                                break
-                    else:
-                        body = msg.get_payload(decode=True) or b""
-                        body = body.decode("utf-8", errors="ignore")
 
-                    full_text = (subject + " " + body).lower()
-                    is_rejection = any(kw in full_text for kw in rejection_keywords)
+                mail.logout()
+            except Exception:
+                pass
+            return result_list
 
-                    if is_rejection:
-                        # Try to identify which company
-                        for key, entry in self.data["jobs"].items():
-                            if entry.get("status") != "applied":
-                                continue
-                            company = entry["company"].lower()
-                            if company in full_text and len(company) > 3:
-                                self.update_status(entry["title"], entry["company"], "rejected",
-                                                   notes=f"Auto-detected from email: {subject[:80]}")
-                                rejections.append((entry["title"], entry["company"], subject))
-                                break
-                except Exception:
-                    continue
-
-            mail.logout()
-        except Exception as e:
-            print(f"  [tracker] Email scan error: {e}")
-        return rejections
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            fut = pool.submit(_run)
+            try:
+                return fut.result(timeout=60)
+            except Exception:
+                print("  [tracker] Email scan timed out (60s)")
+                return []
 
 
 # ---------------------------------------------------------------------------
@@ -2055,6 +2192,13 @@ def main():
     parser.add_argument("--gmail-user", help="Gmail address (overrides .env GMAIL_ADDRESS)")
     parser.add_argument("--gmail-pass", help="Gmail App Password (overrides .env)")
     parser.add_argument("--threshold", type=int, default=60, help="Match score threshold (default: 60)")
+    parser.add_argument("--source-types", default="all",
+                        choices=["all", "ats", "boards", "playwright"],
+                        help="Which source types to scan: ats (Greenhouse/Lever/Ashby), "
+                             "boards (LinkedIn/Indeed/Naukri/etc), playwright (RemoteOK/WorkingNomads/etc), "
+                             "or all (default: all)")
+    parser.add_argument("--email-scan-only", action="store_true",
+                        help="Only scan Gmail for rejection emails (skip job scanning)")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -2102,15 +2246,24 @@ def main():
     # --- Load job tracker ---
     tracker = JobTracker()
     print(f"  [tracker] {len(tracker.data['jobs'])} tracked jobs loaded")
-    # Run email rejection scanner
-    gmail_user = os.environ.get("GMAIL_ADDRESS", "")
-    gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
-    if gmail_user and gmail_pass:
+
+    # --email-scan-only: scan Gmail for rejections and exit
+    if args.email_scan_only:
+        gmail_user = os.environ.get("GMAIL_ADDRESS", "")
+        gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not gmail_user or not gmail_pass:
+            print("Error: GMAIL_ADDRESS and GMAIL_APP_PASSWORD must be set in .env")
+            sys.exit(1)
+        print("Scanning Gmail for rejection emails...")
         rejections = tracker.scan_email_for_rejections(gmail_user, gmail_pass)
         if rejections:
-            print(f"  [tracker] Auto-detected {len(rejections)} rejections from email")
+            print(f"  Detected {len(rejections)} new rejection(s):")
             for t, c, s in rejections:
-                print(f"    {t} @ {c} - {s[:50]}")
+                print(f"    {t} @ {c} - {s[:80]}")
+        else:
+            print("  No new rejections found.")
+        sync_tracker_to_gsheet(tracker)
+        return
 
     # Helper to check tracker before adding a match
     def should_include(job):
@@ -2123,26 +2276,27 @@ def main():
             return False
         return True
 
-    for source in JOB_SOURCES:
-        print(f"Scanning: {source['name']} ({source['region']})")
-        jobs = fetch_jobs_from_source(source)
-        for job in jobs:
-            if not should_include(job):
-                continue
-            score, relocation_note = score_job(job["title"], job["description"], job["company"])
-            if score >= args.threshold:
-                resume = pick_resume(job["company"])
-                suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                all_matches.append({
-                    **job,
-                    "score": score,
-                    "resume": resume,
-                    "company_url": company_url(job["company"], source.get("url")),
-                    "relocation_note": relocation_note,
-                    "suggestions": suggestions,
-                    "salary_info": salary_info,
-                })
+    if args.source_types in ("all", "ats"):
+        for source in JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source['region']})")
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
 
     # --- Web search: LinkedIn, Indeed, Naukri, Instahyre ---
     board_scrapers = [
@@ -2156,21 +2310,22 @@ def main():
         ("Instahyre", search_instahyre),
     ]
     domain_queries = build_domain_queries()
-    for query in domain_queries:
-        for board_name, board_fn in board_scrapers:
-            for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
-                jobs = board_fn(query, location=region)
-                for job in jobs:
-                    if not should_include(job):
-                        continue
-                    score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                    if score >= args.threshold:
-                        resume = pick_resume(job["company"])
-                        suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                        all_matches.append({**job, "score": score, "resume": resume,
-                                            "relocation_note": relocation_note, "suggestions": suggestions,
-                                            "salary_info": salary_info})
+    if args.source_types in ("all", "boards"):
+        for query in domain_queries:
+            for board_name, board_fn in board_scrapers:
+                for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
+                    jobs = board_fn(query, location=region)
+                    for job in jobs:
+                        if not should_include(job):
+                            continue
+                        score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                        if score >= args.threshold:
+                            resume = pick_resume(job["company"])
+                            suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                            salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                            all_matches.append({**job, "score": score, "resume": resume,
+                                                "relocation_note": relocation_note, "suggestions": suggestions,
+                                                "salary_info": salary_info})
 
     # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
@@ -2192,27 +2347,10 @@ def main():
         ("EnglishJobSearch", search_englishjobsearch),
         ("BulldogJob", search_bulldogjob),
     ]
-    for pw_name, pw_fn in pw_scrapers:
-        try:
-            jobs = pw_fn("", location="Remote")
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                if score >= args.threshold:
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({**job, "score": score, "resume": resume,
-                                        "relocation_note": relocation_note, "suggestions": suggestions,
-                                        "salary_info": salary_info})
-        except Exception as e:
-            print(f"  [{pw_name.lower()}] Error: {e}")
-    # Pass domain query to batch scrapers that support it
-    for pw_name, pw_fn in pw_batch_scrapers:
-        for query in domain_queries:
+    if args.source_types in ("all", "playwright"):
+        for pw_name, pw_fn in pw_scrapers:
             try:
-                jobs = pw_fn(query, location="Remote")
+                jobs = pw_fn("", location="Remote")
                 for job in jobs:
                     if not should_include(job):
                         continue
@@ -2226,6 +2364,24 @@ def main():
                                             "salary_info": salary_info})
             except Exception as e:
                 print(f"  [{pw_name.lower()}] Error: {e}")
+        # Pass domain query to batch scrapers that support it
+        for pw_name, pw_fn in pw_batch_scrapers:
+            for query in domain_queries:
+                try:
+                    jobs = pw_fn(query, location="Remote")
+                    for job in jobs:
+                        if not should_include(job):
+                            continue
+                        score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                        if score >= args.threshold:
+                            resume = pick_resume(job["company"])
+                            suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                            salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                            all_matches.append({**job, "score": score, "resume": resume,
+                                                "relocation_note": relocation_note, "suggestions": suggestions,
+                                                "salary_info": salary_info})
+                except Exception as e:
+                    print(f"  [{pw_name.lower()}] Error: {e}")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 

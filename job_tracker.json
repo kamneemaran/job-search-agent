@@ -28,7 +28,8 @@
       "status": "new",
       "date_found": "2026-06-20T00:54:12.879706",
       "date_updated": "2026-06-20T01:05:33.845553",
-      "notes": "This looks like a good fit - backend/platform engineering"
+      "notes": "This looks like a good fit - backend/platform engineering",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|services architect 3": {
       "title": "Services Architect 3",
@@ -57,17 +58,18 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.880615",
-      "date_updated": "2026-06-20T00:54:12.880625"
+      "date_updated": "2026-06-20T00:54:12.880625",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "elastic|principal software engineer i - distributed systems - elasticsearch": {
       "title": "Principal Software Engineer I - Distributed Systems - Elasticsearch",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=8002555&gh_jid=8002555",
       "score": 92,
-      "status": "applied",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.881206",
-      "date_updated": "2026-06-20T16:29:54.934412",
-      "notes": "Applied via Elastic careers page"
+      "date_updated": "2026-06-20T19:06:31.942328",
+      "notes": "Auto-detected from email: Thank you for applying to Elastic!"
     },
     "elastic|senior java developer - distributed systems - elasticsearch": {
       "title": "Senior Java Developer - Distributed Systems - Elasticsearch",
@@ -76,7 +78,8 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.881670",
-      "date_updated": "2026-06-20T00:54:12.881677"
+      "date_updated": "2026-06-20T00:54:12.881677",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "elastic|senior java engineer - distributed systems - elasticsearch": {
       "title": "Senior Java Engineer - Distributed Systems - Elasticsearch",
@@ -85,7 +88,8 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.882045",
-      "date_updated": "2026-06-20T00:54:12.882052"
+      "date_updated": "2026-06-20T00:54:12.882052",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "airbnb|staff software engineer, infrastructure": {
       "title": "Staff Software Engineer, Infrastructure",
@@ -94,7 +98,8 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.882702",
-      "date_updated": "2026-06-20T00:54:12.882710"
+      "date_updated": "2026-06-20T00:54:12.882710",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|senior software engineer ": {
       "title": "Senior Software Engineer ",
@@ -103,7 +108,8 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.883108",
-      "date_updated": "2026-06-20T00:54:12.883114"
+      "date_updated": "2026-06-20T00:54:12.883114",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|software engineer": {
       "title": "Software Engineer",
@@ -112,7 +118,8 @@
       "score": 92,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.883548",
-      "date_updated": "2026-06-20T00:54:12.883554"
+      "date_updated": "2026-06-20T00:54:12.883554",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "gitlab|senior backend engineer, gitlab delivery: runway (platform engineering)": {
       "title": "Senior Backend Engineer, Gitlab Delivery: Runway (Platform Engineering)",
@@ -121,7 +128,8 @@
       "score": 85,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.883999",
-      "date_updated": "2026-06-20T00:54:12.884004"
+      "date_updated": "2026-06-20T00:54:12.884004",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "stripe|backend engineer, privy": {
       "title": "Backend Engineer, Privy",
@@ -130,7 +138,8 @@
       "score": 85,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.884520",
-      "date_updated": "2026-06-20T00:54:12.884528"
+      "date_updated": "2026-06-20T00:54:12.884528",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "stockgro|backend engineer": {
       "title": "Backend Engineer",
@@ -166,7 +175,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.886675",
-      "date_updated": "2026-06-20T00:54:12.886683"
+      "date_updated": "2026-06-20T00:54:12.886683",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "elastic|senior developer advocate (video content creator)": {
       "title": "Senior Developer Advocate (Video Content Creator)",
@@ -211,7 +221,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.889977",
-      "date_updated": "2026-06-20T00:54:12.889986"
+      "date_updated": "2026-06-20T00:54:12.889986",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "dropbox|frontend product software engineer, design systems": {
       "title": "Frontend Product Software Engineer, Design Systems",
@@ -265,7 +276,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.895886",
-      "date_updated": "2026-06-20T00:54:12.895899"
+      "date_updated": "2026-06-20T00:54:12.895899",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|country manager": {
       "title": "Country Manager",
@@ -320,7 +332,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.901772",
-      "date_updated": "2026-06-20T00:54:12.901779"
+      "date_updated": "2026-06-20T00:54:12.901779",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|senior software engineer - code gen": {
       "title": "Senior Software Engineer - Code Gen",
@@ -356,7 +369,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.906333",
-      "date_updated": "2026-06-20T00:54:12.906344"
+      "date_updated": "2026-06-20T00:54:12.906344",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|senior software engineer - trading": {
       "title": "Senior Software Engineer - Trading",
@@ -392,7 +406,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.910204",
-      "date_updated": "2026-06-20T00:54:12.910212"
+      "date_updated": "2026-06-20T00:54:12.910212",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|staff software engineer, backend - platform (payment rails)": {
       "title": "Staff Software Engineer, Backend - Platform (Payment Rails)",
@@ -401,7 +416,8 @@
       "score": 78,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.911217",
-      "date_updated": "2026-06-20T00:54:12.911227"
+      "date_updated": "2026-06-20T00:54:12.911227",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|staff software engineer (tech lead, backend - platform (overseer)": {
       "title": "Staff Software Engineer (Tech Lead, Backend - Platform (Overseer)",
@@ -464,7 +480,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.918315",
-      "date_updated": "2026-06-20T00:54:12.918321"
+      "date_updated": "2026-06-20T00:54:12.918321",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "gitlab|staff backend engineer, sscs: ai governance": {
       "title": "Staff Backend Engineer, SSCS: AI Governance",
@@ -473,7 +490,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.919448",
-      "date_updated": "2026-06-20T00:54:12.919454"
+      "date_updated": "2026-06-20T00:54:12.919454",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "gitlab|staff infrastructure security engineer (apac, emea, or us)": {
       "title": "Staff Infrastructure Security Engineer (APAC, EMEA, or US)",
@@ -554,7 +572,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.929592",
-      "date_updated": "2026-06-20T00:54:12.929598"
+      "date_updated": "2026-06-20T00:54:12.929598",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "airbnb|staff software engineer, unified data store": {
       "title": "Staff Software Engineer, Unified Data Store",
@@ -656,7 +675,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.943244",
-      "date_updated": "2026-06-20T00:54:12.943251"
+      "date_updated": "2026-06-20T00:54:12.943251",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|technical escalations engineer 2 (apm - java/proxy/c++) - mexico city": {
       "title": "Technical Escalations Engineer 2 (APM - Java/Proxy/C++) - Mexico City",
@@ -701,7 +721,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.950189",
-      "date_updated": "2026-06-20T00:54:12.950194"
+      "date_updated": "2026-06-20T00:54:12.950194",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|senior software engineer infra - compute platform": {
       "title": "Senior Software Engineer Infra - Compute Platform",
@@ -728,7 +749,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.954249",
-      "date_updated": "2026-06-20T00:54:12.954255"
+      "date_updated": "2026-06-20T00:54:12.954255",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "coinbase|staff software engineer, frontend (consumer - advanced trading)": {
       "title": "Staff Software Engineer, Frontend (Consumer - Advanced Trading)",
@@ -746,7 +768,8 @@
       "score": 70,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.957004",
-      "date_updated": "2026-06-20T00:54:12.957010"
+      "date_updated": "2026-06-20T00:54:12.957010",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "syfe|backend engineer (sde ii) - india": {
       "title": "Backend Engineer (SDE II) - India",
@@ -836,7 +859,8 @@
       "score": 62,
       "status": "new",
       "date_found": "2026-06-20T00:54:12.972506",
-      "date_updated": "2026-06-20T00:54:12.972512"
+      "date_updated": "2026-06-20T00:54:12.972512",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "gitlab|staff forward deployed engineer": {
       "title": "Staff Forward Deployed Engineer",
@@ -1231,7 +1255,8 @@
       "score": 62,
       "status": "new",
       "date_found": "2026-06-20T00:54:13.057157",
-      "date_updated": "2026-06-20T00:54:13.057164"
+      "date_updated": "2026-06-20T00:54:13.057164",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|staff software engineer - ml observability": {
       "title": "Staff Software Engineer - ML Observability",
@@ -1375,7 +1400,8 @@
       "score": 62,
       "status": "new",
       "date_found": "2026-06-20T01:21:43.340601",
-      "date_updated": "2026-06-20T01:21:43.340626"
+      "date_updated": "2026-06-20T01:21:43.340626",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
     },
     "datadog|senior software engineer - ai developer workflows": {
       "title": "Senior Software Engineer - AI Developer Workflows",
@@ -1412,6 +1438,266 @@
       "status": "applied",
       "date_found": "2026-06-20T18:16:38.507544",
       "date_updated": "2026-06-20T18:16:38.509351"
+    },
+    "datadog|senior software engineer - distributed systems": {
+      "title": "Senior Software Engineer - Distributed Systems",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/3851927/?gh_jid=3851927",
+      "score": 100,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.611794",
+      "date_updated": "2026-06-20T19:29:02.611802"
+    },
+    "stripe|security engineer": {
+      "title": "Security Engineer",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7923209",
+      "score": 78,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.624988",
+      "date_updated": "2026-06-20T19:29:02.624998"
+    },
+    "stripe|staff software engineer, stream compute": {
+      "title": "Staff Software Engineer, Stream Compute",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7767063",
+      "score": 78,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.627294",
+      "date_updated": "2026-06-20T19:29:02.627301"
+    },
+    "coinbase|senior software engineer, cdp - money movement ": {
+      "title": "Senior Software Engineer, CDP - Money Movement ",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/8013129?gh_jid=8013129",
+      "score": 78,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.631448",
+      "date_updated": "2026-06-20T19:29:02.631455"
+    },
+    "coinbase|staff software engineer, backend - platform (finhub - transfer)": {
+      "title": "Staff Software Engineer, Backend - Platform (FinHub - Transfer)",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7761563?gh_jid=7761563",
+      "score": 78,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.634325",
+      "date_updated": "2026-06-20T19:29:02.634337"
+    },
+    "stripe|staff engineer, issuing ": {
+      "title": "Staff Engineer, Issuing ",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7369269",
+      "score": 70,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.643856",
+      "date_updated": "2026-06-20T19:29:02.643863"
+    },
+    "airbnb|staff software engineer, global markets (backend)": {
+      "title": "Staff Software Engineer, Global Markets (Backend)",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7768427?gh_jid=7768427",
+      "score": 70,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:29:02.648038",
+      "date_updated": "2026-06-20T19:29:02.648045"
+    },
+    "elastic|principal search consulting architect": {
+      "title": "Principal Search Consulting Architect",
+      "company": "Elastic",
+      "url": "https://jobs.elastic.co/jobs?gh_jid=7988387&gh_jid=7988387",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.140622",
+      "date_updated": "2026-06-20T19:50:59.140632"
+    },
+    "stripe|backend engineer, core tech, canada": {
+      "title": "Backend Engineer, Core Tech, Canada",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=6567253",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.148708",
+      "date_updated": "2026-06-20T19:50:59.148714"
+    },
+    "stripe|backend engineer, core technology": {
+      "title": "Backend Engineer, Core Technology",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7182617",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.150881",
+      "date_updated": "2026-06-20T19:50:59.150887"
+    },
+    "stripe|backend engineer, expansion": {
+      "title": "Backend Engineer, Expansion",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7775622",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.152988",
+      "date_updated": "2026-06-20T19:50:59.152993"
+    },
+    "stripe|coe data & insights": {
+      "title": "CoE Data & Insights",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7839662",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.155040",
+      "date_updated": "2026-06-20T19:50:59.155046"
+    },
+    "stripe|employee relations partner": {
+      "title": "Employee Relations Partner",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7175216",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.157148",
+      "date_updated": "2026-06-20T19:50:59.157155"
+    },
+    "stripe|full stack engineer, billing": {
+      "title": "Full Stack Engineer, Billing",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=6786324",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.159304",
+      "date_updated": "2026-06-20T19:50:59.159310"
+    },
+    "stripe|internal audit lead, merchant acquirer limited purpose bank (malpb)": {
+      "title": "Internal Audit Lead, Merchant Acquirer Limited Purpose Bank (MALPB)",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7569605",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.161461",
+      "date_updated": "2026-06-20T19:50:59.161467"
+    },
+    "stripe|internal audit lead, stablecoins & digital assets": {
+      "title": "Internal Audit Lead, Stablecoins & Digital Assets",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7997826",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.163571",
+      "date_updated": "2026-06-20T19:50:59.163576"
+    },
+    "stripe|product enablement advisor": {
+      "title": "Product Enablement Advisor",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=8010302",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.165741",
+      "date_updated": "2026-06-20T19:50:59.165747"
+    },
+    "stripe|software engineer, core infrastructure": {
+      "title": "Software Engineer, Core Infrastructure",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7975725",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.167877",
+      "date_updated": "2026-06-20T19:50:59.167882"
+    },
+    "stripe|software engineer, data orchestration": {
+      "title": "Software Engineer, Data Orchestration",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7230670",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.170085",
+      "date_updated": "2026-06-20T19:50:59.170091"
+    },
+    "stripe|software engineer, product security data platforms": {
+      "title": "Software Engineer, Product Security Data Platforms",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7761694",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.172085",
+      "date_updated": "2026-06-20T19:50:59.172090"
+    },
+    "stripe|tax technology lead": {
+      "title": "Tax Technology Lead",
+      "company": "Stripe",
+      "url": "https://stripe.com/jobs/search?gh_jid=7905025",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.174076",
+      "date_updated": "2026-06-20T19:50:59.174081"
+    },
+    "airbnb|senior software engineer, reliability experience": {
+      "title": "Senior Software Engineer, Reliability Experience",
+      "company": "Airbnb",
+      "url": "https://careers.airbnb.com/positions/7756712?gh_jid=7756712",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.176243",
+      "date_updated": "2026-06-20T19:50:59.176249"
+    },
+    "datadog|senior developer advocate - modern app development": {
+      "title": "Senior Developer Advocate - Modern App Development",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7985840/?gh_jid=7985840",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.185225",
+      "date_updated": "2026-06-20T19:50:59.185231"
+    },
+    "datadog|software engineer - early career": {
+      "title": "Software Engineer - Early Career",
+      "company": "Datadog",
+      "url": "https://careers.datadoghq.com/detail/7646452/?gh_jid=7646452",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.189683",
+      "date_updated": "2026-06-20T19:50:59.189689"
+    },
+    "coinbase|internal audit it manager": {
+      "title": "Internal Audit IT Manager",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7755116?gh_jid=7755116",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.196379",
+      "date_updated": "2026-06-20T19:50:59.196386"
+    },
+    "coinbase|senior software engineer - data platform ": {
+      "title": "Senior Software Engineer - Data Platform ",
+      "company": "Coinbase",
+      "url": "https://www.coinbase.com/careers/positions/7812407?gh_jid=7812407",
+      "score": 62,
+      "status": "new",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_found": "2026-06-20T19:50:59.198645",
+      "date_updated": "2026-06-20T19:50:59.198650"
     }
   }
 }
