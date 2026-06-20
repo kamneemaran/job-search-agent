@@ -468,17 +468,17 @@ JOB_SOURCES = [
     # --- IT Services / Enterprise (some SAP/ERP relevance) ---
     {"name": "TCS", "url": "https://www.tcs.com/careers", "region": "IN", "type": "company", "ats": "greenhouse", "ats_slug": "tcs"},
     # --- EU / NL / DE ---
-    {"name": "Mollie", "url": "https://jobs.mollie.com", "region": "NL", "type": "company"},
+    {"name": "Mollie", "url": "https://jobs.mollie.com/vacancies", "region": "NL", "type": "company", "playwright": True},
     {"name": "Booking.com", "url": "https://careers.booking.com", "region": "NL", "type": "company"},
-    {"name": "Picnic", "url": "https://jobs.picnic.app", "region": "NL", "type": "company"},
-    {"name": "Personio", "url": "https://www.personio.com/career/", "region": "DE", "type": "company"},
+    {"name": "Picnic", "url": "https://jobs.picnic.app/en/tech", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Personio", "url": "https://www.personio.com/about-personio/careers/#see-our-open-roles", "region": "DE", "type": "company", "playwright": True},
     # --- Germany (61 English-speaking companies with visa sponsorship) ---
-    {"name": "3D Spark", "url": "https://3dspark.de/career", "region": "DE", "type": "company"},
-    {"name": "Aampere", "url": "https://www.aampere.com/career", "region": "DE", "type": "company"},
-    {"name": "Ada", "url": "https://ada.com/careers/", "region": "DE", "type": "company"},
+    {"name": "3D Spark", "url": "https://www.3dspark.de/career#Job-Offers", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Aampere", "url": "https://careers.amperecomputing.com/search/information-technology-software-and-firmware-full-time/jobs", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Ada", "url": "https://adaglobal.darwinbox.com/ms/candidatev2/main/careers/allJobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adevinta", "url": "https://www.adevinta.com/careers", "region": "DE", "type": "company"},
     {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Adidas", "url": "https://careers.adidas-group.com/", "region": "DE", "type": "company"},
+    {"name": "Adidas", "url": "https://careers.adidas-group.com/jobs?brand=&team=&type=&keywords=engineer&location=%5B%5D&sort=&locale=en&offset=0", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adjoe", "url": "https://adjoe.io/company/careers/", "region": "DE", "type": "company"},
     {"name": "Akeneo", "url": "https://careers.akeneo.com/", "region": "DE", "type": "company"},
     {"name": "Aldi South IT", "url": "https://it-jobs.aldi-sued.de/en", "region": "DE", "type": "company"},
@@ -1017,27 +1017,36 @@ def _is_within_months(date_val, months=6):
 def _scrape_company_career_page(source):
     """Use Playwright to scrape a company career page for job listings."""
     jobs = []
+    browser = None
+    page = None
     try:
         browser = _get_browser()
         page = browser.new_page()
         page.goto(source["url"], timeout=30000, wait_until="domcontentloaded")
-        page.wait_for_timeout(3000)
-        # Find all links on the page that look like job postings
-        links = page.eval_on_selector_all("a[href]", """
+        page.wait_for_timeout(4000)
+        skip_words = {"consent", "cookie", "privacy", "sign in", "sign up",
+                       "log in", "register", "subscribe", "accept all", "reject"}
+        links = page.eval_on_selector_all("a", """
             els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
+                .filter(e => e.text.length > 8 && e.text.length < 120)
                 .filter(e => {
-                    const kw = ['job', 'career', 'position', 'opening', 'stellenanzeige', 'karriere'];
                     const h = e.href.toLowerCase();
                     const t = e.text.toLowerCase();
-                    return h.includes('job') || h.includes('position') || h.includes('opening')
-                        || t.includes('job') || t.includes('position') || t.includes('opening')
-                        || t.includes('sap') || t.includes('senior') || t.includes('manager');
+                    const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
+                    if (skip.some(s => t.includes(s))) return false;
+                    const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
+                        || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
+                        || t.includes('consultant') || t.includes('sap') || t.includes('senior')
+                        || t.includes('staff') || t.includes('lead') || t.includes('principal');
+                    const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
+                        || h.includes('/position/') || h.includes('/opening/')
+                        || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
+                    return hasKw || urlIsJob;
                 })
-                .filter(e => e.text.length > 5 && e.text.length < 200)
         """)
         seen = set()
         for link in links:
-            title = link["text"]
+            title = link["text"].split('\n')[0].strip()
             href = link["href"]
             if href in seen:
                 continue
@@ -1050,28 +1059,28 @@ def _scrape_company_career_page(source):
                 "description": title,
                 "posted_at": None,
             })
-        page.close()
-        if jobs:
-            print(f"  [pw] {len(jobs)} jobs from {source['name']}")
-        else:
-            fallback = page.eval_on_selector_all("h2, h3, a[class*='job'], a[class*='career']", """
+        if not jobs:
+            links = page.eval_on_selector_all("a[href], h2, h3", """
                 els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
-                    .filter(e => e.text.length > 5 && e.text.length < 200)
+                    .filter(e => e.text.length > 10 && e.text.length < 120)
             """)
-            page.close()
-            for item in fallback[:20]:
+            for link in links[:20]:
                 jobs.append({
-                    "title": item["text"],
+                    "title": link["text"].split('\n')[0].strip(),
                     "company": source["name"],
                     "location": source.get("region", ""),
-                    "url": item["href"] or source["url"],
-                    "description": item["text"],
+                    "url": link["href"] or source["url"],
+                    "description": link["text"].split('\n')[0].strip(),
                     "posted_at": None,
                 })
-            if jobs:
-                print(f"  [pw] {len(jobs)} jobs (fallback) from {source['name']}")
+        if jobs:
+            print(f"  [pw] {len(jobs)} jobs from {source['name']}")
     except Exception as e:
         print(f"  [pw] Error scraping {source['name']}: {e}")
+    finally:
+        if page:
+            try: page.close()
+            except: pass
     return jobs
 
 
