@@ -76,6 +76,7 @@ PROFILE = {
         # Infrastructure / network / devops roles outside backend/platform engineering
         "network engineer", "network architect", "network administrator", "network security",
         "devops engineer", "devops", "site reliability engineer", "sre",
+        "network infrastructure",
         # Sales / account / customer-facing roles
         "account executive", "account manager", "account director",
         "sales engineer", "sales representative", "sales development", "sales ",
@@ -125,6 +126,11 @@ PROFILE = {
         "localization", "localization manager", "translator",
         # Design / UX
         "designer", "ui ", "ux ", "product design", "visual design",
+        # Mobile / frontend / QA
+        "android", "ios", "swift", "kotlin",
+        "frontend", "front-end", "front end", "ui engineer", "web engineer",
+        "qa ", "qa engineer", "quality assurance", "quality engineer", "test engineer",
+        "sdet", "automation engineer",
         # Miscellaneous non-engineering
         "technical writer", "documentation", "analyst",
         "support engineer", "it support", "desktop support",
@@ -381,6 +387,13 @@ def pick_resume(company):
         if key in company_lower:
             return RESUME_VERSIONS[resume]
     return RESUME_VERSIONS["faang"]  # default for unknown EU/global companies
+
+
+def company_url(company_name, career_page=None):
+    if career_page:
+        return career_page
+    slug = re.sub(r"[^a-zA-Z0-9]", "", company_name.lower().replace(" ", ""))
+    return f"https://linkedin.com/company/{slug}"
 
 
 def tailoring_suggestion(title, description, company):
@@ -1628,6 +1641,7 @@ def main():
                     **job,
                     "score": score,
                     "resume": resume,
+                    "company_url": company_url(job["company"], source.get("url")),
                     "relocation_note": relocation_note,
                     "suggestions": suggestions,
                 })
@@ -1742,13 +1756,13 @@ def main():
         import csv
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["Score", "Title", "Company", "Location", "URL", "Resume", "Relocation Note", "Suggestions", "Status"])
+            writer.writerow(["Score", "Title", "Company", "Location", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"])
             for m in all_matches:
                 suggestions = "; ".join(m.get("suggestions", []))
                 status = tracker.get_status(m["title"], m["company"])
                 writer.writerow([
                     m["score"], m["title"], m["company"], m.get("location", ""),
-                    m.get("url", ""), m.get("resume", ""),
+                    m.get("url", ""), m.get("company_url", company_url(m["company"])),
                     m.get("relocation_note", ""), suggestions, status
                 ])
         print(f"  [csv] Saved {len(all_matches)} matches to {csv_path}")
@@ -1769,13 +1783,13 @@ def main():
             sheet = service.spreadsheets()
 
             # Build rows: header + data
-            rows = [["Score", "Title", "Company", "Location", "URL", "Resume", "Relocation Note", "Suggestions", "Status"]]
+            rows = [["Score", "Title", "Company", "Location", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"]]
             for m in all_matches:
                 suggestions = "; ".join(m.get("suggestions", []))
                 status = tracker.get_status(m["title"], m["company"])
                 rows.append([
                     m["score"], m["title"], m["company"], m.get("location", ""),
-                    m.get("url", ""), m.get("resume", ""),
+                    m.get("url", ""), m.get("company_url", company_url(m["company"])),
                     m.get("relocation_note", ""), suggestions, status
                 ])
 

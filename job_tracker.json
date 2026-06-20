@@ -64,9 +64,10 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=8002555&gh_jid=8002555",
       "score": 92,
-      "status": "new",
+      "status": "applied",
       "date_found": "2026-06-20T00:54:12.881206",
-      "date_updated": "2026-06-20T00:54:12.881213"
+      "date_updated": "2026-06-20T16:29:54.934412",
+      "notes": "Applied via Elastic careers page"
     },
     "elastic|senior java developer - distributed systems - elasticsearch": {
       "title": "Senior Java Developer - Distributed Systems - Elasticsearch",
@@ -959,36 +960,40 @@
       "company": "Airbnb",
       "url": "https://careers.airbnb.com/positions/7453202?gh_jid=7453202",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.996284",
-      "date_updated": "2026-06-20T00:54:12.996292"
+      "date_updated": "2026-06-20T17:35:12.958749",
+      "notes": "Not relevant to profile"
     },
     "airbnb|senior manager global capacity and operational planning (community support)": {
       "title": "Senior Manager Global Capacity and Operational Planning (Community Support)",
       "company": "Airbnb",
       "url": "https://careers.airbnb.com/positions/7840101?gh_jid=7840101",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.998479",
-      "date_updated": "2026-06-20T00:54:12.998536"
+      "date_updated": "2026-06-20T17:35:12.958764",
+      "notes": "Not relevant to profile"
     },
     "airbnb|senior manager, market management amer, experiences": {
       "title": "Senior Manager, Market Management AMER, Experiences",
       "company": "Airbnb",
       "url": "https://careers.airbnb.com/positions/7568067?gh_jid=7568067",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:13.000606",
-      "date_updated": "2026-06-20T00:54:13.000619"
+      "date_updated": "2026-06-20T17:35:12.958768",
+      "notes": "Not relevant to profile"
     },
     "airbnb|senior manager, revenue operations": {
       "title": "Senior Manager, Revenue Operations",
       "company": "Airbnb",
       "url": "https://careers.airbnb.com/positions/7980044?gh_jid=7980044",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:13.002613",
-      "date_updated": "2026-06-20T00:54:13.002624"
+      "date_updated": "2026-06-20T17:35:12.958770",
+      "notes": "Not relevant to profile"
     },
     "airbnb|senior platform manager, defense platform": {
       "title": "Senior Platform Manager, Defense Platform",
