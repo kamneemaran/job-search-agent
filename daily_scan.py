@@ -476,7 +476,7 @@ JOB_SOURCES = [
     {"name": "3D Spark", "url": "https://www.3dspark.de/career#Job-Offers", "region": "DE", "type": "company", "playwright": True},
     {"name": "Aampere", "url": "https://careers.amperecomputing.com/search/information-technology-software-and-firmware-full-time/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Ada", "url": "https://adaglobal.darwinbox.com/ms/candidatev2/main/careers/allJobs", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Adevinta", "url": "https://www.adevinta.com/careers", "region": "DE", "type": "company"},
+    {"name": "Adevinta", "url": "https://adevinta.com/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Adidas", "url": "https://careers.adidas-group.com/jobs?brand=&team=Technology&type=Full+time&keywords=&location=%5B%5D&sort=&locale=en&offset=0", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adjoe", "url": "https://adjoe.io/careers/open-positions/", "region": "DE", "type": "company", "playwright": True},
@@ -488,7 +488,7 @@ JOB_SOURCES = [
     {"name": "Awin", "url": "https://www.awin.com/gb/careers/vacancies", "region": "DE", "type": "company", "playwright": True},
     {"name": "BIT Capital", "url": "https://bitcap.com/en/careers-en/", "region": "DE", "type": "company"},
     {"name": "BMW", "url": "https://www.bmwgroup.jobs/en.html", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Babbel", "url": "https://jobs.babbel.com/", "region": "DE", "type": "company"},
+    {"name": "Babbel", "url": "https://jobs.babbel.com/en?size=n_3_n", "region": "DE", "type": "company", "playwright": True},
     {"name": "Bigpoint", "url": "https://bigpoint.net/careers/", "region": "DE", "type": "company"},
     {"name": "Billie", "url": "https://billie.io/en/jobs", "region": "DE", "type": "company"},
     {"name": "Black Forest Labs", "url": "https://blackforestlabs.ai/#careers", "region": "DE", "type": "company"},
@@ -498,7 +498,7 @@ JOB_SOURCES = [
     {"name": "Brainlab", "url": "https://www.brainlab.com/career/jobs/?country=germany", "region": "DE", "type": "company"},
     {"name": "Celonis", "url": "https://www.celonis.com/careers/", "region": "DE", "type": "company"},
     {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Choco", "url": "https://choco.com/careers", "region": "DE", "type": "company"},
+    {"name": "Choco", "url": "https://choco.com/us/careers/open-roles", "region": "DE", "type": "company", "playwright": True},
     {"name": "Clark", "url": "https://www.clark.io/career/", "region": "DE", "type": "company"},
     {"name": "Codasip", "url": "https://apply.workable.com/codasip/", "region": "DE", "type": "company"},
     {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
@@ -525,11 +525,10 @@ JOB_SOURCES = [
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "OneFootball", "url": "https://company.onefootball.com/careers", "region": "DE", "type": "company"},
     {"name": "Payabl.", "url": "https://payabl.com/careers", "region": "DE", "type": "company"},
-    {"name": "RealStudio", "url": "https://realstudio.de/", "region": "DE", "type": "company"},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Sony Music", "url": "https://careers.sonymusic.com/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Speechify", "url": "https://speechify.com/careers/#open-positions", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Spotify", "url": "https://www.lifeatspotify.com/jobs", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Spotify", "url": "https://www.lifeatspotify.com/jobs", "region": "DE", "type": "company", "ats": "spotify"},
     {"name": "Superchat", "url": "https://www.superchat.com/careers/#openings", "region": "DE", "type": "company", "playwright": True},
     {"name": "Taxfix", "url": "https://taxfix.de/en/job-openings/", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "taxfix.com"},
     {"name": "Trade Republic", "url": "https://traderepublic.com/en-de/about#career", "region": "DE", "type": "company", "playwright": True},
@@ -1252,6 +1251,28 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Recruitee API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "spotify":
+            # Spotify custom API: https://api.lifeatspotify.com/wp-json/animal/v1/job/search
+            try:
+                resp = requests.get("https://api.lifeatspotify.com/wp-json/animal/v1/job/search",
+                                    params={"per_page": 100}, timeout=10)
+                if resp.status_code == 200:
+                    for posting in resp.json().get("result", []):
+                        locs = posting.get("locations", [])
+                        loc = locs[0].get("location", "Remote") if locs else "Remote"
+                        jobs.append({
+                            "title": posting.get("text", ""),
+                            "company": source["name"],
+                            "location": loc,
+                            "url": f"https://www.lifeatspotify.com/jobs/{posting.get('id', '')}",
+                            "description": posting.get("text", ""),
+                            "posted_at": None,
+                        })
+                else:
+                    print(f"  [warn] Spotify API returned {resp.status_code}")
+            except Exception as e:
+                print(f"  [warn] Spotify API error: {e}")
 
         elif source.get("playwright"):
             jobs = _scrape_company_career_page(source)
