@@ -477,6 +477,7 @@ JOB_SOURCES = [
     {"name": "Aampere", "url": "https://www.aampere.com/career", "region": "DE", "type": "company"},
     {"name": "Ada", "url": "https://ada.com/careers/", "region": "DE", "type": "company"},
     {"name": "Adevinta", "url": "https://www.adevinta.com/careers", "region": "DE", "type": "company"},
+    {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Adidas", "url": "https://careers.adidas-group.com/", "region": "DE", "type": "company"},
     {"name": "Adjoe", "url": "https://adjoe.io/company/careers/", "region": "DE", "type": "company"},
     {"name": "Akeneo", "url": "https://careers.akeneo.com/", "region": "DE", "type": "company"},
@@ -496,7 +497,7 @@ JOB_SOURCES = [
     {"name": "Bosch", "url": "https://www.bosch.de/karriere/", "region": "DE", "type": "company"},
     {"name": "Brainlab", "url": "https://www.brainlab.com/career/jobs/?country=germany", "region": "DE", "type": "company"},
     {"name": "Celonis", "url": "https://www.celonis.com/careers/", "region": "DE", "type": "company"},
-    {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company"},
+    {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Choco", "url": "https://choco.com/careers", "region": "DE", "type": "company"},
     {"name": "Clark", "url": "https://www.clark.io/career/", "region": "DE", "type": "company"},
     {"name": "Codasip", "url": "https://apply.workable.com/codasip/", "region": "DE", "type": "company"},
@@ -550,6 +551,7 @@ RESUME_VERSIONS = {
     "faang": "Kamnee_Maran_Resume_FAANG.pdf",
     "indian_tech": "Kamnee_Maran_Resume_IndianTech.pdf",
     "general": "Kamnee_Maran_Resume_v2.pdf",
+    "pradeep": "CV_Pradeep_SAP MM.pdf",
 }
 
 # Map companies to resume version (extend this as you add companies)
@@ -684,6 +686,9 @@ def score_job(title, description, company, location=""):
 
 
 def pick_resume(company):
+    resume_path = os.environ.get("RESUME_PATH")
+    if resume_path:
+        return os.path.basename(resume_path)
     company_lower = company.lower()
     for key, resume in COMPANY_RESUME_MAP.items():
         if key in company_lower:
@@ -1076,6 +1081,25 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Ashby API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "personio":
+            # Personio: https://company.jobs.personio.de/search.json
+            base_url = source["url"].rstrip("/")
+            api_url = f"{base_url}/search.json"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                for posting in resp.json():
+                    location = posting.get("office") or posting.get("offices", [""])[0] or "Germany"
+                    jobs.append({
+                        "title": posting.get("name", ""),
+                        "company": source["name"],
+                        "location": location,
+                        "url": source["url"],
+                        "description": posting.get("description", "") or posting.get("name", ""),
+                        "posted_at": None,
+                    })
+            else:
+                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
 
         else:
             print(f"  [skip] {source['name']} - no public ATS API detected. "
@@ -1754,6 +1778,94 @@ def search_workatstartup(query, location="Remote", max_results=25):
     return jobs
 
 
+def search_stepstone(query, location="Germany", max_results=25):
+    """Search StepStone Germany for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "-").lower()
+    loc = location.lower().replace(" ", "-")
+    url = f"https://www.stepstone.de/jobs/{q}/{loc}.html"
+    try:
+        titles = _playwright_scrape(
+            url,
+            "[data-at='job-item-title']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
+            wait_selector="[data-at='job-item-title']",
+        )
+        companies = _playwright_scrape(
+            url,
+            "[data-at='job-item-company']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+        )
+        locations = _playwright_scrape(
+            url,
+            "[data-at='job-item-location']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+        )
+        links = _playwright_scrape(
+            url,
+            "a[data-at='job-item-title']",
+            "els => els.map(e => e.href)",
+        )
+        min_len = min(len(titles), len(companies), len(links))
+        for i in range(min(min_len, max_results)):
+            jobs.append({
+                "title": titles[i],
+                "company": companies[i] if i < len(companies) else "Unknown",
+                "location": locations[i] if i < len(locations) else location,
+                "url": links[i],
+                "description": f"StepStone: {titles[i]} at {companies[i]}",
+            })
+        if jobs:
+            print(f"  [stepstone] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [stepstone] Error: {e}")
+    return jobs
+
+
+def search_monsterde(query, location="Germany", max_results=25):
+    """Search Monster Germany for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "-").lower()
+    loc = location.lower().replace(" ", "-")
+    url = f"https://www.monster.de/jobs/suche/?q={q}&where={loc}"
+    try:
+        titles = _playwright_scrape(
+            url,
+            "[data-testid='jobTitle']",
+            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+            wait_selector="[data-testid='jobTitle']",
+        )
+        companies = _playwright_scrape(
+            url,
+            "[data-testid='company']",
+            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+        )
+        locations = _playwright_scrape(
+            url,
+            "[data-testid='location']",
+            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+        )
+        links = _playwright_scrape(
+            url,
+            "a[data-testid='jobTitle']",
+            "els => els.map(e => e.href)",
+        )
+        min_len = min(len(titles), len(companies), len(links))
+        for i in range(min(min_len, max_results)):
+            jobs.append({
+                "title": titles[i],
+                "company": companies[i] if i < len(companies) else "Unknown",
+                "location": locations[i] if i < len(locations) else location,
+                "url": links[i],
+                "description": f"MonsterDE: {titles[i]} at {companies[i]}",
+            })
+        if jobs:
+            print(f"  [monsterde] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [monsterde] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 4. EMAIL DIGEST
 # ---------------------------------------------------------------------------
@@ -2208,7 +2320,7 @@ def main():
             print(f"Error: resume not found at {args.resume}")
             sys.exit(1)
         print(f"Loading resume: {args.resume}")
-        parsed = parse_resume_pdf(args.resume)
+        parsed, _missing = parse_resume_pdf(args.resume)
         PROFILE["name"] = parsed["name"] or args.name or PROFILE["name"]
         if parsed["core_skills"]:
             PROFILE["core_skills"] = parsed["core_skills"]
@@ -2346,6 +2458,8 @@ def main():
         ("Jobspresso", search_jobspresso),
         ("EnglishJobSearch", search_englishjobsearch),
         ("BulldogJob", search_bulldogjob),
+        ("StepStone", search_stepstone),
+        ("MonsterDE", search_monsterde),
     ]
     if args.source_types in ("all", "playwright"):
         for pw_name, pw_fn in pw_scrapers:

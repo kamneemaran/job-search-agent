@@ -56,6 +56,8 @@ from daily_scan import (
     search_womenintech,
     search_remoteok,
     search_skipthedrive,
+    search_stepstone,
+    search_monsterde,
     search_workingnomads,
     search_jobspresso,
     search_englishjobsearch,
@@ -436,6 +438,8 @@ def _search_jobs(
         ("EnglishJobSearch", search_englishjobsearch),
         ("BulldogJob", search_bulldogjob),
         ("WorkAtAStartup", search_workatstartup),
+        ("StepStone", search_stepstone),
+        ("MonsterDE", search_monsterde),
     ]
 
     sources_lower = [s.lower() for s in sources] if sources else []
