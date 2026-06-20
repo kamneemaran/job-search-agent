@@ -2311,6 +2311,8 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
+    parser.add_argument("--batch", type=int, choices=[1, 2, 3], default=0,
+                        help="Run in batches: 1=company ATS, 2=job boards, 3=playwright. Run sequentially to avoid hangs.")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -2388,7 +2390,7 @@ def main():
             return False
         return True
 
-    if args.source_types in ("all", "ats"):
+    if args.source_types in ("all", "ats") and (args.batch == 0 or args.batch == 1):
         for source in JOB_SOURCES:
             print(f"Scanning: {source['name']} ({source['region']})")
             jobs = fetch_jobs_from_source(source)
@@ -2422,7 +2424,7 @@ def main():
         ("Instahyre", search_instahyre),
     ]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards"):
+    if args.source_types in ("all", "boards") and (args.batch == 0 or args.batch == 2):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
@@ -2461,7 +2463,7 @@ def main():
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
     ]
-    if args.source_types in ("all", "playwright"):
+    if args.source_types in ("all", "playwright") and (args.batch == 0 or args.batch == 3):
         for pw_name, pw_fn in pw_scrapers:
             try:
                 jobs = pw_fn("", location="Remote")
@@ -2498,6 +2500,26 @@ def main():
                     print(f"  [{pw_name.lower()}] Error: {e}")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
+
+    # --- Batch mode: save per-batch results, merge on final batch ---
+    if args.batch > 0:
+        batch_path = f"last_scan_results_batch_{args.batch}.json"
+        with open(batch_path, "w") as f:
+            json.dump(all_matches, f, indent=2)
+        print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
+
+        if args.batch < 3:
+            print(f"Batch {args.batch} done. Run --batch {args.batch + 1} next for remaining sources.")
+            return
+        # Last batch: load previous batch results and merge
+        for b in [1, 2]:
+            prev_path = f"last_scan_results_batch_{b}.json"
+            if os.path.exists(prev_path):
+                with open(prev_path) as f:
+                    prev = json.load(f)
+                all_matches.extend(prev)
+                print(f"  [merge] Loaded {len(prev)} matches from {prev_path}")
+        all_matches.sort(key=lambda m: m["score"], reverse=True)
 
     # --- Save new matches to tracker (with resume info) ---
     for m in all_matches:
