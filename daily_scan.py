@@ -450,7 +450,7 @@ def score_job(title, description, company, location=""):
     title_lower = title.lower()
     loc_lower = location.lower()
 
-    if any(flag in text for flag in PROFILE["junior_red_flags"]):
+    if any(re.search(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])', text) for flag in PROFILE["junior_red_flags"]):
         return 0, "Filtered: junior/entry-level role detected"
 
     # Reject roles whose titles match red-flag career tracks

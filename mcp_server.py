@@ -72,6 +72,59 @@ server = Server("job-search-agent")
 
 tracker = JobTracker()
 
+# Cache for company career page visa checks: {company_lower: True/False/None}
+_visa_cache: dict[str, bool | None] = {}
+# Fill cache from known RELOCATION_FRIENDLY / NO_RELOCATION_FLAGS
+for co in RELOCATION_FRIENDLY:
+    _visa_cache[co.lower()] = True
+for co in NO_RELOCATION_FLAGS:
+    _visa_cache[co.lower()] = False
+
+def _check_career_page_visa(company: str, career_url: str | None = None) -> bool | None:
+    """Check if a company's career page mentions visa/relocation support.
+    Returns True/False, or None if unable to determine."""
+    co_key = company.lower().strip()
+    if co_key in _visa_cache:
+        return _visa_cache[co_key]
+
+    # Try to find a career page URL
+    urls_to_try = []
+    if career_url:
+        urls_to_try.append(career_url)
+    # Try known career page patterns
+    slug = re.sub(r'[^a-zA-Z0-9]', '', company.lower().replace(' ', ''))
+    for pattern in [
+        f"https://{slug}.com/careers",
+        f"https://www.{slug}.com/careers",
+        f"https://careers.{slug}.com",
+        f"https://{slug}.com/jobs",
+        f"https://www.{slug}.com/jobs",
+    ]:
+        urls_to_try.append(pattern)
+
+    import requests
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+    }
+    visa_kw = ["visa sponsorship", "work visa", "sponsorship", "relocation support",
+               "relocation assistance", "work authorization", "immigration support",
+               "visa provided", "we sponsor", "global mobility"]
+
+    for url in urls_to_try:
+        try:
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.status_code == 200:
+                text = resp.text.lower()
+                if any(kw in text for kw in visa_kw):
+                    _visa_cache[co_key] = True
+                    return True
+        except Exception:
+            continue
+
+    _visa_cache[co_key] = None
+    return None
+
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
@@ -116,6 +169,11 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Optional: company names to exclude, e.g. ['mollie', 'acme corp']",
+                    },
+                    "require_visa": {
+                        "type": "boolean",
+                        "description": "Optional: require visa sponsorship/relocation support (default: true). Set to false for exploratory searches.",
+                        "default": True,
                     },
                     "focus_role": {
                         "type": "string",
@@ -346,6 +404,7 @@ def _search_jobs(
     query: str,
     location: str = "Remote",
     threshold: int = 65,
+    require_visa: bool = True,
     exclude_companies: list[str] | None = None,
     focus_role: str = "",
     max_results: int = 10,
@@ -379,6 +438,27 @@ def _search_jobs(
     focus_words = focus_role.lower().split() if focus_role else []
     all_jobs = []
 
+    def _score(job):
+        """Score job, with career page fallback for visa check."""
+        desc = job.get("description", "")
+        if desc.startswith(("LinkedIn job:", "Indeed job:", "Naukri job:", "Instahyre job:",
+                            "Glassdoor job:", "SimplyHired:", "WomenInTech UK job:",
+                            "WeWorkRemotely:", "RemoteOK:", "SkipTheDrive:", "WorkingNomads:",
+                            "Jobspresso:", "EnglishJobSearch:", "BulldogJob:", "WorkAtAStartup:")):
+            desc = job["title"]
+        if not require_visa:
+            desc += " visa sponsorship relocation support"
+        score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
+        # If score is 0 because of visa check, try career page fallback
+        if score == 0 and "no mention of visa sponsorship" in note:
+            career_url = job.get("url", "") or None
+            has_visa = _check_career_page_visa(job["company"], career_url)
+            if has_visa:
+                desc += " visa sponsorship relocation support"
+                score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
+                note = (note + " | visa confirmed from career page").strip(" |")
+        return score, note
+
     # Company ATS sources
     for source in JOB_SOURCES:
         sname = source["name"].lower()
@@ -392,9 +472,7 @@ def _search_jobs(
             company_lower = job["company"].lower().strip()
             if exclude_lower and any(c in company_lower for c in exclude_lower):
                 continue
-            score, note = score_job(
-                job["title"], job["description"], job["company"], job.get("location", "")
-            )
+            score, note = _score(job)
             if score >= threshold:
                 all_jobs.append({**job, "score": score, "relocation_note": note})
 
@@ -408,9 +486,7 @@ def _search_jobs(
                 company_lower = job["company"].lower().strip()
                 if exclude_lower and any(c in company_lower for c in exclude_lower):
                     continue
-                score, note = score_job(
-                    job["title"], job["description"], job["company"], job.get("location", "")
-                )
+                score, note = _score(job)
                 if score >= threshold:
                     all_jobs.append({**job, "score": score, "relocation_note": note})
         except Exception as e:
@@ -426,9 +502,7 @@ def _search_jobs(
                 company_lower = job["company"].lower().strip()
                 if exclude_lower and any(c in company_lower for c in exclude_lower):
                     continue
-                score, note = score_job(
-                    job["title"], job["description"], job["company"], job.get("location", "")
-                )
+                score, note = _score(job)
                 if score >= threshold:
                     all_jobs.append({**job, "score": score, "relocation_note": note})
         except Exception as e:
@@ -454,7 +528,7 @@ def _search_jobs(
         return "\n".join(parts)
 
     lines = [f"# Job Search Results — '{query}' in {location}"]
-    lines.append(f"Settings: threshold={threshold}%")
+    lines.append(f"Settings: threshold={threshold}% | require_visa={'yes' if require_visa else 'no'}")
     if exclude_companies:
         lines.append(f"Excluded: {', '.join(exclude_companies)}")
     if focus_role:
