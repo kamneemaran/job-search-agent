@@ -195,7 +195,7 @@ EU_JOB_SOURCES = [
     {"name": "Cybervize Operations GmbH", "url": "https://join.com/companies/cybervize", "region": "EU", "type": "company", "playwright": True},
     {"name": "CYBEX GmbH", "url": "https://careers.cybex-online.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "Da Vinci", "url": "https://www.davinci.de/en/career", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Daimler (Mercedesâ€‘Benz Group)", "url": "https://jobs.mercedes-benz.com", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Daimler (Mercedes-Benz Group)", "url": "https://jobs.mercedes-benz.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "Daimler Truck AG", "url": "https://www.daimlertruck.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Dance GmbH", "url": "https://dance.co/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "DataGuard - DataCo GmbH", "url": "https://www.dataguard.com/career", "region": "EU", "type": "company", "playwright": True},
@@ -711,7 +711,7 @@ EU_JOB_SOURCES = [
 
     {"name": "Stream", "url": "https://getstream.io/team/#jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Stryker GmbH", "url": "https://careers.stryker.com/de", "region": "EU", "type": "company", "playwright": True},
-    {"name": "StrÃ¶er", "url": "https://www.stroeer.com/en/career", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Ströer", "url": "https://www.stroeer.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Studentjob", "url": "https://www.studentjob.at", "region": "EU", "type": "company", "playwright": True},
     {"name": "Stylight GmbH Technology, Information and", "url": "https://join.com/companies/stylight", "region": "EU", "type": "company", "playwright": True},
 
@@ -724,7 +724,7 @@ EU_JOB_SOURCES = [
     {"name": "Synapticon GmbH Automation", "url": "https://synapticon.jobs.personio.com/", "region": "EU", "type": "company", "playwright": True},
 
     {"name": "Synesos Health", "url": "https://www.syneoshealth.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "SÃ¼dzucker", "url": "https://www.suedzuckergroup.com/en/career", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Südzucker", "url": "https://www.suedzuckergroup.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Talon.One GmbH", "url": "https://www.talon.one/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Tangany GmbH", "url": "https://tangany.com/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Taxfix SE", "url": "https://taxfix.de/en/careers", "region": "EU", "type": "company", "playwright": True},
