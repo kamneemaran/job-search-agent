@@ -1,7 +1,7 @@
 """Middle East company career pages (batch 8)."""
 
 MIDDLE_EAST_JOB_SOURCES = [
-    {"name": "ADIB (Abu Dhabi Islamic Bank) IT", "url": "https://www.altayer.com/careers", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "ADIB (Abu Dhabi Islamic Bank) IT", "url": "https://www.adib.ae/en/pages/careers.aspx", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Al Tayer Digital", "url": "https://www.altayer.com/careers", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Bayzat", "url": "https://app.whitecarrot.io/careers/bayzat", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "DP World IT", "url": "https://www.dpworld.com/en/careers", "region": "Middle East", "type": "company", "playwright": True},
