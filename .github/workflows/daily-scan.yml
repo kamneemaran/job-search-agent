@@ -1,0 +1,80 @@
+name: Daily Job Scan
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: "Run specific batch (1, 2, 3) or all"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - "1"
+          - "2"
+          - "3"
+
+env:
+  GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+  GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+  GSHEET_ID: ${{ secrets.GSHEET_ID }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Validate config
+        run: |
+          if [ ! -f "CV_Pradeep_SAP MM.pdf" ]; then
+            echo "Resume PDF not found"
+            exit 1
+          fi
+          python -c "
+          import os
+          for var in ['GMAIL_ADDRESS', 'GMAIL_APP_PASSWORD', 'GSHEET_ID']:
+              if not os.getenv(var):
+                  print(f'Missing secret: {var}')
+                  exit(1)
+          print('All secrets set')
+          "
+
+      - name: Batch 1 - Company ATS
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '1' }}
+        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 1 2>&1 | tee scan_batch1.log
+
+      - name: Batch 2 - Job Boards
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2' }}
+        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 2 2>&1 | tee scan_batch2.log
+
+      - name: Batch 3 - Playwright + Merge + Email
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
+        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 3 2>&1 | tee scan_batch3.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-logs
+          path: |
+            scan_batch*.log
+            last_scan_results_batch_*.json
+            last_scan_results.json
+          retention-days: 7

@@ -2921,6 +2921,7 @@ def main():
         ("Xing", search_xing),
         ("JobsCh", search_jobsch),
         ("JobsinGermany", search_jobsingermany),
+        ("Arbeitnow", search_arbeitnow),
     ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == 0 or args.batch == 2):
