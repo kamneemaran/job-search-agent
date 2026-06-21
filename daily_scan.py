@@ -2113,15 +2113,23 @@ def build_email_html(matches):
     if not matches:
         return "<p>No new matches above threshold today. Sources checked, all clear.</p>"
 
-    rows = ""
+    # Group matches by location
+    from collections import OrderedDict
+    grouped = OrderedDict()
     for m in matches:
-        salary_line = _salary_html(m.get("salary_info"))
-        rows += f"""
+        loc = m.get("location", "Unknown").strip() or "Unknown"
+        grouped.setdefault(loc, []).append(m)
+
+    sections = ""
+    for loc, loc_matches in grouped.items():
+        rows = ""
+        for m in loc_matches:
+            salary_line = _salary_html(m.get("salary_info"))
+            rows += f"""
         <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
           <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
             <a href="{m['url']}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
-            &middot; {m['location']}
           </p>
           <p style="margin:0 0 8px;font-size:14px;"><b>Fit score: {m['score']}%</b></p>
           {salary_line}
@@ -2132,11 +2140,19 @@ def build_email_html(matches):
           <a href="{m['url']}" style="font-size:13px;">Open job posting &rarr;</a>
         </div>
         """
+        sections += f"""
+    <div style="margin-bottom:24px;">
+      <h3 style="background:#f0f4f8;padding:8px 12px;border-radius:6px;font-size:15px;">
+        {loc} ({len(loc_matches)})
+      </h3>
+      {rows}
+    </div>
+    """
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:600px;">
       <h2>Daily job matches - {datetime.now().strftime('%d %b %Y')}</h2>
       <p>{len(matches)} role(s) scored above threshold.</p>
-      {rows}
+      {sections}
     </body></html>
     """
 
