@@ -524,7 +524,7 @@ JOB_SOURCES = [
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
     {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/career-openings", "region": "DE", "type": "company", "playwright": True},
     {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company"},
+    {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "intermategroupgmbh"},
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
     {"name": "JetBrains", "url": "https://job-boards.eu.greenhouse.io/jetbrains", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "jetbrains"},
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
