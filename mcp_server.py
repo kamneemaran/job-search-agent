@@ -60,6 +60,7 @@ from daily_scan import (
     search_foundit,
     search_timesjobs,
     search_arcdev,
+    search_arbeitnow,
     search_seek,
     search_jora,
     search_xing,
@@ -218,7 +219,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="score_job",
-            title="Score a job posting against your profile",
             description="Score any job title + description against your resume profile (0-100). Shows why it scored that way.",
             inputSchema={
                 "type": "object",
@@ -237,7 +237,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="tracker_status",
-            title="Check job application tracker status",
             description="View all tracked jobs, their statuses (new/applied/rejected/offer), and recent updates",
             inputSchema={
                 "type": "object",
@@ -256,7 +255,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="update_tracker",
-            title="Update job application status",
             description="Update the status of a tracked job (e.g. mark as applied, rejected, offer). Jobs are organized by resume version in Google Sheets.",
             inputSchema={
                 "type": "object",
@@ -276,7 +274,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="parse_resume",
-            title="Parse a resume PDF",
             description="Extract name, email, current role, skills, and experience from a PDF resume. Validates that current_role, years_experience, and core_skills are present. Auto-configures title filters based on detected role domain.",
             inputSchema={
                 "type": "object",
@@ -291,7 +288,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_profile",
-            title="Show your search profile",
             description="View the current profile configuration: name, experience, core skills, and filter settings",
             inputSchema={
                 "type": "object",
@@ -469,6 +465,7 @@ def _search_jobs(
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),
+        ("Arbeitnow", search_arbeitnow),
         ("Seek", search_seek),
         ("Jora", search_jora),
         ("Xing", search_xing),
