@@ -519,7 +519,7 @@ JOB_SOURCES = [
     {"name": "Dr. Oetker", "url": "https://www.oetker.de/karriere", "region": "DE", "type": "company"},
     {"name": "Dynatrace", "url": "https://www.dynatrace.com/careers/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "eDreams ODIGEO", "url": "https://www.edreamsodigeocareers.com/jobs/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "E.ON", "url": "https://www.eon.com/en/about-us/careers.html", "region": "DE", "type": "company"},
+    {"name": "E.ON", "url": "https://jobs.eon.com/en", "region": "DE", "type": "company"},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
     {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/career-openings", "region": "DE", "type": "company", "playwright": True},
