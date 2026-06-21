@@ -121,8 +121,8 @@ def parse_resume_string(resume_text: str) -> dict:
                     education_entry["degree"] = degree_part.strip()
                     if "–" in rest:
                         field_dates = rest.split("–")
-                        education_entry["field"] = field_part[0].strip()
-                        education_entry["dates"] = field_part[1].strip()
+                        education_entry["field"] = field_dates[0].strip()
+                        education_entry["dates"] = field_dates[1].strip()
                     else:
                         education_entry["field"] = rest.strip()
                 else:
@@ -220,4 +220,3 @@ Cloud & Infrastructure: AWS, Docker, Kubernetes, CI/CD, SQS
         print(json.dumps(parsed_from_file, indent=2))
     else:
         print("Could not load resume from file.")
-
