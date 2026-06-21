@@ -1,0 +1,33 @@
+"""Global company / recruitment agency career pages (batch 5)."""
+
+GLOBAL_JOB_SOURCES = [
+    {"name": "7 Peak", "url": "https://7peakssoftware-hr.freshteam.com/jobs", "region": "Global", "type": "company", "ats": "freshteam"},
+    {"name": "astroscale", "url": "https://astroscale.bamboohr.com/careers?source=LinkedIn", "region": "Global", "type": "company", "ats": "bamboohr"},
+    {"name": "Moonpay", "url": "https://jobs.lever.co/moonpay", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "moonpay"},
+    {"name": "Washmen Dubai", "url": "https://jobs.lever.co/Washmen", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "Washmen"},
+
+    {"name": "About you", "url": "https://corporate.aboutyou.de/de/career/our-jobs", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Accord", "url": "https://accordinnovations.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Altenar", "url": "https://altenar.com/career", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Alteos", "url": "https://www.alteos.com/unternehmen/karriere", "region": "Global", "type": "company", "playwright": True},
+    {"name": "DataJob SE", "url": "https://datajob.se/open-job-positions", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Dremio", "url": "https://www.dremio.com/careers/job-postings", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Ez digital", "url": "https://ez-digital.co", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Free-Work", "url": "https://www.free-work.com/en-gb/tech-it/jobs", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Glovo", "url": "https://jobs.glovoapp.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "IT people Gulf", "url": "https://www.itpeoplegulf.com/life-at-it-people", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Keywords Studio", "url": "https://www.keywordsstudios.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Mistral AI", "url": "https://jobs.lever.co/mistral", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "mistral"},
+    {"name": "Optimus Search", "url": "https://optimussearch.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Percona", "url": "https://www.percona.com/about/careers", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Runna", "url": "https://public.runna.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Scopely", "url": "https://www.scopely.com/en/careers?jobviteiframe=search%3Fc", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Softenger", "url": "https://softenger.com", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Swisscom", "url": "https://sdcrotterdam.swisscom.ch/openpositions", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Techno", "url": "https://technologyadvice.com/careers/opportunities", "region": "Global", "type": "company", "playwright": True},
+    {"name": "VP", "url": "https://www.pflegehilfe.org/karriere", "region": "Global", "type": "company", "playwright": True},
+    {"name": "wearedevelopers", "url": "https://www.wearedevelopers.com/en/jobs", "region": "Global", "type": "company", "playwright": True},
+    {"name": "xad-technologies", "url": "https://www.careers-page.com/xad-technologies#openings", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Veriff", "url": "https://www.veriff.com/careers/open-positions", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Multiverse Computing", "url": "https://multiversecomputing.teamtailor.com/jobs", "region": "Global", "type": "company", "ats": "teamtailor"},
+]

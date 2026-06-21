@@ -30,6 +30,11 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import cloudscraper
 import PyPDF2
+from eu_companies import EU_JOB_SOURCES
+from global_companies import GLOBAL_JOB_SOURCES
+from apac_companies import APAC_JOB_SOURCES
+from us_canada_companies import US_CANADA_JOB_SOURCES
+from middle_east_companies import MIDDLE_EAST_JOB_SOURCES
 from dotenv import load_dotenv
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -37,13 +42,33 @@ from email.mime.text import MIMEText
 
 # Lazy import for Playwright (headless browser for JS-rendered sites)
 _playwright_browser = None
+_playwright_pw = None
 def _get_browser():
-    global _playwright_browser
+    global _playwright_browser, _playwright_pw
     if _playwright_browser is None:
         from playwright.sync_api import sync_playwright
-        _pw = sync_playwright().start()
-        _playwright_browser = _pw.chromium.launch(headless=True)
+        _playwright_pw = sync_playwright().start()
+        _playwright_browser = _playwright_pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
     return _playwright_browser
+
+def _with_stealth(page):
+    """Apply stealth anti-detection to a page if playwright_stealth is available."""
+    try:
+        from playwright_stealth import Stealth
+        Stealth().apply_stealth_sync(page)
+    except ImportError:
+        pass
+    try:
+        page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        """)
+    except Exception:
+        pass
 
 load_dotenv()
 
@@ -521,6 +546,7 @@ JOB_SOURCES = [
     {"name": "eDreams ODIGEO", "url": "https://www.edreamsodigeocareers.com/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "E.ON", "url": "https://jobs.eon.com/en", "region": "DE", "type": "company"},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
+    {"name": "Choco", "url": "https://jobs.ashbyhq.com/choco", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "choco"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
     {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/career-openings", "region": "DE", "type": "company", "playwright": True},
     {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company", "playwright": True},
@@ -1282,6 +1308,36 @@ def fetch_jobs_from_source(source):
             else:
                 print(f"  [warn] SmartRecruiters API returned {resp.status_code} for {source['name']}")
 
+        elif source.get("ats") == "teamtailor":
+            # Teamtailor JSON Feed: https://company.teamtailor.com/jobs.json
+            base_url = source["url"].rstrip("/")
+            if not base_url.endswith("/jobs"):
+                base_url += "/jobs"
+            api_url = base_url.rstrip("/") + ".json"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                for item in resp.json().get("items", []):
+                    title = item.get("title", "")
+                    if not title:
+                        continue
+                    jp = item.get("_jobposting", {})
+                    company = jp.get("hiringOrganization", {}).get("name", source["name"]) if jp else source["name"]
+                    locs = jp.get("jobLocation", []) if jp else []
+                    loc = ", ".join(
+                        l.get("address", {}).get("addressLocality", "")
+                        for l in locs if l.get("address", {}).get("addressLocality")
+                    ) if locs else source.get("region", "")
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": loc,
+                        "url": item.get("url", source["url"]),
+                        "description": item.get("content_text", "")[:2000] or title,
+                        "posted_at": _parse_date(item.get("date_published")),
+                    })
+            else:
+                print(f"  [warn] Teamtailor API returned {resp.status_code} for {source['name']}")
+
         elif source.get("ats") == "spotify":
             # Spotify custom API: https://api.lifeatspotify.com/wp-json/animal/v1/job/search
             try:
@@ -1315,13 +1371,21 @@ def fetch_jobs_from_source(source):
 
     if not jobs and source.get("type") == "company":
         try:
-            loc = source.get("region", "Germany")
-            li_jobs = search_linkedin(source["name"], location=loc, max_results=15)
-            for j in li_jobs:
-                if source["name"].lower() in j.get("company", "").lower():
-                    jobs.append(j)
+            source_name_clean = re.sub(r'\s+(GmbH|AG|SE|& Co\. KG|Ltd|Limited|Inc|PLC|SA|BV|NV)($|\s|,|\()', '', source["name"]).strip().lower()
+            locations_to_try = ["Remote"]
+            region = source.get("region", "")
+            if region and region not in ("Remote", "Global"):
+                locations_to_try.insert(0, region)
+            for loc in locations_to_try:
+                li_jobs = search_linkedin(source["name"], location=loc, max_results=25)
+                for j in li_jobs:
+                    lc = j.get("company", "").lower()
+                    if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
+                        jobs.append(j)
+                if jobs:
+                    break
             if jobs:
-                print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
+                print(f"  [linkedin] {len(jobs)} jobs for {source['name']} (fallback)")
         except Exception:
             pass
     return jobs
@@ -1404,28 +1468,13 @@ def search_linkedin(query, location="India", max_results=25):
 
 
 def search_indeed(query, location="India", max_results=25):
-    """Search Indeed for jobs matching a query using HTML scraping."""
+    """Search Indeed for jobs matching a query using Playwright."""
     jobs = []
-    scraper = cloudscraper.create_scraper()
-    scraper.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/125.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.google.com/",
-    })
     loc_param = location.replace(" ", "+")
     query_param = query.replace(" ", "+")
     url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}"
     try:
-        resp = scraper.get(url, timeout=15)
-        if resp.status_code != 200:
-            print(f"  [indeed] Indeed HTTP {resp.status_code} for '{query}'")
-            return jobs
-        html = resp.text
+        html = _playwright_html(url)
         titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
         companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
         if not companies:
@@ -1715,27 +1764,39 @@ def search_glassdoor(query, location="India", max_results=25):
 
 
 def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
-    """Generic helper to scrape JS-rendered pages using Playwright."""
+    """Generic helper to scrape JS-rendered pages using Playwright + stealth."""
     try:
         browser = _get_browser()
-        page = browser.new_page()
-        page.goto(url, timeout=30000, wait_until="networkidle")
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+        page.wait_for_timeout(2000)
         if wait_selector:
             page.wait_for_selector(wait_selector, timeout=10000)
         results = page.eval_on_selector_all(selector, extract_fn)
-        page.close()
+        context.close()
         return results
     except Exception as e:
         return []
 
 def _playwright_html(url, timeout=30000):
-    """Load a JS-rendered page with Playwright and return full HTML."""
+    """Load a JS-rendered page with Playwright + stealth and return full HTML."""
     try:
         browser = _get_browser()
-        page = browser.new_page()
-        page.goto(url, timeout=timeout, wait_until="networkidle")
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+        page.wait_for_timeout(2000)
         html = page.content()
-        page.close()
+        context.close()
         return html
     except Exception as e:
         return ""
@@ -2865,6 +2926,88 @@ def search_arbeitnow(query, location="Remote", max_results=25):
     return jobs
 
 
+def search_visasponsor(query, location="Remote", max_results=25):
+    """Search VisaSponsor.Jobs for visa-sponsored jobs using Playwright."""
+    jobs = []
+    classifications = "Engineering&classification=Financial-Services&classification=Information-Technology&classification=Management-and-Strategy&classification=Manufacturing-and-Logistics"
+    url = f"https://visasponsor.jobs/api/jobs?classification={classifications}&showMoreOptions=false"
+    try:
+        html = _playwright_html(url)
+        if not html:
+            print(f"  [visasponsor] No response for '{query}'")
+            return jobs
+        # Each job is an <a href="/api/jobs/..."> wrapping a card
+        cards = re.findall(
+            r'<a[^>]*href="(/api/jobs/[^"]+)"[^>]*>.*?'
+            r'class="fs-5[^"]*"[^>]*>([^<]+).*?'
+            r'employer-name[^>]*>([^<]+).*?'
+            r'col-11[^>]*>(.*?)</div>',
+            html, re.DOTALL
+        )
+        for link, title, company, loc_html in cards[:max_results]:
+            loc = re.sub(r'<[^>]+>', '', loc_html).strip()
+            jobs.append({
+                "title": title.strip(),
+                "company": company.strip(),
+                "location": loc if loc else location,
+                "url": "https://visasponsor.jobs" + link,
+                "description": f"Visa-sponsored: {title.strip()} at {company.strip()}",
+            })
+        if jobs:
+            print(f"  [visasponsor] {len(jobs)} jobs")
+    except Exception as e:
+        print(f"  [visasponsor] Error: {e}")
+    return jobs
+
+
+def search_incluso(query, location="Remote", max_results=25):
+    """Search Incluso (Teamtailor) jobs via JSON Feed."""
+    jobs = []
+    try:
+        resp = requests.get(
+            "https://openings.incluso.se/jobs.json",
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            items = resp.json().get("items", [])
+            query_lower = query.lower()
+            for item in items[:max_results]:
+                title = item.get("title", "").strip()
+                if not title:
+                    continue
+                # Client-side keyword filter
+                if not all(term in title.lower() for term in query_lower.split()):
+                    continue
+                jp = item.get("_jobposting", {})
+                company = "Incluso"
+                if jp:
+                    org = jp.get("hiringOrganization", {})
+                    if org.get("name"):
+                        company = org["name"]
+                    locs = jp.get("jobLocation", [])
+                    loc = ", ".join(
+                        l.get("address", {}).get("addressLocality", "")
+                        for l in locs if l.get("address", {}).get("addressLocality")
+                    ) if locs else location
+                else:
+                    loc = location
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": item.get("url", ""),
+                    "description": f"Incluso: {title}",
+                })
+            if jobs:
+                print(f"  [incluso] {len(jobs)} jobs for '{query}'")
+        else:
+            print(f"  [incluso] HTTP {resp.status_code}")
+    except Exception as e:
+        print(f"  [incluso] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -2886,8 +3029,8 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
-    parser.add_argument("--batch", type=str, choices=["1", "2a", "2b", "3"], default="",
-                        help="Run in batches: 1=company ATS, 2a=global job boards, 2b=niche/regional boards, 3=playwright. Run sequentially to avoid hangs.")
+    parser.add_argument("--batch", type=str, choices=["1", "2a", "2b", "3", "4", "5", "6", "7", "8"], default="",
+                        help="Run in batches: 1=company ATS, 2a=global job boards, 2b=niche/regional boards, 3=playwright, 4=EU companies, 5=Global, 6=APAC, 7=US/Canada. Run sequentially to avoid hangs.")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -3012,6 +3155,8 @@ def main():
         ("JobsCh", search_jobsch),
         ("JobsinGermany", search_jobsingermany),
         ("Arbeitnow", search_arbeitnow),
+        ("VisaSponsor", search_visasponsor),
+        ("Incluso", search_incluso),
     ]
     # Split batch 2: 2a = global/major boards, 2b = niche/regional boards
     _split = 10
@@ -3116,6 +3261,136 @@ def main():
                     print(f"  [{pw_name.lower()}] Error: {e}")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
+
+    # --- EU companies (batch 4) ---
+    if args.batch == "4":
+        for source in EU_JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
+            t0 = datetime.now()
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+
+    # --- Global companies / recruiters (batch 5) ---
+    if args.batch == "5":
+        for source in GLOBAL_JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source.get('region','Global')}) - {source['url']}")
+            t0 = datetime.now()
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+
+    # --- APAC companies (batch 6) ---
+    if args.batch == "6":
+        for source in APAC_JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source.get('region','APAC')}) - {source['url']}")
+            t0 = datetime.now()
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+
+    # --- US/Canada companies (batch 7) ---
+    if args.batch == "7":
+        for source in US_CANADA_JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source.get('region','US/Canada')}) - {source['url']}")
+            t0 = datetime.now()
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+
+    # --- Middle East companies (batch 8) ---
+    if args.batch == "8":
+        for source in MIDDLE_EAST_JOB_SOURCES:
+            print(f"Scanning: {source['name']} ({source.get('region','Middle East')}) - {source['url']}")
+            t0 = datetime.now()
+            jobs = fetch_jobs_from_source(source)
+            for job in jobs:
+                if not should_include(job):
+                    continue
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score >= args.threshold:
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
