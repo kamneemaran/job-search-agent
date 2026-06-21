@@ -9,5 +9,7 @@ credentials.json
 *.html
 .venv/
 last_scan_results.json
+last_scan_results_batch_*.json
 job_tracker.json
 *.pdf
+*.log
