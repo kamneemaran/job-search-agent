@@ -13,6 +13,10 @@ on:
           - "1"
           - "2"
           - "3"
+      resume_url:
+        description: "URL to download resume PDF (leave empty for repo default)"
+        required: false
+        default: ""
 
 env:
   GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
@@ -39,11 +43,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+      - name: Download resume (if URL provided)
+        if: ${{ github.event.inputs.resume_url != '' }}
+        run: |
+          curl -L -o resume.pdf "${{ github.event.inputs.resume_url }}"
+          echo "RESUME=resume.pdf" >> "$GITHUB_ENV"
+
+      - name: Use repo resume (default)
+        if: ${{ github.event.inputs.resume_url == '' }}
+        run: echo "RESUME=CV_Pradeep_SAP MM.pdf" >> "$GITHUB_ENV"
 
       - name: Validate config
         run: |
-          if [ ! -f "CV_Pradeep_SAP MM.pdf" ]; then
-            echo "Resume PDF not found"
+          if [ ! -f "$RESUME" ]; then
+            echo "Resume PDF not found: $RESUME"
             exit 1
           fi
           python -c "
@@ -57,15 +70,15 @@ jobs:
 
       - name: Batch 1 - Company ATS
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '1' }}
-        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 1 2>&1 | tee scan_batch1.log
+        run: python daily_scan.py --resume "$RESUME" --batch 1 2>&1 | tee scan_batch1.log
 
       - name: Batch 2 - Job Boards
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2' }}
-        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 2 2>&1 | tee scan_batch2.log
+        run: python daily_scan.py --resume "$RESUME" --batch 2 2>&1 | tee scan_batch2.log
 
       - name: Batch 3 - Playwright + Merge + Email
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
-        run: python daily_scan.py --resume "CV_Pradeep_SAP MM.pdf" --batch 3 2>&1 | tee scan_batch3.log
+        run: python daily_scan.py --resume "$RESUME" --batch 3 2>&1 | tee scan_batch3.log
 
       - uses: actions/upload-artifact@v4
         if: always()
