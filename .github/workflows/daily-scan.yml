@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       batch:
-        description: "Run specific batch (1, 2, 3) or all"
+        description: "Run specific batch or all (1=ATS, 2a=global boards, 2b=niche boards, 3=playwright, 4=EU companies, 5=Global, 6=APAC, 7=US/Canada, 8=Middle East)"
         required: true
         default: "all"
         type: choice
@@ -14,6 +14,11 @@ on:
           - "2a"
           - "2b"
           - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
         required: true
@@ -48,12 +53,23 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Download resume from URL
         run: |
-          curl -L -o resume.pdf "${{ github.event.inputs.resume_url }}"
+          URL="${{ github.event.inputs.resume_url }}"
+          # Convert Google Drive share/view URLs to direct download
+          if echo "$URL" | grep -q 'drive.google.com/file/d/'; then
+            FILE_ID=$(echo "$URL" | sed 's|.*drive.google.com/file/d/\([^/]*\).*|\1|')
+            URL="https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t"
+            echo "Converted Google Drive URL to direct download"
+          elif echo "$URL" | grep -q 'drive.google.com/open?id='; then
+            FILE_ID=$(echo "$URL" | sed 's|.*open?id=\([^&]*\).*|\1|')
+            URL="https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t"
+            echo "Converted Google Drive URL to direct download"
+          fi
+          curl -L -o resume.pdf "$URL"
           if [ "$(head -c 4 resume.pdf)" != "%PDF" ]; then
             head -c 500 resume.pdf
             echo ""
             echo "ERROR: Downloaded file is not a PDF (no %PDF header)"
-            echo "If using Google Drive, add &confirm=t to the URL"
+            echo "URL may not be a direct PDF link. Check the URL and try again."
             exit 1
           fi
           echo "RESUME=resume.pdf" >> "$GITHUB_ENV"
@@ -88,6 +104,26 @@ jobs:
       - name: Batch 3 - Playwright + Merge + Email
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
         run: python daily_scan.py --resume "$RESUME" --batch 3 2>&1 | tee scan_batch3.log
+
+      - name: Batch 4 - EU Companies
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '4' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 4 2>&1 | tee scan_batch4.log
+
+      - name: Batch 5 - Global Companies
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '5' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 5 2>&1 | tee scan_batch5.log
+
+      - name: Batch 6 - APAC Companies
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '6' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 6 2>&1 | tee scan_batch6.log
+
+      - name: Batch 7 - US/Canada Companies
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '7' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 7 2>&1 | tee scan_batch7.log
+
+      - name: Batch 8 - Middle East Companies
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '8' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 8 2>&1 | tee scan_batch8.log
 
       - uses: actions/upload-artifact@v5
         if: always()
