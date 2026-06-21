@@ -60,6 +60,11 @@ from daily_scan import (
     search_foundit,
     search_timesjobs,
     search_arcdev,
+    search_seek,
+    search_jora,
+    search_xing,
+    search_jobsch,
+    search_jobsingermany,
     search_skipthedrive,
     search_stepstone,
     search_monsterde,
@@ -439,6 +444,11 @@ def _search_jobs(
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),
+        ("Seek", search_seek),
+        ("Jora", search_jora),
+        ("Xing", search_xing),
+        ("JobsCh", search_jobsch),
+        ("JobsinGermany", search_jobsingermany),
     ]
     pw_scrapers = [
         ("RemoteOK", search_remoteok),

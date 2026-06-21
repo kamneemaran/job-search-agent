@@ -2583,6 +2583,148 @@ def search_arcdev(query, location="Remote", max_results=25):
     return jobs
 
 
+def search_seek(query, location="Australia", max_results=25):
+    """Search Seek (AU/NZ) for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        titles = _playwright_scrape(
+            f"https://www.seek.com.au/{q}-jobs",
+            "a[data-automation='jobTitle'], article h3, [data-testid='job-card-title']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3).slice(0, 25)"
+        )
+        companies = _playwright_scrape(
+            f"https://www.seek.com.au/{q}-jobs",
+            "[data-automation='jobCompany'], [data-testid='job-card-company']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        links = _playwright_scrape(
+            f"https://www.seek.com.au/{q}-jobs",
+            "a[data-automation='jobTitle']",
+            "els => els.map(e => e.href).filter(h => h.includes('/job/'))"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "Seek",
+                "location": location, "url": links[i] if i < len(links) else "",
+                "description": f"Seek AU: {titles[i]}",
+            })
+        if jobs: print(f"  [seek] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [seek] Error: {e}")
+    return jobs
+
+
+def search_jora(query, location="Australia", max_results=25):
+    """Search Jora (AU/NZ) for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        titles = _playwright_scrape(
+            f"https://au.jora.com/j?q={q}&l=Australia",
+            "a[class*='title'], [data-test='job-title'], h2 a, a[class*='job-link']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+        )
+        companies = _playwright_scrape(
+            f"https://au.jora.com/j?q={q}&l=Australia",
+            "[data-test='company-name'], .company-name, span[class*='company']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "Jora",
+                "location": location, "url": "", "description": f"Jora AU: {titles[i]}",
+            })
+        if jobs: print(f"  [jora] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [jora] Error: {e}")
+    return jobs
+
+
+def search_xing(query, location="Germany", max_results=25):
+    """Search Xing (Europe) for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        titles = _playwright_scrape(
+            f"https://www.xing.com/jobs/search?keywords={q}",
+            "a[href*='/jobs/'] > span, a[class*='job-title'], [data-qa='jobTitle']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+        )
+        companies = _playwright_scrape(
+            f"https://www.xing.com/jobs/search?keywords={q}",
+            "span[class*='company'], [data-qa='companyName']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        links = _playwright_scrape(
+            f"https://www.xing.com/jobs/search?keywords={q}",
+            "a[href*='/jobs/']",
+            "els => els.map(e => e.href).filter(h => h.includes('/jobs/'))"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "Xing",
+                "location": location, "url": links[i] if i < len(links) else "",
+                "description": f"Xing DE: {titles[i]}",
+            })
+        if jobs: print(f"  [xing] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [xing] Error: {e}")
+    return jobs
+
+
+def search_jobsch(query, location="Switzerland", max_results=25):
+    """Search Jobs.ch (Switzerland) for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        titles = _playwright_scrape(
+            f"https://www.jobs.ch/en/search/?q={q}",
+            "a[class*='title'], h2 a, [data-test='job-title']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+        )
+        companies = _playwright_scrape(
+            f"https://www.jobs.ch/en/search/?q={q}",
+            "span[class*='company'], [data-test='company']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "Jobs.ch",
+                "location": location, "url": "", "description": f"Jobs.ch: {titles[i]}",
+            })
+        if jobs: print(f"  [jobsch] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [jobsch] Error: {e}")
+    return jobs
+
+
+def search_jobsingermany(query, location="Germany", max_results=25):
+    """Search JobsinGermany for jobs using Playwright."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        titles = _playwright_scrape(
+            f"https://www.jobsinGermany.com/jobs?q={q}",
+            "h2 a, h3 a, a[class*='job'], [data-test='job-title']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+        )
+        companies = _playwright_scrape(
+            f"https://www.jobsinGermany.com/jobs?q={q}",
+            "span[class*='company'], [data-test='company']",
+            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+        )
+        for i in range(min(len(titles), max_results)):
+            jobs.append({
+                "title": titles[i], "company": companies[i] if i < len(companies) else "JobsinGermany",
+                "location": location, "url": "", "description": f"JobsinGermany: {titles[i]}",
+            })
+        if jobs: print(f"  [jobsingermany] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [jobsingermany] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -2720,12 +2862,27 @@ def main():
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),
+        ("Seek", search_seek),
+        ("Jora", search_jora),
+        ("Xing", search_xing),
+        ("JobsCh", search_jobsch),
+        ("JobsinGermany", search_jobsingermany),
     ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == 0 or args.batch == 2):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
-                for region in (["India"] if board_name in ("Naukri", "Instahyre") else ["India", "Remote"]):
+                au_boards = {"Seek", "Jora"}
+                eu_boards = {"Xing", "JobsCh", "JobsinGermany"}
+                if board_name in au_boards:
+                    regions = ["Australia", "New Zealand"]
+                elif board_name in eu_boards:
+                    regions = ["Germany", "Switzerland", "Remote"]
+                elif board_name in ("Naukri", "Instahyre"):
+                    regions = ["India"]
+                else:
+                    regions = ["India", "Remote"]
+                for region in regions:
                     jobs = board_fn(query, location=region)
                     for job in jobs:
                         if not should_include(job):
