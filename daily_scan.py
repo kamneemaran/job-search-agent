@@ -452,13 +452,17 @@ JOB_SOURCES = [
     {"name": "Elastic", "url": "https://www.elastic.co/about/careers/", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "elastic"},
     {"name": "Stripe", "url": "https://stripe.com/jobs", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "stripe"},
     {"name": "Airbnb", "url": "https://careers.airbnb.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "airbnb"},
+    {"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "anthropic"},
     {"name": "Dropbox", "url": "https://www.dropbox.com/jobs", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "dropbox"},
     {"name": "Datadog", "url": "https://www.datadoghq.com/careers/", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "datadog"},
     {"name": "Discord", "url": "https://discord.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "discord"},
     {"name": "Coinbase", "url": "https://www.coinbase.com/careers", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "coinbase"},
     {"name": "Reddit", "url": "https://www.redditinc.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "reddit"},
     {"name": "Lyft", "url": "https://www.lyft.com/careers", "region": "US", "type": "company", "ats": "greenhouse", "ats_slug": "lyft"},
+    {"name": "Monzo", "url": "https://monzo.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "monzo"},
+    {"name": "OpenSRE", "url": "https://jobs.ashbyhq.com/tracer", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "tracer"},
     {"name": "Pinterest", "url": "https://www.pinterestcareers.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "pinterest"},
+    {"name": "Preply", "url": "https://jobs.ashbyhq.com/preply", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "preply"},
     {"name": "Instacart", "url": "https://instacart.careers", "region": "US", "type": "company", "ats": "greenhouse", "ats_slug": "instacart"},
     {"name": "Webflow", "url": "https://webflow.com/jobs", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "webflow"},
     {"name": "Upwork", "url": "https://www.upwork.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "upwork"},
@@ -502,6 +506,7 @@ JOB_SOURCES = [
     {"name": "Codasip", "url": "https://codasip.com/company/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
     {"name": "Crytek", "url": "https://www.crytek.com/career", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Danske Commodities", "url": "https://danskecommodities.com/careers/vacancies", "region": "DE", "type": "company", "playwright": True},
     {"name": "Data Guard", "url": "https://www.dataguard.com/careers/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "DeepL", "url": "https://jobs.ashbyhq.com/DeepL", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "DeepL"},
     {"name": "Delivery Hero", "url": "https://careers.deliveryhero.com/jobs", "region": "DE", "type": "company", "playwright": True},
@@ -510,6 +515,8 @@ JOB_SOURCES = [
     {"name": "Distribusion", "url": "https://careers.distribusion.com/", "region": "DE", "type": "company"},
     {"name": "Doctrine", "url": "https://www.doctrine.fr/careers", "region": "DE", "type": "company"},
     {"name": "Dr. Oetker", "url": "https://www.oetker.de/karriere", "region": "DE", "type": "company"},
+    {"name": "Dynatrace", "url": "https://www.dynatrace.com/careers/jobs/", "region": "DE", "type": "company", "playwright": True},
+    {"name": "eDreams ODIGEO", "url": "https://www.edreamsodigeocareers.com/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "E.ON", "url": "https://www.eon.com/en/about-us/careers.html", "region": "DE", "type": "company"},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
@@ -521,6 +528,7 @@ JOB_SOURCES = [
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
     {"name": "Limehome", "url": "https://www.limehome.com/careers", "region": "DE", "type": "company"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
+    {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Payabl.", "url": "https://apply.workable.com/payabl/", "region": "DE", "type": "company", "playwright": True},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
@@ -531,6 +539,7 @@ JOB_SOURCES = [
     {"name": "Taxfix", "url": "https://taxfix.de/en/job-openings/", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "taxfix.com"},
     {"name": "Trade Republic", "url": "https://traderepublic.com/en-de/about#career", "region": "DE", "type": "company", "playwright": True},
     {"name": "Vivenu", "url": "https://vivenu.com/careers?team=Product+%26+Development", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Wolt", "url": "https://job-boards.greenhouse.io/wolt", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "wolt"},
     {"name": "Yenlo", "url": "https://www.yenlo.com/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Zalando", "url": "https://jobs.zalando.com/en/jobs", "region": "DE", "type": "company", "playwright": True},
 ]
@@ -1249,6 +1258,27 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Recruitee API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "smartrecruiters":
+            slug = source.get("ats_slug") or source["name"].lower().replace(" ", "")
+            api_url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                for posting in resp.json().get("content", []):
+                    loc = posting.get("location", {})
+                    city = loc.get("city", "")
+                    country = loc.get("country", "")
+                    location = f"{city}, {country}".strip(", ")
+                    jobs.append({
+                        "title": posting.get("name", ""),
+                        "company": source["name"],
+                        "location": location or source.get("region", ""),
+                        "url": posting.get("applyUrl", posting.get("postingUrl", source["url"])),
+                        "description": posting.get("name", ""),
+                        "posted_at": _parse_date(posting.get("releasedDate")),
+                    })
+            else:
+                print(f"  [warn] SmartRecruiters API returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "spotify":
             # Spotify custom API: https://api.lifeatspotify.com/wp-json/animal/v1/job/search
@@ -2722,6 +2752,30 @@ def search_jobsingermany(query, location="Germany", max_results=25):
         if jobs: print(f"  [jobsingermany] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [jobsingermany] Error: {e}")
+    return jobs
+
+
+def search_arbeitnow(query, location="Remote", max_results=25):
+    """Search Arbeitnow API for jobs matching a query."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        resp = requests.get(f"https://arbeitnow.com/api/jobs?search={q}", timeout=15)
+        if resp.status_code == 200:
+            for posting in resp.json().get("data", [])[:max_results]:
+                jobs.append({
+                    "title": posting.get("title", ""),
+                    "company": posting.get("company_name", ""),
+                    "location": posting.get("location", location),
+                    "url": posting.get("url", ""),
+                    "description": f"Arbeitnow: {posting.get('title', '')} @ {posting.get('company_name', '')}",
+                })
+            if jobs:
+                print(f"  [arbeitnow] {len(jobs)} jobs for '{query}'")
+        else:
+            print(f"  [arbeitnow] HTTP {resp.status_code}")
+    except Exception as e:
+        print(f"  [arbeitnow] Error: {e}")
     return jobs
 
 
