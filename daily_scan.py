@@ -2968,7 +2968,8 @@ def main():
 
     if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "1"):
         for source in JOB_SOURCES:
-            print(f"Scanning: {source['name']} ({source['region']})")
+            print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
+            t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
             for job in jobs:
                 if not should_include(job):
@@ -2987,6 +2988,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
     # --- Web search: LinkedIn, Indeed, Naukri, Instahyre ---
     board_scrapers = [
@@ -3030,6 +3033,8 @@ def main():
                     regions = ["India"]
                 else:
                     regions = ["India", "Remote"]
+                print(f"  [{board_name.lower()}] Processing '{query}' @ {', '.join(regions)}")
+                t0 = datetime.now()
                 for region in regions:
                     jobs = board_fn(query, location=region)
                     for job in jobs:
@@ -3043,6 +3048,8 @@ def main():
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
                                                 "salary_info": salary_info})
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"    [{board_name.lower()}] Done ({elapsed:.1f}s)")
 
     # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
@@ -3068,6 +3075,8 @@ def main():
     ]
     if args.source_types in ("all", "playwright") and (args.batch == "" or args.batch == "3"):
         for pw_name, pw_fn in pw_scrapers:
+            print(f"  [{pw_name.lower()}] Processing")
+            t0 = datetime.now()
             try:
                 jobs = pw_fn("", location="Remote")
                 for job in jobs:
@@ -3083,8 +3092,12 @@ def main():
                                             "salary_info": salary_info})
             except Exception as e:
                 print(f"  [{pw_name.lower()}] Error: {e}")
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
         # Pass domain query to batch scrapers that support it
         for pw_name, pw_fn in pw_batch_scrapers:
+            print(f"  [{pw_name.lower()}] Processing {len(domain_queries)} queries")
+            t0 = datetime.now()
             for query in domain_queries:
                 try:
                     jobs = pw_fn(query, location="Remote")
@@ -3101,6 +3114,8 @@ def main():
                                                 "salary_info": salary_info})
                 except Exception as e:
                     print(f"  [{pw_name.lower()}] Error: {e}")
+            elapsed = (datetime.now() - t0).total_seconds()
+            print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
