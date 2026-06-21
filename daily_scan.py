@@ -1037,7 +1037,7 @@ def _parse_date(date_str):
     if not date_str:
         return None
     try:
-        return datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return datetime.fromisoformat(str(date_str).replace("Z", "+00:00"))
     except Exception:
         return None
 
@@ -1045,7 +1045,8 @@ def _is_within_months(date_val, months=6):
     """Check if date is within N months from now."""
     if date_val is None:
         return True  # no date = assume recent
-    cutoff = datetime.datetime.now(date_val.tzinfo if date_val.tzinfo else None) - datetime.timedelta(days=months*30)
+    from datetime import timedelta
+    cutoff = datetime.now(date_val.tzinfo if date_val.tzinfo else None) - timedelta(days=months*30)
     return date_val >= cutoff
 
 
@@ -1280,6 +1281,53 @@ def _scrape_company_career_page(source):
     return jobs
 
 
+# ---------------------------------------------------------------------------
+# Personio rate-limit throttle & source interleaving
+# ---------------------------------------------------------------------------
+_personio_last_call = 0.0  # timestamp of last Personio API call
+_PERSONIO_MIN_DELAY = 3.0  # minimum seconds between Personio requests
+
+
+def _is_personio_source(source):
+    """Check if a source uses the Personio API."""
+    if source.get("ats") == "personio":
+        return True
+    url = source.get("url", "")
+    return "personio.de" in url or "personio.com" in url
+
+
+def _interleave_sources(sources):
+    """Reorder sources so Personio companies are evenly spread out among others.
+
+    This avoids hitting Personio's rate limit by ensuring other ATS calls
+    (Lever, Greenhouse, Workable, etc.) happen between Personio calls.
+    """
+    personio = [s for s in sources if _is_personio_source(s)]
+    others = [s for s in sources if not _is_personio_source(s)]
+
+    if not personio or not others:
+        return sources  # nothing to interleave
+
+    # Calculate spacing: place one Personio source every N entries
+    spacing = max(1, (len(others) + len(personio)) // (len(personio) + 1))
+    result = []
+    pi = 0  # personio index
+    oi = 0  # others index
+
+    while oi < len(others) or pi < len(personio):
+        # Add a batch of non-Personio sources
+        for _ in range(spacing):
+            if oi < len(others):
+                result.append(others[oi])
+                oi += 1
+        # Add one Personio source
+        if pi < len(personio):
+            result.append(personio[pi])
+            pi += 1
+
+    return result
+
+
 def fetch_jobs_from_source(source):
     """
     Pulls live job postings from public ATS APIs where available.
@@ -1348,23 +1396,50 @@ def fetch_jobs_from_source(source):
             else:
                 print(f"  [warn] Ashby API returned {resp.status_code} for {source['name']}")
 
-        elif source.get("ats") == "personio":
+        elif source.get("ats") == "personio" or "personio.de" in source["url"] or "personio.com" in source["url"]:
             # Personio: https://company.jobs.personio.de/search.json
-            base_url = source["url"].rstrip("/")
+            # Throttle to avoid 429 rate limits
+            global _personio_last_call
+            import time as _time
+            elapsed_since_last = _time.time() - _personio_last_call
+            if elapsed_since_last < _PERSONIO_MIN_DELAY:
+                _time.sleep(_PERSONIO_MIN_DELAY - elapsed_since_last)
+
+            base_url = source["url"].rstrip("/").split("?")[0].rstrip("/")
             api_url = f"{base_url}/search.json"
-            resp = requests.get(api_url, timeout=10)
-            if resp.status_code == 200:
-                for posting in resp.json():
-                    location = posting.get("office") or posting.get("offices", [""])[0] or "Germany"
-                    jobs.append({
-                        "title": posting.get("name", ""),
-                        "company": source["name"],
-                        "location": location,
-                        "url": source["url"],
-                        "description": posting.get("description", "") or posting.get("name", ""),
-                        "posted_at": None,
-                    })
-            else:
+            resp = None
+            for _attempt in range(3):
+                try:
+                    _personio_last_call = _time.time()
+                    resp = requests.get(api_url, timeout=10)
+                    if resp.status_code == 429:
+                        wait = 2 ** (_attempt + 1)
+                        print(f"  [warn] Personio API returned 429 for {source['name']}, retrying in {wait}s...")
+                        _time.sleep(wait)
+                        continue
+                    break
+                except Exception:
+                    break
+            if resp and resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    postings = data if isinstance(data, list) else data.get("jobs", data.get("data", []))
+                    for posting in postings:
+                        if not isinstance(posting, dict):
+                            continue
+                        offices = posting.get("offices", [])
+                        location = posting.get("office") or (offices[0] if offices and isinstance(offices[0], str) else "Germany")
+                        jobs.append({
+                            "title": posting.get("name", ""),
+                            "company": source["name"],
+                            "location": location,
+                            "url": source["url"],
+                            "description": posting.get("description", "") or posting.get("name", ""),
+                            "posted_at": None,
+                        })
+                except (ValueError, KeyError) as e:
+                    print(f"  [warn] Personio JSON parse error for {source['name']}: {e}")
+            elif resp:
                 print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "recruitee":
@@ -1435,6 +1510,120 @@ def fetch_jobs_from_source(source):
                     })
             else:
                 print(f"  [warn] Teamtailor API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "workable" or ("workable.com" in source["url"] and not source.get("playwright")):
+            # Workable: https://apply.workable.com/{company} → API at /api/v1/widget/accounts/{company}
+            slug = source.get("ats_slug") or source["url"].rstrip("/").split("#")[0].rstrip("/").split("/")[-1]
+            api_url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                for posting in resp.json().get("jobs", []):
+                    jobs.append({
+                        "title": posting.get("title", ""),
+                        "company": source["name"],
+                        "location": posting.get("location", source.get("region", "")),
+                        "url": posting.get("url", f"https://apply.workable.com/{slug}"),
+                        "description": posting.get("title", ""),
+                        "posted_at": _parse_date(posting.get("published_on")),
+                    })
+            else:
+                print(f"  [warn] Workable API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "bamboohr" or ("bamboohr.com" in source["url"] and not source.get("playwright")):
+            # BambooHR: https://{company}.bamboohr.com/careers → JSON at /api/gateway.php/{company}/v1/applicant_tracking/jobs
+            slug = source.get("ats_slug") or source["url"].split(".bamboohr.com")[0].split("//")[-1]
+            api_url = f"https://{slug}.bamboohr.com/api/gateway.php/{slug}/v1/applicant_tracking/jobs"
+            resp = requests.get(api_url, headers={"Accept": "application/json"}, timeout=10)
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    job_list = data.get("result", data) if isinstance(data, dict) else data
+                    if isinstance(job_list, list):
+                        for posting in job_list:
+                            if not isinstance(posting, dict):
+                                continue
+                            loc = posting.get("location", {})
+                            location = loc.get("city", "") if isinstance(loc, dict) else str(loc)
+                            jobs.append({
+                                "title": posting.get("jobOpeningName", posting.get("title", "")),
+                                "company": source["name"],
+                                "location": location or source.get("region", ""),
+                                "url": f"https://{slug}.bamboohr.com/careers/{posting.get('id', '')}",
+                                "description": posting.get("jobOpeningName", posting.get("title", "")),
+                                "posted_at": None,
+                            })
+                except (ValueError, KeyError):
+                    print(f"  [warn] BambooHR unexpected response for {source['name']}")
+            else:
+                print(f"  [warn] BambooHR API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "breezy" or ("breezy.hr" in source["url"] and not source.get("playwright")):
+            # Breezy.hr: https://{company}.breezy.hr → JSON at /{company}/json
+            slug = source.get("ats_slug") or source["url"].rstrip("/").split(".breezy.hr")[0].split("//")[-1]
+            api_url = f"https://{slug}.breezy.hr/json"
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                try:
+                    for posting in resp.json():
+                        if not isinstance(posting, dict):
+                            continue
+                        loc = posting.get("location", {})
+                        location = loc.get("name", "") if isinstance(loc, dict) else str(loc)
+                        jobs.append({
+                            "title": posting.get("name", ""),
+                            "company": source["name"],
+                            "location": location or source.get("region", ""),
+                            "url": posting.get("url", f"https://{slug}.breezy.hr"),
+                            "description": posting.get("description", posting.get("name", "")),
+                            "posted_at": _parse_date(posting.get("published_date")),
+                        })
+                except (ValueError, KeyError):
+                    print(f"  [warn] Breezy unexpected response for {source['name']}")
+            else:
+                print(f"  [warn] Breezy API returned {resp.status_code} for {source['name']}")
+
+        elif source.get("ats") == "freshteam" or ("freshteam.com" in source["url"] and not source.get("playwright")):
+            # Freshteam: https://{company}.freshteam.com/jobs → JSON embed
+            base_url = source["url"].rstrip("/")
+            if not base_url.endswith("/jobs"):
+                base_url += "/jobs"
+            resp = requests.get(base_url, headers={"Accept": "text/html"}, timeout=10)
+            if resp.status_code == 200:
+                # Try to extract JSON data from script tag
+                import re as _re
+                json_match = _re.search(r'<script[^>]*>.*?jobPostings\s*[:=]\s*(\[.*?\])\s*[;<]', resp.text, _re.DOTALL)
+                if not json_match:
+                    # Fallback: parse job links from HTML
+                    links = _re.findall(r'href=[\"\']([^\"\']*job[^\"\']*)[\"\']\s*[^>]*>\s*([^<]+)', resp.text, _re.IGNORECASE)
+                    for href, title in links[:30]:
+                        title = title.strip()
+                        if title and len(title) > 5:
+                            full_url = href if href.startswith("http") else source["url"].split("/jobs")[0] + href
+                            jobs.append({
+                                "title": title,
+                                "company": source["name"],
+                                "location": source.get("region", ""),
+                                "url": full_url,
+                                "description": title,
+                                "posted_at": None,
+                            })
+                else:
+                    try:
+                        for posting in json.loads(json_match.group(1)):
+                            if not isinstance(posting, dict):
+                                continue
+                            jobs.append({
+                                "title": posting.get("title", ""),
+                                "company": source["name"],
+                                "location": posting.get("location", source.get("region", "")),
+                                "url": posting.get("url", source["url"]),
+                                "description": posting.get("description", posting.get("title", "")),
+                                "posted_at": None,
+                            })
+                    except (ValueError, KeyError):
+                        pass
+            else:
+                print(f"  [warn] Freshteam returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "spotify":
             # Spotify custom API: https://api.lifeatspotify.com/wp-json/animal/v1/job/search
@@ -2045,33 +2234,54 @@ def search_jobspresso(query, location="Remote", max_results=25):
 
 
 def search_englishjobsearch(query, location="Remote", max_results=25):
-    """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU."""
+    """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU.
+
+    Uses plain HTTP + regex (the site is server-rendered, no JS needed).
+    """
     jobs = []
     q = query.replace(" ", "+")
     try:
-        browser = _get_browser()
-        page = browser.new_page()
-        page.goto(f"https://englishjobsearch.ch/jobs/{q}", timeout=30000, wait_until="networkidle")
-        page.wait_for_timeout(3000)
-        links = page.eval_on_selector_all(
-            'a[href*="/clickout/"]',
-            '''els => els.slice(0, 30).map(e => ({
-                text: e.innerText.trim(),
-                href: e.href
-            })).filter(j => j.text.length > 5)'''
+        resp = requests.get(
+            f"https://englishjobsearch.ch/jobs/{q}",
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"},
+            timeout=15,
         )
-        page.close()
-        for l in links[:max_results]:
-            t = l['text']
-            company = "EnglishJobSearch"
-            if " at " in t:
-                parts = t.rsplit(" at ", 1)
-                t = parts[0].strip()
-                company = parts[1].strip()
+        if resp.status_code != 200:
+            print(f"  [englishjobsearch] HTTP {resp.status_code}")
+            return jobs
+
+        html = resp.text
+        # Each job is a div with class "job js-job"
+        job_blocks = re.findall(
+            r'class="job js-job[^"]*"[^>]*>(.*?)(?=class="job js-job|$)',
+            html, re.DOTALL,
+        )
+        for block in job_blocks[:max_results]:
+            # Title from <h3 itemprop="title">
+            h3 = re.search(r'<h3[^>]*>(.*?)</h3>', block, re.DOTALL)
+            title = re.sub(r'<[^>]+>', '', h3.group(1)).strip() if h3 else ""
+            if not title or len(title) < 4:
+                continue
+
+            # Clickout link
+            link_match = re.search(r'href="(/clickout/[^"]+)"', block)
+            url = f"https://englishjobsearch.ch{link_match.group(1)}" if link_match else ""
+            # Unescape &amp; in URL
+            url = url.replace("&amp;", "&")
+
+            # Company and location from <li> text nodes (1st = company, 2nd = location)
+            li_texts = re.findall(r'<li[^>]*>.*?</svg>\s*([^<]+)', block, re.DOTALL)
+            li_texts = [t.strip() for t in li_texts if t.strip()]
+            company = li_texts[0] if len(li_texts) >= 1 else "EnglishJobSearch"
+            loc = li_texts[1] if len(li_texts) >= 2 else "Switzerland"
+
             jobs.append({
-                "title": t, "company": company,
-                "location": "Switzerland/EU", "url": l['href'],
-                "description": f"EnglishJobSearch: {t}",
+                "title": title,
+                "company": company,
+                "location": loc,
+                "url": url,
+                "description": f"EnglishJobSearch: {title} at {company}",
             })
         if jobs:
             print(f"  [englishjobsearch] {len(jobs)} jobs for '{query}'")
@@ -3001,24 +3211,49 @@ def search_jobsingermany(query, location="Germany", max_results=25):
 
 
 def search_arbeitnow(query, location="Remote", max_results=25):
-    """Search Arbeitnow API for jobs matching a query."""
+    """Search Arbeitnow API for jobs matching a query.
+
+    The public API (www.arbeitnow.com/api/job-board-api) returns all jobs
+    paginated at 100/page with no server-side search filter, so we fetch
+    up to 3 pages and do client-side keyword matching.
+    """
     jobs = []
-    q = query.replace(" ", "+")
+    query_terms = [t.lower() for t in query.split() if len(t) > 2]
     try:
-        resp = requests.get(f"https://arbeitnow.com/api/jobs?search={q}", timeout=15)
-        if resp.status_code == 200:
-            for posting in resp.json().get("data", [])[:max_results]:
+        for page in range(1, 4):  # up to 3 pages (300 jobs)
+            resp = requests.get(
+                f"https://www.arbeitnow.com/api/job-board-api?page={page}",
+                headers={"Accept": "application/json"},
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                print(f"  [arbeitnow] HTTP {resp.status_code} on page {page}")
+                break
+            data = resp.json()
+            page_data = data.get("data", [])
+            if not page_data:
+                break
+            for posting in page_data:
+                if not isinstance(posting, dict):
+                    continue
+                title = posting.get("title", "")
+                title_lower = title.lower()
+                # Client-side filter: at least one query term must appear in the title
+                if not any(term in title_lower for term in query_terms):
+                    continue
                 jobs.append({
-                    "title": posting.get("title", ""),
+                    "title": title,
                     "company": posting.get("company_name", ""),
                     "location": posting.get("location", location),
                     "url": posting.get("url", ""),
-                    "description": f"Arbeitnow: {posting.get('title', '')} @ {posting.get('company_name', '')}",
+                    "description": f"Arbeitnow: {title} @ {posting.get('company_name', '')}",
                 })
-            if jobs:
-                print(f"  [arbeitnow] {len(jobs)} jobs for '{query}'")
-        else:
-            print(f"  [arbeitnow] HTTP {resp.status_code}")
+                if len(jobs) >= max_results:
+                    break
+            if len(jobs) >= max_results:
+                break
+        if jobs:
+            print(f"  [arbeitnow] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [arbeitnow] Error: {e}")
     return jobs
@@ -3208,7 +3443,7 @@ def main():
         return True
 
     if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "1"):
-        for source in JOB_SOURCES:
+        for source in _interleave_sources(JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3362,7 +3597,7 @@ def main():
 
     # --- EU companies (batch 4) ---
     if args.batch == "4":
-        for source in EU_JOB_SOURCES:
+        for source in _interleave_sources(EU_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3388,7 +3623,7 @@ def main():
 
     # --- Global companies / recruiters (batch 5) ---
     if args.batch == "5":
-        for source in GLOBAL_JOB_SOURCES:
+        for source in _interleave_sources(GLOBAL_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Global')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3414,7 +3649,7 @@ def main():
 
     # --- APAC companies (batch 6) ---
     if args.batch == "6":
-        for source in APAC_JOB_SOURCES:
+        for source in _interleave_sources(APAC_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','APAC')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3440,7 +3675,7 @@ def main():
 
     # --- US/Canada companies (batch 7) ---
     if args.batch == "7":
-        for source in US_CANADA_JOB_SOURCES:
+        for source in _interleave_sources(US_CANADA_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','US/Canada')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3466,7 +3701,7 @@ def main():
 
     # --- Middle East companies (batch 8) ---
     if args.batch == "8":
-        for source in MIDDLE_EAST_JOB_SOURCES:
+        for source in _interleave_sources(MIDDLE_EAST_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Middle East')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
@@ -3492,6 +3727,23 @@ def main():
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
+    # --- Deduplicate matches (same job from multiple sources) ---
+    seen_keys = set()
+    unique_matches = []
+    for m in all_matches:
+        # Key on normalized title + company (case-insensitive) to catch dupes across scrapers
+        key = (m["title"].strip().lower(), m["company"].strip().lower())
+        # Also deduplicate by URL if available
+        url_key = m.get("url", "").rstrip("/").lower()
+        if key not in seen_keys and (not url_key or url_key not in seen_keys):
+            seen_keys.add(key)
+            if url_key:
+                seen_keys.add(url_key)
+            unique_matches.append(m)
+    if len(all_matches) != len(unique_matches):
+        print(f"  [dedup] Removed {len(all_matches) - len(unique_matches)} duplicate matches")
+    all_matches = unique_matches
+
     # --- Batch mode: save per-batch results, merge on final batch ---
     if args.batch:
         batch_path = f"last_scan_results_batch_{args.batch}.json"
@@ -3500,11 +3752,17 @@ def main():
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
         if args.batch != "3":
-            batch_next = {"1": "2a", "2a": "2b", "2b": "3"}[args.batch]
-            print(f"Batch {args.batch} done. Run --batch {batch_next} next for remaining sources.")
-            return
+            batch_sequence = {"1": "2a", "2a": "2b", "2b": "3", "4": "5", "5": "6", "6": "7", "7": "8", "8": "3"}
+            batch_next = batch_sequence.get(args.batch)
+            if batch_next and batch_next != "3":
+                print(f"Batch {args.batch} done. Run --batch {batch_next} next for remaining sources.")
+                return
+            elif not batch_next:
+                # Standalone batch (no next step) - proceed to merge
+                pass
         # Last batch: load previous batch results and merge
-        for b in ["1", "2a", "2b"]:
+        all_batch_ids = ["1", "2a", "2b", "3", "4", "5", "6", "7", "8"]
+        for b in all_batch_ids:
             prev_path = f"last_scan_results_batch_{b}.json"
             if os.path.exists(prev_path):
                 with open(prev_path) as f:
@@ -3512,6 +3770,20 @@ def main():
                 all_matches.extend(prev)
                 print(f"  [merge] Loaded {len(prev)} matches from {prev_path}")
         all_matches.sort(key=lambda m: m["score"], reverse=True)
+        # Deduplicate again after merging batches
+        seen_keys = set()
+        unique_matches = []
+        for m in all_matches:
+            key = (m["title"].strip().lower(), m["company"].strip().lower())
+            url_key = m.get("url", "").rstrip("/").lower()
+            if key not in seen_keys and (not url_key or url_key not in seen_keys):
+                seen_keys.add(key)
+                if url_key:
+                    seen_keys.add(url_key)
+                unique_matches.append(m)
+        if len(all_matches) != len(unique_matches):
+            print(f"  [dedup] Removed {len(all_matches) - len(unique_matches)} duplicate matches after merge")
+        all_matches = unique_matches
 
     # --- Save new matches to tracker (with resume info) ---
     for m in all_matches:
