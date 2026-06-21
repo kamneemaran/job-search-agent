@@ -34,6 +34,37 @@ Optional flags:
 | `--skills "java, python, aws"` | Override skills |
 | `--exp 8` | Override experience years |
 
+### GitHub Actions workflow (CI)
+
+Trigger a scan manually from **Actions > Daily Job Scan > Run workflow**.
+
+Required inputs:
+
+| Input | Description |
+|-------|-------------|
+| `batch` | Which batch to run: `all`, `1` (company ATS), `2` (job boards), or `3` (Playwright) |
+| `resume_url` | Direct download URL to your resume PDF |
+
+**Getting a Google Drive resume URL:**
+
+```
+Copied link:  https://drive.google.com/file/d/FILE_ID/view
+Correct URL:  https://drive.google.com/uc?export=download&id=FILE_ID
+```
+
+The file ID is the string between `/d/` and `/view`. Append `&confirm=t` if the download fails.
+
+**Required secrets** (set in repo **Settings > Secrets and variables > Actions**):
+
+| Secret | Description |
+|--------|-------------|
+| `GMAIL_ADDRESS` | Gmail address for sending email |
+| `GMAIL_APP_PASSWORD` | Gmail App Password |
+| `GSHEET_ID` | Google Sheet ID for sync |
+| `GSHEET_SERVICE_ACCOUNT_JSON` | Full JSON content of `gsheet_service_account.json` |
+
+The job tracker persists across workflow runs by loading from Google Sheets at startup, so applied/rejected jobs are remembered.
+
 ### Interactive MCP server
 
 ```bash
