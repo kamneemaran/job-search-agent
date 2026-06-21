@@ -529,7 +529,7 @@ JOB_SOURCES = [
     {"name": "Brainlab", "url": "https://www.brainlab.com/career/jobs/?country=germany", "region": "DE", "type": "company", "playwright": True},
     {"name": "Celonis", "url": "https://careers.celonis.com/join-us/open-positions", "region": "DE", "type": "company", "playwright": True},
     {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Choco", "url": "https://choco.com/us/careers/open-roles", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Choco", "url": "https://jobs.ashbyhq.com/choco", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "choco"},
     {"name": "Clark", "url": "https://clark.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Codasip", "url": "https://codasip.com/company/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
@@ -547,7 +547,6 @@ JOB_SOURCES = [
     {"name": "eDreams ODIGEO", "url": "https://www.edreamsodigeocareers.com/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "E.ON", "url": "https://jobs.eon.com/en", "region": "DE", "type": "company"},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
-    {"name": "Choco", "url": "https://jobs.ashbyhq.com/choco", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "choco"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company"},
     {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/career-openings", "region": "DE", "type": "company", "playwright": True},
     {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company", "playwright": True},
@@ -664,7 +663,7 @@ def score_job(title, description, company, location=""):
                     return 0, f"Filtered: requires {lo}-{hi}yr, candidate range {min_allowed}-{max_allowed}"
 
     # --- Reject roles requiring travel (not relevant for remote/backend roles) ---
-    travel_patterns = [r'\d+%\s*(?:travel|remote)', r'travel\s+up\s+to\s+\d+', r'willingness to travel',
+    travel_patterns = [r'\d+%\s*travel', r'travel\s+up\s+to\s+\d+', r'willingness to travel',
                        r'require[sd]?\s+travel', r'must be willing to travel', r'overnight travel',
                        r'travel\s+\d+\s*-\s*\d+', r'able to travel']
     if any(re.search(p, text) for p in travel_patterns):
@@ -695,9 +694,11 @@ def score_job(title, description, company, location=""):
             if "english" not in text:
                 return 0, "Filtered: non-English language requirement detected"
 
-    # --- SAP roles: require SAP MM in JD ---
+    # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
+    title_lower = title.lower()
+    has_sap_in_title = "sap" in title_lower or "abap" in title_lower
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
-    if has_sap_skills and "sap mm" not in text:
+    if has_sap_in_title and has_sap_skills and "sap mm" not in text:
         return 0, "Filtered: SAP role requires SAP MM in JD"
 
     # --- Skill scoring ---
@@ -714,6 +715,7 @@ def score_job(title, description, company, location=""):
         if friendly_co in company_lower:
             relocation_bonus = 15
             relocation_note = note
+            break
 
     score = round(skill_score + seniority_score + relocation_bonus)
     score = max(0, min(100, score))
@@ -797,7 +799,17 @@ def _parse_salary_amount(val):
     val = val.strip()
     if val.lower().endswith('k'):
         return int(float(val[:-1].replace(',', '')) * 1000)
-    return int(val.replace(',', '').replace('.', '')) if val else 0
+    # Remove thousands separators but preserve decimal point
+    # "120,000.50" -> 120000, "120.000" (EU format) -> 120000
+    clean = val.replace(',', '')
+    if '.' in clean:
+        # Check if it's a decimal (e.g., "120000.50") or EU thousands separator (e.g., "120.000")
+        parts = clean.split('.')
+        if len(parts[-1]) == 2:  # likely decimal cents, e.g., "120000.50"
+            return int(float(clean))
+        else:  # likely EU thousands separator, e.g., "120.000"
+            clean = clean.replace('.', '')
+    return int(clean) if clean else 0
 
 def _extract_salary_from_jd(description):
     """Extract salary range from job description text."""
@@ -1033,10 +1045,16 @@ def build_domain_queries(skills=None, exp_years=None, prefer_role=None):
 # ---------------------------------------------------------------------------
 
 def _parse_date(date_str):
-    """Parse ISO date string to datetime, return None if unparseable."""
+    """Parse ISO date string or Unix timestamp (ms) to datetime, return None if unparseable."""
     if not date_str:
         return None
     try:
+        # Handle Unix timestamps in milliseconds (e.g., Lever API createdAt)
+        if isinstance(date_str, (int, float)) or (isinstance(date_str, str) and date_str.isdigit()):
+            ts = int(date_str)
+            if ts > 1e12:  # milliseconds
+                ts = ts / 1000
+            return datetime.fromtimestamp(ts)
         return datetime.fromisoformat(str(date_str).replace("Z", "+00:00"))
     except Exception:
         return None
@@ -1243,7 +1261,7 @@ def _scrape_company_career_page(source):
                                                          'location': item.get('location', source.get('region', '')),
                                                          'url': item.get('url', item.get('applyUrl', source['url'])),
                                                          'description': t, 'posted_at': None})
-                        except:
+                        except Exception:
                             pass
                 if not jobs:
                     job_links = re.findall(r'href=[\"\']([^\"\']*/(?:job|vacancy|position|opening)/[^\"\']+)[\"\']', html, re.IGNORECASE)
@@ -3055,7 +3073,8 @@ def search_arcdev(query, location="Remote", max_results=25):
         resp = requests.get(f"https://arc.dev/api/v1/jobs?q={q}&remote=true&limit={max_results}",
                             headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
         if resp.status_code == 200:
-            for job in resp.json().get("data", resp.json().get("jobs", [])):
+            data = resp.json()
+            for job in data.get("data", data.get("jobs", [])):
                 jobs.append({
                     "title": job.get("name", job.get("title", "")),
                     "company": job.get("company", {}).get("name", "") if isinstance(job.get("company"), dict) else job.get("company", "Arc.dev"),
@@ -3398,7 +3417,6 @@ def main():
         pass
     if args.email_to:
         os.environ["EMAIL_TO"] = args.email_to
-        os.environ["GMAIL_ADDRESS"] = args.email_to
     if args.gmail_user:
         os.environ["GMAIL_ADDRESS"] = args.gmail_user
     if args.gmail_pass:
@@ -3526,8 +3544,8 @@ def main():
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
                                                 "salary_info": salary_info})
-            elapsed = (datetime.now() - t0).total_seconds()
-            print(f"    [{board_name.lower()}] Done ({elapsed:.1f}s)")
+                elapsed = (datetime.now() - t0).total_seconds()
+                print(f"    [{board_name.lower()}] Done ({elapsed:.1f}s)")
 
     # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
@@ -3763,6 +3781,8 @@ def main():
         # Last batch: load previous batch results and merge
         all_batch_ids = ["1", "2a", "2b", "3", "4", "5", "6", "7", "8"]
         for b in all_batch_ids:
+            if b == args.batch:
+                continue  # current batch is already in all_matches
             prev_path = f"last_scan_results_batch_{b}.json"
             if os.path.exists(prev_path):
                 with open(prev_path) as f:
