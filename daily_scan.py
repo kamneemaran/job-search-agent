@@ -496,24 +496,25 @@ JOB_SOURCES = [
     {"name": "Betterment", "url": "https://www.betterment.com/careers", "region": "US", "type": "company", "ats": "greenhouse", "ats_slug": "betterment"},
     {"name": "GoDaddy", "url": "https://careers.godaddy.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "godaddy"},
     {"name": "Vercel", "url": "https://vercel.com/careers", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "vercel"},
+    {"name": "Meta (Facebook)", "url": "https://linkedin.com/company/meta", "region": "Global", "type": "company", "playwright": True},
     # --- IT Services / Enterprise (some SAP/ERP relevance) ---
     {"name": "TCS", "url": "https://www.tcs.com/careers", "region": "IN", "type": "company", "ats": "greenhouse", "ats_slug": "tcs"},
     # --- EU / NL / DE ---
     {"name": "Mollie", "url": "https://jobs.mollie.com/vacancies", "region": "NL", "type": "company", "playwright": True},
     {"name": "Booking.com", "url": "https://jobs.booking.com/booking/jobs?keywords=engineer", "region": "NL", "type": "company", "playwright": True},
-    {"name": "Picnic", "url": "https://jobs.picnic.app/en/tech", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Picnic Technologies", "url": "https://jobs.picnic.app/en/vacancies", "region": "EU", "type": "company", "playwright": True},
     {"name": "Personio", "url": "https://www.personio.com/about-personio/careers/#see-our-open-roles", "region": "DE", "type": "company", "playwright": True},
     # --- Germany (61 English-speaking companies with visa sponsorship) ---
     {"name": "3D Spark", "url": "https://www.3dspark.de/career#Job-Offers", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Aampere", "url": "https://careers.amperecomputing.com/search/information-technology-software-and-firmware-full-time/jobs", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Aampere", "url": "https://linkedin.com/company/ampere-computing", "region": "DE", "type": "company", "playwright": True},
     {"name": "Ada", "url": "https://adaglobal.darwinbox.com/ms/candidatev2/main/careers/allJobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adevinta", "url": "https://adevinta.com/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Adidas", "url": "https://careers.adidas-group.com/jobs?brand=&team=Technology&type=Full+time&keywords=&location=%5B%5D&sort=&locale=en&offset=0", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Adidas", "url": "https://linkedin.com/company/adidas", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adjoe", "url": "https://adjoe.io/careers/open-positions/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Akeneo", "url": "https://careers.akeneo.com/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Amazon", "url": "https://www.amazon.jobs/content/en/job-categories", "region": "DE", "type": "company"},
-    {"name": "Applike", "url": "https://applike-group.com/jobs/#job", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Applike", "url": "https://applike-group.com/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Arup Deutschland", "url": "https://jobs.arup.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Awin", "url": "https://www.awin.com/gb/careers/vacancies", "region": "DE", "type": "company", "playwright": True},
     {"name": "BIT Capital", "url": "https://bitcap.com/en/karriere", "region": "DE", "type": "company", "playwright": True},
@@ -574,7 +575,7 @@ JOB_SOURCES = [
 
 RECRUITER_AGENCIES = [
     {"name": "Hays Europe", "url": "https://www.hays.nl"},
-    {"name": "Spring Professional", "url": "https://www.springprofessional.nl"},
+    {"name": "Spring Professional", "url": "https://linkedin.com/company/springprofessional"},
     {"name": "Michael Page", "url": "https://www.michaelpage.nl"},
     {"name": "Randstad", "url": "https://www.randstad.nl"},
     {"name": "Robert Half", "url": "https://www.roberthalf.nl"},
@@ -1049,72 +1050,169 @@ def _is_within_months(date_val, months=6):
 
 
 def _scrape_company_career_page(source):
-    """Scrape company career page using Playwright, fallback to requests+regex."""
+    """Scrape company career page using Playwright with pagination + profile filtering."""
     jobs = []
     browser = None
     page = None
     pw_failed = False
+
+    # Build profile keywords for early job title filtering
+    profile_kw = set(w.lower() for w in PROFILE.get("core_skills", []))
+    profile_kw.update(w.lower() for w in PROFILE.get("seniority_keywords", []))
+    profile_kw.update([
+        "engineer", "developer", "architect", "backend", "full stack",
+        "software", "platform", "infrastructure", "data", "sap",
+        "consultant", "specialist", "analyst", "manager", "lead",
+        "staff", "principal", "sde",
+    ])
+    title_red_flags = set(f.lower() for f in PROFILE.get("title_red_flags", []))
+
+    def _is_relevant(title):
+        t = title.lower()
+        for rf in title_red_flags:
+            if rf in t:
+                return False
+        return any(kw in t for kw in profile_kw)
+
+    def _extract_links(pg):
+        result = []
+        try:
+            links = pg.eval_on_selector_all("a", """
+                els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
+                    .filter(e => e.text.length > 8 && e.text.length < 120)
+                    .filter(e => {
+                        const h = e.href.toLowerCase();
+                        const t = e.text.toLowerCase();
+                        const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
+                        if (skip.some(s => t.includes(s))) return false;
+                        const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
+                            || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
+                            || t.includes('consultant') || t.includes('sap') || t.includes('senior')
+                            || t.includes('staff') || t.includes('lead') || t.includes('principal');
+                        const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
+                            || h.includes('/position/') || h.includes('/opening/')
+                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
+                        return hasKw || urlIsJob;
+                    })
+            """)
+            seen_local = set()
+            for link in links:
+                title = link["text"].split('\n')[0].strip()
+                href = link["href"]
+                if not href or href in seen_local:
+                    continue
+                seen_local.add(href)
+                if _is_relevant(title):
+                    result.append({
+                        "title": title,
+                        "company": source["name"],
+                        "location": source.get("region", ""),
+                        "url": href,
+                        "description": title,
+                        "posted_at": None,
+                    })
+            if not result:
+                links = pg.eval_on_selector_all("a[href], h2, h3", """
+                    els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
+                        .filter(e => e.text.length > 10 && e.text.length < 120)
+                """)
+                for link in links:
+                    title = link["text"].split('\n')[0].strip()
+                    href = link["href"]
+                    if href in seen_local:
+                        continue
+                    seen_local.add(href)
+                    if _is_relevant(title):
+                        result.append({
+                            "title": title,
+                            "company": source["name"],
+                            "location": source.get("region", ""),
+                            "url": href or source["url"],
+                            "description": title,
+                            "posted_at": None,
+                        })
+        except Exception:
+            pass
+        return result
+
     try:
         browser = _get_browser()
         page = browser.new_page()
+        _with_stealth(page)
         page.goto(source["url"], timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(4000)
-        skip_words = {"consent", "cookie", "privacy", "sign in", "sign up",
-                       "log in", "register", "subscribe", "accept all", "reject"}
-        links = page.eval_on_selector_all("a", """
-            els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
-                .filter(e => e.text.length > 8 && e.text.length < 120)
-                .filter(e => {
-                    const h = e.href.toLowerCase();
-                    const t = e.text.toLowerCase();
-                    const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
-                    if (skip.some(s => t.includes(s))) return false;
-                    const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
-                        || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
-                        || t.includes('consultant') || t.includes('sap') || t.includes('senior')
-                        || t.includes('staff') || t.includes('lead') || t.includes('principal');
-                    const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
-                        || h.includes('/position/') || h.includes('/opening/')
-                        || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
-                    return hasKw || urlIsJob;
-                })
-        """)
-        seen = set()
-        for link in links:
-            title = link["text"].split('\n')[0].strip()
-            href = link["href"]
-            if href in seen:
-                continue
-            seen.add(href)
-            jobs.append({
-                "title": title,
-                "company": source["name"],
-                "location": source.get("region", ""),
-                "url": href,
-                "description": title,
-                "posted_at": None,
-            })
-        if not jobs:
-            links = page.eval_on_selector_all("a[href], h2, h3", """
-                els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
-                    .filter(e => e.text.length > 10 && e.text.length < 120)
-            """)
-            for link in links[:20]:
-                jobs.append({
-                    "title": link["text"].split('\n')[0].strip(),
-                    "company": source["name"],
-                    "location": source.get("region", ""),
-                    "url": link["href"] or source["url"],
-                    "description": link["text"].split('\n')[0].strip(),
-                    "posted_at": None,
-                })
+
+        seen_urls = set()
+        page_jobs = _extract_links(page)
+        for j in page_jobs:
+            if j["url"] not in seen_urls:
+                seen_urls.add(j["url"])
+                jobs.append(j)
+
+        # Pagination: up to 5 additional pages
+        for _pg in range(2, 7):
+            next_btn = None
+            try:
+                next_btn = page.query_selector(
+                    'a[rel="next"], button[aria-label*="Next" i], '
+                    'a.pagination__next, .pagination a.next, '
+                    'a:has-text("Next"), a:has-text("next"), '
+                    'button:has-text("Next"), button:has-text("next")'
+                )
+            except Exception:
+                pass
+            if next_btn:
+                try:
+                    disabled = page.evaluate(
+                        '(el) => el.disabled || el.classList.contains("disabled") '
+                        '|| el.getAttribute("aria-disabled") === "true"',
+                        next_btn
+                    )
+                    if disabled:
+                        break
+                    next_btn.click()
+                    page.wait_for_timeout(3000)
+                    page.wait_for_selector("a", timeout=5000)
+                except Exception:
+                    break
+            else:
+                # Try URL-based pagination (page=2, start=10, offset=10, p=2)
+                import re as _re
+                cur = page.url
+                for pat, param in [(r'[?&]page=(\d+)', 'page'), (r'[?&]start=(\d+)', 'start'),
+                                   (r'[?&]offset=(\d+)', 'offset'), (r'[?&]p=(\d+)', 'p')]:
+                    m = _re.search(pat, cur)
+                    if m:
+                        base = _re.sub(r'[?&]' + param + r'=\d+', '', cur)
+                        sep = '&' if '?' in base else '?'
+                        next_url = f"{base}{sep}{param}={_pg}"
+                        try:
+                            page.goto(next_url, timeout=30000, wait_until="domcontentloaded")
+                            page.wait_for_timeout(3000)
+                        except Exception:
+                            break
+                        break
+                else:
+                    break  # No pagination pattern found
+
+            page_jobs = _extract_links(page)
+            new_count = 0
+            for j in page_jobs:
+                if j["url"] not in seen_urls:
+                    seen_urls.add(j["url"])
+                    jobs.append(j)
+                    new_count += 1
+            if new_count == 0:
+                break
     except Exception as e:
         pw_failed = True
         print(f"  [pw] Playwright failed for {source['name']}: {e}")
     finally:
         if page:
-            try: page.close()
-            except: pass
+            try:
+                page.close()
+            except Exception:
+                pass
 
     if pw_failed or not jobs:
         headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
@@ -1139,26 +1237,26 @@ def _scrape_company_career_page(source):
                                 for item in items[:30]:
                                     if isinstance(item, dict):
                                         t = item.get('title', item.get('name', item.get('jobTitle', '')))
-                                        if t:
+                                        if t and _is_relevant(t):
                                             jobs.append({'title': t, 'company': source['name'],
                                                          'location': item.get('location', source.get('region', '')),
                                                          'url': item.get('url', item.get('applyUrl', source['url'])),
                                                          'description': t, 'posted_at': None})
-                        except: pass
+                        except:
+                            pass
                 if not jobs:
                     job_links = re.findall(r'href=[\"\']([^\"\']*/(?:job|vacancy|position|opening)/[^\"\']+)[\"\']', html, re.IGNORECASE)
                     seen = set()
                     for href in job_links:
                         full = href if href.startswith('http') else source['url'].rstrip('/') + '/' + href.lstrip('/')
-                        # Strip query params for dedup
                         clean = full.split('?')[0]
-                        if clean in seen: continue
+                        if clean in seen:
+                            continue
                         seen.add(clean)
-                        # Extract title from URL path: /job/Location-Title-With-Words/ID
                         segs = clean.rstrip('/').split('/')
                         title = ''
                         for seg in segs:
-                            if seg.replace('-','').replace('.','').isdigit():
+                            if seg.replace('-', '').replace('.', '').isdigit():
                                 continue
                             if any(kw in seg.lower() for kw in ['job', 'vacancy', 'position', 'opening']):
                                 continue
@@ -1168,7 +1266,7 @@ def _scrape_company_career_page(source):
                         title = unquote(title)
                         title = re.sub(r'\s+', ' ', title).strip()
                         title = ' '.join(w.capitalize() if w.lower() not in ('and', 'or', 'the', 'of', 'in', 'for', '&') else w for w in title.split())
-                        if len(title) > 5:
+                        if len(title) > 5 and _is_relevant(title):
                             jobs.append({'title': title[:100], 'company': source['name'],
                                          'location': source.get('region', ''), 'url': full.split('?')[0],
                                          'description': title[:100], 'posted_at': None})

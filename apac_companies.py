@@ -6,7 +6,6 @@ APAC_JOB_SOURCES = [
     {"name": "ABB Singapore via Recruiter", "url": "https://careers.abb/global/en/search-results", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Amazon Web Services (AWS)aws.amazon.com/careers ST Engineering via Recruiter", "url": "https://www.stengg.com/en/careers/global-talent-programme", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Dell Technologies jobs.dell.com Unisoft via Recruiter", "url": "https://unisoft.sg", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Google Singapore careers.google.com Optimum Solution via Recruiter", "url": "http://optimumsolutions.biz", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Grab via Recruiter", "url": "https://www.grab.careers/en/jobs", "region": "APAC", "type": "company", "playwright": True},
     {"name": "HP Inc. jobs.hp.com Skill Quotient Group via Recruiter", "url": "https://skillquotientgroup.com/career", "region": "APAC", "type": "company", "playwright": True},
     {"name": "IBM ibm.com/employment NCS Group via Recruiter", "url": "https://www.ncs.co/careers", "region": "APAC", "type": "company", "playwright": True},

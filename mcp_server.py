@@ -73,6 +73,8 @@ from daily_scan import (
     search_englishjobsearch,
     search_bulldogjob,
     search_workatstartup,
+    search_visasponsor,
+    search_incluso,
     parse_resume_pdf,
     auto_detect_title_red_flags,
     sync_tracker_to_gsheet,
@@ -80,6 +82,11 @@ from daily_scan import (
     build_domain_queries,
     _format_salary,
 )
+from eu_companies import EU_JOB_SOURCES
+from global_companies import GLOBAL_JOB_SOURCES
+from apac_companies import APAC_JOB_SOURCES
+from us_canada_companies import US_CANADA_JOB_SOURCES
+from middle_east_companies import MIDDLE_EAST_JOB_SOURCES
 
 # ---------------------------------------------------------------------------
 # Server setup
@@ -335,7 +342,7 @@ def _about(topic: str = "") -> str:
 A smart job search engine that automatically discovers, scores, and tracks job opportunities tailored to your profile.
 
 ### What it does
-- Scans 25+ job sources daily for matching roles
+- Scans 250+ job sources daily for matching roles
 - Scores each job against your resume profile (skills, seniority, location, visa support)
 - Tracks application statuses (new → applied → rejected → offer)
 - Emails a daily digest of top matches
@@ -347,14 +354,23 @@ A smart job search engine that automatically discovers, scores, and tracks job o
 - Greenhouse (GitLab, Stripe, Airbnb, Dropbox, Datadog, Coinbase, Reddit, etc.)
 - Lever (companies using Lever's hosted postings)
 - Ashby (companies using Ashby's job board)
+- BambooHR, Workable, Recruitee, Breezy, Personio, Teamtailor, Freshteam, SmartRecruiters
 
 **Job boards** (web scraping):
 - LinkedIn, Indeed, Naukri, Instahyre, Glassdoor, SimplyHired
 - WeWorkRemotely, WomenInTech UK, SkipTheDrive
+- VisaSponsor.Jobs, Incluso
 
 **Remote-focused boards** (Playwright headless browser):
 - RemoteOK, WorkingNomads, Jobspresso, EnglishJobSearch.ch, BulldogJob.pl
 - WorkAtAStartup (Y Combinator startups)
+
+**Regional company databases:**
+- **EU** — 800+ company career pages (Germany, Netherlands, France, Nordics, etc.)
+- **Global** — 30+ international companies and recruitment agencies
+- **APAC** — Singapore, Japan, Australia, and Southeast Asia companies
+- **US/Canada** — North American tech companies
+- **Middle East** — UAE, Saudi Arabia, and Gulf region companies
 
 **Recruiter agencies** (manual check reminders):
 - Hays, Spring Professional, Michael Page, Randstad, Robert Half, Darwin Recruitment
@@ -376,16 +392,25 @@ A smart job search engine that automatically discovers, scores, and tracks job o
 
     details = {
         "sources": """### Job Sources
-The engine pulls from three tiers:
+The engine pulls from 250+ sources across four tiers:
 
 **Tier 1 — ATS APIs (live, structured data)**
-Greenhouse, Lever, Ashby. These return JSON with title, company, location, description, and posting date. No authentication required.
+Greenhouse, Lever, Ashby, BambooHR, Workable, Recruitee, Breezy, Personio, Teamtailor, Freshteam, SmartRecruiters. These return JSON with title, company, location, description, and posting date. No authentication required.
 
 **Tier 2 — Web scraping (HTML parsing)**
 LinkedIn Guest API, Indeed, Naukri, Instahyre, Glassdoor, SimplyHired, WeWorkRemotely, WomenInTech UK. Uses requests + cloudscraper to bypass basic anti-bot measures.
 
 **Tier 3 — Headless browser (JavaScript-rendered)**
 RemoteOK, WorkingNomads, Jobspresso, EnglishJobSearch, BulldogJob, WorkAtAStartup. Uses Playwright to render JS-heavy pages.
+
+**Tier 4 — Regional company databases**
+- EU: 800+ company career pages across Germany, Netherlands, France, Nordics, Spain, Italy, and more
+- Global: 30+ international companies and recruitment agencies
+- APAC: Singapore, Japan, Australia, India, and Southeast Asia
+- US/Canada: North American tech companies
+- Middle East: UAE, Saudi Arabia, Qatar, and Gulf region
+
+**Specialized boards**: VisaSponsor.Jobs (visa-sponsored roles), Incluso (diversity-focused)
 
 **Manual check reminders** — Companies without public APIs (like Booking.com, Mollie, Personio) print reminders to check manually.""",
         "scoring": """### How scoring works (0-100)
@@ -449,6 +474,8 @@ def _search_jobs(
         ("Xing", search_xing),
         ("JobsCh", search_jobsch),
         ("JobsinGermany", search_jobsingermany),
+        ("VisaSponsor", search_visasponsor),
+        ("Incluso", search_incluso),
     ]
     pw_scrapers = [
         ("RemoteOK", search_remoteok),
@@ -494,7 +521,8 @@ def _search_jobs(
         return score, note
 
     # Company ATS sources (not query-dependent - fetch all)
-    for source in JOB_SOURCES:
+    all_sources = JOB_SOURCES + EU_JOB_SOURCES + GLOBAL_JOB_SOURCES + APAC_JOB_SOURCES + US_CANADA_JOB_SOURCES + MIDDLE_EAST_JOB_SOURCES
+    for source in all_sources:
         sname = source["name"].lower()
         if sources_lower and not any(s in sname for s in sources_lower):
             continue
