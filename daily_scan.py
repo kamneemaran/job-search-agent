@@ -26,6 +26,8 @@ import imaplib
 import email
 import argparse
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import cloudscraper
 import PyPDF2
 from dotenv import load_dotenv
