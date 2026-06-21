@@ -528,7 +528,7 @@ JOB_SOURCES = [
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
     {"name": "JetBrains", "url": "https://job-boards.eu.greenhouse.io/jetbrains", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "jetbrains"},
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
-    {"name": "Limehome", "url": "https://www.limehome.com/careers", "region": "DE", "type": "company"},
+    {"name": "Limehome", "url": "https://career.limehome.de/careerslimehome-tz49z", "region": "DE", "type": "company"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
