@@ -30,12 +30,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Restore Google service account
         run: echo '${{ secrets.GSHEET_SERVICE_ACCOUNT_JSON }}' > gsheet_service_account.json
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -84,7 +84,7 @@ jobs:
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
         run: python daily_scan.py --resume "$RESUME" --batch 3 2>&1 | tee scan_batch3.log
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: scan-logs
