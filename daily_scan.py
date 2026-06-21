@@ -498,7 +498,7 @@ JOB_SOURCES = [
     {"name": "Celonis", "url": "https://careers.celonis.com/join-us/open-positions", "region": "DE", "type": "company", "playwright": True},
     {"name": "Celus", "url": "https://celus.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Choco", "url": "https://choco.com/us/careers/open-roles", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Clark", "url": "https://www.clark.io/career/", "region": "DE", "type": "company"},
+    {"name": "Clark", "url": "https://clark.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Codasip", "url": "https://apply.workable.com/codasip/", "region": "DE", "type": "company"},
     {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
     {"name": "Crytek", "url": "https://www.crytek.com/career", "region": "DE", "type": "company"},
