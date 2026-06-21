@@ -522,7 +522,7 @@ JOB_SOURCES = [
     {"name": "Limehome", "url": "https://www.limehome.com/careers", "region": "DE", "type": "company"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Payabl.", "url": "https://payabl.com/careers", "region": "DE", "type": "company"},
+    {"name": "Payabl.", "url": "https://apply.workable.com/payabl/", "region": "DE", "type": "company", "playwright": True},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Sony Music", "url": "https://careers.sonymusic.com/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Speechify", "url": "https://speechify.com/careers/#open-positions", "region": "DE", "type": "company", "playwright": True},
@@ -2476,6 +2476,113 @@ class JobTracker:
                 return []
 
 
+def search_remotive(query, location="Remote", max_results=25):
+    """Search Remotive public API for remote jobs."""
+    jobs = []
+    try:
+        resp = requests.get("https://remotive.com/api/remote-jobs", params={"search": query, "limit": max_results}, timeout=15)
+        if resp.status_code == 200:
+            for job in resp.json().get("jobs", []):
+                jobs.append({
+                    "title": job.get("title", ""), "company": job.get("company_name", ""),
+                    "location": job.get("candidate_required_location", "Remote"),
+                    "url": job.get("url", ""),
+                    "description": f"Remotive: {job.get('title', '')} @ {job.get('company_name', '')}",
+                })
+            if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [remotive] Error: {e}")
+    return jobs
+
+
+def search_remoteco(query, location="Remote", max_results=25):
+    """Search Remote.co for remote jobs."""
+    jobs = []
+    scraper = cloudscraper.create_scraper()
+    q = query.replace(" ", "+")
+    try:
+        resp = scraper.get(f"https://remote.co/remote-jobs/search/?search_keywords={q}", timeout=20)
+        if resp.status_code == 200:
+            titles = re.findall(r'class="m-0"[^>]*>\s*<a[^>]*>\s*([^<]+)', resp.text)
+            companies = re.findall(r'class="team"[^>]*>\s*([^<]+)', resp.text)
+            links = re.findall(r'class="m-0"[^>]*>\s*<a[^"]*href="([^"]+)"', resp.text)
+            for i in range(min(len(titles), max_results)):
+                jobs.append({
+                    "title": titles[i].strip(), "company": companies[i].strip() if i < len(companies) else "Remote.co",
+                    "location": "Remote", "url": links[i] if i < len(links) else "",
+                    "description": f"Remote.co: {titles[i].strip()}",
+                })
+            if jobs: print(f"  [remoteco] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [remoteco] Error: {e}")
+    return jobs
+
+
+def search_foundit(query, location="India", max_results=25):
+    """Search Foundit (Monster India) for jobs."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        resp = requests.get(f"https://www.foundit.in/sapi/search?query={q}&locations={location}&limit={max_results}",
+                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        if resp.status_code == 200:
+            titles = re.findall(r'"title":"([^"]+)"', resp.text)
+            companies = re.findall(r'"company":"([^"]+)"', resp.text)
+            locs = re.findall(r'"location":"([^"]+)"', resp.text)
+            for i in range(min(len(titles), max_results)):
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "Unknown",
+                    "location": locs[i] if i < len(locs) else location,
+                    "url": "", "description": f"Foundit: {titles[i]}",
+                })
+            if jobs: print(f"  [foundit] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [foundit] Error: {e}")
+    return jobs
+
+
+def search_timesjobs(query, location="India", max_results=25):
+    """Search TimesJobs for jobs."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        resp = requests.get(f"https://www.timesjobs.com/jobfunction/json/mjobs?q={q}&location={location}", verify=False,
+                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            items = data.get("jobList", data.get("jobs", data.get("data", [])))
+            if isinstance(items, dict): items = list(items.values())
+            for item in items[:max_results] if isinstance(items, list) else []:
+                t = item.get("jobTitle", item.get("title", "")) if isinstance(item, dict) else str(item)
+                c = item.get("companyName", item.get("company", "")) if isinstance(item, dict) else ""
+                if t: jobs.append({"title": t, "company": c, "location": location, "url": "", "description": t})
+            if jobs: print(f"  [timesjobs] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [timesjobs] Error: {e}")
+    return jobs
+
+
+def search_arcdev(query, location="Remote", max_results=25):
+    """Search Arc.dev for remote developer jobs."""
+    jobs = []
+    q = query.replace(" ", "+")
+    try:
+        resp = requests.get(f"https://arc.dev/api/v1/jobs?q={q}&remote=true&limit={max_results}",
+                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        if resp.status_code == 200:
+            for job in resp.json().get("data", resp.json().get("jobs", [])):
+                jobs.append({
+                    "title": job.get("name", job.get("title", "")),
+                    "company": job.get("company", {}).get("name", "") if isinstance(job.get("company"), dict) else job.get("company", "Arc.dev"),
+                    "location": "Remote", "url": job.get("url", job.get("apply_url", "")),
+                    "description": f"Arc.dev: {job.get('name', job.get('title', ''))}",
+                })
+            if jobs: print(f"  [arcdev] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [arcdev] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -2608,6 +2715,11 @@ def main():
         ("WeWorkRemotely", search_weworkremotely),
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
+        ("Remotive", search_remotive),
+        ("RemoteCo", search_remoteco),
+        ("Foundit", search_foundit),
+        ("TimesJobs", search_timesjobs),
+        ("ArcDev", search_arcdev),
     ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == 0 or args.batch == 2):
