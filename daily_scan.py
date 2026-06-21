@@ -1574,16 +1574,13 @@ def search_instahyre(query, location="India", max_results=25):
 
 
 def search_womenintech(query, location="UK", max_results=25):
-    """Search WomenInTech UK job board."""
+    """Search WomenInTech UK job board using Playwright."""
     jobs = []
-    scraper = cloudscraper.create_scraper()
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
     try:
-        resp = scraper.get("https://jobs.womenintech.co.uk/jobs", headers=headers, timeout=20)
-        if resp.status_code != 200:
-            print(f"  [womenintech] HTTP {resp.status_code} for '{query}'")
+        html = _playwright_html("https://jobs.womenintech.co.uk/jobs")
+        if not html:
+            print(f"  [womenintech] No response for '{query}'")
             return jobs
-        html = resp.text
         links = re.findall(r'href="(/jobs/\d+-[^"]+)"', html)
         seen = set()
         for link in links:
@@ -1652,17 +1649,14 @@ def search_weworkremotely(query, location="Remote", max_results=25):
 
 
 def search_simplyhired(query, location="India", max_results=25):
-    """Search SimplyHired for jobs matching a query."""
+    """Search SimplyHired for jobs matching a query using Playwright."""
     jobs = []
-    scraper = cloudscraper.create_scraper()
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
     try:
-        resp = scraper.get(f"https://www.simplyhired.com/search?q={q}", headers=headers, timeout=20)
-        if resp.status_code != 200:
-            print(f"  [simplyhired] HTTP {resp.status_code}")
+        html = _playwright_html(f"https://www.simplyhired.com/search?q={q}")
+        if not html:
+            print(f"  [simplyhired] No response for '{query}'")
             return jobs
-        html = resp.text
         titles = re.findall(r'<h2[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
         companies = re.findall(r'data-testid="companyName"[^>]*>\s*([^<]+)', html)
         locs = re.findall(r'data-testid="searchSerpJobLocation"[^>]*>\s*([^<]+)', html)
@@ -1684,23 +1678,17 @@ def search_simplyhired(query, location="India", max_results=25):
 
 
 def search_glassdoor(query, location="India", max_results=25):
-    """Search Glassdoor for jobs matching a query."""
+    """Search Glassdoor for jobs matching a query using Playwright."""
     jobs = []
-    scraper = cloudscraper.create_scraper()
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
     loc_map = {"India": "113", "Remote": "0"}
     loc_id = loc_map.get(location, "113")
     query_param = query.replace(" ", "+")
     url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}"
     try:
-        resp = scraper.get(url, headers=headers, timeout=20)
-        if resp.status_code != 200:
-            print(f"  [glassdoor] Glassdoor HTTP {resp.status_code} for '{query}'")
+        html = _playwright_html(url)
+        if not html:
+            print(f"  [glassdoor] No response for '{query}' in {location}")
             return jobs
-        html = resp.text
         titles = re.findall(r'class="[^"]*JobCard_jobTitle[^"]*"[^>]*>\s*([^<]+)', html)
         companies = re.findall(r'class="[^"]*EmployerProfile_compactEmployerName[^"]*"[^>]*>\s*([^<]+)', html)
         if not companies:
@@ -1709,12 +1697,12 @@ def search_glassdoor(query, location="India", max_results=25):
         links = re.findall(r'href="(/partner/jobListing[^"]+)"', html)
         min_len = min(len(titles), len(companies), len(locations))
         for i in range(min(min_len, max_results)):
-            url = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+            link = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
             jobs.append({
                 "title": titles[i].strip(),
                 "company": companies[i].strip() if i < len(companies) else "Unknown",
                 "location": locations[i].strip() if i < len(locations) else location,
-                "url": url,
+                "url": link,
                 "description": f"Glassdoor job: {titles[i]} at {companies[i]}",
             })
         if jobs:
@@ -1739,6 +1727,18 @@ def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
         return results
     except Exception as e:
         return []
+
+def _playwright_html(url, timeout=30000):
+    """Load a JS-rendered page with Playwright and return full HTML."""
+    try:
+        browser = _get_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=timeout, wait_until="networkidle")
+        html = page.content()
+        page.close()
+        return html
+    except Exception as e:
+        return ""
 
 
 def search_remoteok(query, location="Remote", max_results=25):
