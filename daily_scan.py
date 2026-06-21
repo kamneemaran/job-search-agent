@@ -2868,8 +2868,8 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
-    parser.add_argument("--batch", type=int, choices=[1, 2, 3], default=0,
-                        help="Run in batches: 1=company ATS, 2=job boards, 3=playwright. Run sequentially to avoid hangs.")
+    parser.add_argument("--batch", type=str, choices=["1", "2a", "2b", "3"], default="",
+                        help="Run in batches: 1=company ATS, 2a=global job boards, 2b=niche/regional boards, 3=playwright. Run sequentially to avoid hangs.")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -2948,7 +2948,7 @@ def main():
             return False
         return True
 
-    if args.source_types in ("all", "ats") and (args.batch == 0 or args.batch == 1):
+    if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "1"):
         for source in JOB_SOURCES:
             print(f"Scanning: {source['name']} ({source['region']})")
             jobs = fetch_jobs_from_source(source)
@@ -2992,8 +2992,14 @@ def main():
         ("JobsinGermany", search_jobsingermany),
         ("Arbeitnow", search_arbeitnow),
     ]
+    # Split batch 2: 2a = global/major boards, 2b = niche/regional boards
+    _split = 10
+    if args.batch == "2a":
+        board_scrapers = board_scrapers[:_split]
+    elif args.batch == "2b":
+        board_scrapers = board_scrapers[_split:]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards") and (args.batch == 0 or args.batch == 2):
+    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("2a", "2b")):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
@@ -3042,7 +3048,7 @@ def main():
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
     ]
-    if args.source_types in ("all", "playwright") and (args.batch == 0 or args.batch == 3):
+    if args.source_types in ("all", "playwright") and (args.batch == "" or args.batch == "3"):
         for pw_name, pw_fn in pw_scrapers:
             try:
                 jobs = pw_fn("", location="Remote")
@@ -3081,17 +3087,18 @@ def main():
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
     # --- Batch mode: save per-batch results, merge on final batch ---
-    if args.batch > 0:
+    if args.batch:
         batch_path = f"last_scan_results_batch_{args.batch}.json"
         with open(batch_path, "w") as f:
             json.dump(all_matches, f, indent=2)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch < 3:
-            print(f"Batch {args.batch} done. Run --batch {args.batch + 1} next for remaining sources.")
+        if args.batch != "3":
+            batch_next = {"1": "2a", "2a": "2b", "2b": "3"}[args.batch]
+            print(f"Batch {args.batch} done. Run --batch {batch_next} next for remaining sources.")
             return
         # Last batch: load previous batch results and merge
-        for b in [1, 2]:
+        for b in ["1", "2a", "2b"]:
             prev_path = f"last_scan_results_batch_{b}.json"
             if os.path.exists(prev_path):
                 with open(prev_path) as f:

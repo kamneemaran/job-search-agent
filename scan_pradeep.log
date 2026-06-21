@@ -1,0 +1,326 @@
+Loading resume: /Users/admin/Downloads/CV_Pradeep_SAP MM_6+   Year Exp.pdf
+  Parsed resume: PRADEEPMEENA, role= 2009 - 2013 Bachelor of Engineering (Mechanical Engineering) From R.G.P.V. Bhopal ., 6yr, 7 skills
+  Auto-detected email: pradeepmeena13@gmail.com
+=== Daily job scan started: 2026-06-20T21:21:26.870810 ===
+Profile: PRADEEPMEENA, 6yr, 7 skills
+  [tracker] 181 tracked jobs loaded
+Scanning: GitLab (Remote)
+Scanning: Elastic (Remote)
+Scanning: Stripe (Global)
+Scanning: Airbnb (Global)
+Scanning: Dropbox (Global)
+Scanning: Datadog (Global)
+Scanning: Discord (Global)
+Scanning: Coinbase (Remote)
+Scanning: Reddit (Global)
+Scanning: Lyft (US)
+Scanning: Pinterest (Global)
+Scanning: Instacart (US)
+Scanning: Webflow (Remote)
+Scanning: Upwork (Global)
+Scanning: Betterment (US)
+Scanning: GoDaddy (Global)
+Scanning: Vercel (Remote)
+Scanning: TCS (IN)
+Scanning: Mollie (NL)
+  [skip] Mollie - no public ATS API detected. Check manually: https://jobs.mollie.com
+Scanning: Booking.com (NL)
+  [skip] Booking.com - no public ATS API detected. Check manually: https://careers.booking.com
+Scanning: Picnic (NL)
+  [skip] Picnic - no public ATS API detected. Check manually: https://jobs.picnic.app
+Scanning: Personio (DE)
+  [skip] Personio - no public ATS API detected. Check manually: https://www.personio.com/career/
+Scanning: 3D Spark (DE)
+  [skip] 3D Spark - no public ATS API detected. Check manually: https://3dspark.de/career
+Scanning: Aampere (DE)
+  [skip] Aampere - no public ATS API detected. Check manually: https://www.aampere.com/career
+Scanning: Ada (DE)
+  [skip] Ada - no public ATS API detected. Check manually: https://ada.com/careers/
+Scanning: Adevinta (DE)
+  [skip] Adevinta - no public ATS API detected. Check manually: https://www.adevinta.com/careers
+Scanning: Aeyde (DE)
+Scanning: Adidas (DE)
+  [skip] Adidas - no public ATS API detected. Check manually: https://careers.adidas-group.com/
+Scanning: Adjoe (DE)
+  [skip] Adjoe - no public ATS API detected. Check manually: https://adjoe.io/company/careers/
+Scanning: Akeneo (DE)
+  [skip] Akeneo - no public ATS API detected. Check manually: https://careers.akeneo.com/
+Scanning: Aldi South IT (DE)
+  [skip] Aldi South IT - no public ATS API detected. Check manually: https://it-jobs.aldi-sued.de/en
+Scanning: Amazon (DE)
+  [skip] Amazon - no public ATS API detected. Check manually: https://www.amazon.jobs/en/locations/germany
+Scanning: Applike (DE)
+  [skip] Applike - no public ATS API detected. Check manually: https://applike-group.com/jobs/
+Scanning: Arup Deutschland (DE)
+  [skip] Arup Deutschland - no public ATS API detected. Check manually: https://www.arup.com/careers
+Scanning: Awin (DE)
+  [skip] Awin - no public ATS API detected. Check manually: https://www.awin.com/careers
+Scanning: BIT Capital (DE)
+  [skip] BIT Capital - no public ATS API detected. Check manually: https://bitcap.com/en/careers-en/
+Scanning: BMW (DE)
+  [skip] BMW - no public ATS API detected. Check manually: https://bmwgroup.jobs/de/en.html
+Scanning: Babbel (DE)
+  [skip] Babbel - no public ATS API detected. Check manually: https://jobs.babbel.com/
+Scanning: Bigpoint (DE)
+  [skip] Bigpoint - no public ATS API detected. Check manually: https://bigpoint.net/careers/
+Scanning: Billie (DE)
+  [skip] Billie - no public ATS API detected. Check manually: https://billie.io/en/jobs
+Scanning: Black Forest Labs (DE)
+  [skip] Black Forest Labs - no public ATS API detected. Check manually: https://blackforestlabs.ai/#careers
+Scanning: Bolt (DE)
+  [skip] Bolt - no public ATS API detected. Check manually: https://bolt.eu/en/careers/positions/
+Scanning: Bonial (DE)
+  [skip] Bonial - no public ATS API detected. Check manually: https://bonial.recruitee.com/
+Scanning: Bosch (DE)
+  [skip] Bosch - no public ATS API detected. Check manually: https://www.bosch.de/karriere/
+Scanning: Brainlab (DE)
+  [skip] Brainlab - no public ATS API detected. Check manually: https://www.brainlab.com/career/jobs/?country=germany
+Scanning: Celonis (DE)
+  [skip] Celonis - no public ATS API detected. Check manually: https://www.celonis.com/careers/
+Scanning: Celus (DE)
+Scanning: Choco (DE)
+  [skip] Choco - no public ATS API detected. Check manually: https://choco.com/careers
+Scanning: Clark (DE)
+  [skip] Clark - no public ATS API detected. Check manually: https://www.clark.io/career/
+Scanning: Codasip (DE)
+  [skip] Codasip - no public ATS API detected. Check manually: https://apply.workable.com/codasip/
+Scanning: Constellr (DE)
+  [skip] Constellr - no public ATS API detected. Check manually: https://constellr.com/careers
+Scanning: Crytek (DE)
+  [skip] Crytek - no public ATS API detected. Check manually: https://www.crytek.com/career
+Scanning: DHL Group (DE)
+  [skip] DHL Group - no public ATS API detected. Check manually: https://careers.dhl.com/global/en
+Scanning: Data Guard (DE)
+  [skip] Data Guard - no public ATS API detected. Check manually: https://dataguard.de/en-de/career/
+Scanning: DeepL (DE)
+  [skip] DeepL - no public ATS API detected. Check manually: https://jobs.deepl.com/
+Scanning: Delivery Hero (DE)
+  [skip] Delivery Hero - no public ATS API detected. Check manually: https://careers.deliveryhero.com/
+Scanning: Deutsche Telekom (DE)
+  [skip] Deutsche Telekom - no public ATS API detected. Check manually: https://careers.telekom.com/en/jobs
+Scanning: Dexter Health (DE)
+  [skip] Dexter Health - no public ATS API detected. Check manually: https://join.com/companies/dexter-health
+Scanning: Distribusion (DE)
+  [skip] Distribusion - no public ATS API detected. Check manually: https://careers.distribusion.com/
+Scanning: Doctrine (DE)
+  [skip] Doctrine - no public ATS API detected. Check manually: https://www.doctrine.fr/careers
+Scanning: Dr. Oetker (DE)
+  [skip] Dr. Oetker - no public ATS API detected. Check manually: https://www.oetker.de/karriere
+Scanning: E.ON (DE)
+  [skip] E.ON - no public ATS API detected. Check manually: https://www.eon.com/en/about-us/careers.html
+Scanning: Ecosia (DE)
+  [warn] Ashby API returned 404 for Ecosia
+Scanning: Elunic (DE)
+  [skip] Elunic - no public ATS API detected. Check manually: https://jobs.elunic.com/
+Scanning: Emma - The Sleep Co (DE)
+  [skip] Emma - The Sleep Co - no public ATS API detected. Check manually: https://team.emma-sleep.com/job
+Scanning: InnoGames (DE)
+  [skip] InnoGames - no public ATS API detected. Check manually: https://www.innogames.com/career/
+Scanning: Intermate Group (DE)
+  [skip] Intermate Group - no public ATS API detected. Check manually: https://www.intermate-group.de/jobs
+Scanning: JOIN (DE)
+  [skip] JOIN - no public ATS API detected. Check manually: https://join.com/careers
+Scanning: JetBrains (DE)
+  [skip] JetBrains - no public ATS API detected. Check manually: https://www.jetbrains.com/careers/
+Scanning: Keller Executive Search (DE)
+  [skip] Keller Executive Search - no public ATS API detected. Check manually: https://kellerexecutivesearch.com/careers/
+Scanning: Limehome (DE)
+  [skip] Limehome - no public ATS API detected. Check manually: https://www.limehome.com/careers
+Scanning: MOIA (DE)
+  [skip] MOIA - no public ATS API detected. Check manually: https://www.moia.io/en/career
+Scanning: OneFootball (DE)
+  [skip] OneFootball - no public ATS API detected. Check manually: https://company.onefootball.com/careers
+Scanning: Payabl. (DE)
+  [skip] Payabl. - no public ATS API detected. Check manually: https://payabl.com/careers
+Scanning: RealStudio (DE)
+  [skip] RealStudio - no public ATS API detected. Check manually: https://realstudio.de/
+Scanning: SAP Fioneer (DE)
+  [skip] SAP Fioneer - no public ATS API detected. Check manually: https://www.sapfioneer.com/careers/
+Scanning: Sony Music (DE)
+  [skip] Sony Music - no public ATS API detected. Check manually: https://www.sonymusic.com/careers/
+Scanning: Speechify (DE)
+  [skip] Speechify - no public ATS API detected. Check manually: https://speechify.com/careers/
+Scanning: Spotify (DE)
+  [skip] Spotify - no public ATS API detected. Check manually: https://www.lifeatspotify.com/
+Scanning: Superchat (DE)
+  [skip] Superchat - no public ATS API detected. Check manually: https://www.superchat.de/karriere
+Scanning: Taxfix (DE)
+  [skip] Taxfix - no public ATS API detected. Check manually: https://taxfix.de/en/job-openings/
+Scanning: Trade Republic (DE)
+  [skip] Trade Republic - no public ATS API detected. Check manually: https://traderepublic.com/en-de/careers
+Scanning: Vivenu (DE)
+  [skip] Vivenu - no public ATS API detected. Check manually: https://vivenu.com/careers
+Scanning: Yenlo (DE)
+  [skip] Yenlo - no public ATS API detected. Check manually: https://www.yenlo.com/careers/
+Scanning: Zalando (DE)
+  [skip] Zalando - no public ATS API detected. Check manually: https://jobs.zalando.com/
+  [web] 8 jobs for 'senior SAP FICO' in India
+  [web] 10 jobs for 'senior SAP FICO' in Remote
+  [indeed] Indeed HTTP 403 for 'senior SAP FICO'
+  [indeed] Indeed HTTP 403 for 'senior SAP FICO'
+  [naukri] 20 jobs for 'senior SAP FICO' in India
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP FICO'
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP FICO'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'senior SAP FICO' in UK
+  [womenintech] 10 jobs for 'senior SAP FICO' in UK
+  [instahyre] No jobs parsed for 'senior SAP FICO' in India
+  [web] 10 jobs for 'SAP S/4HANA' in India
+  [web] 10 jobs for 'SAP S/4HANA' in Remote
+  [indeed] Indeed HTTP 403 for 'SAP S/4HANA'
+  [indeed] Indeed HTTP 403 for 'SAP S/4HANA'
+  [naukri] 20 jobs for 'SAP S/4HANA' in India
+  [glassdoor] Glassdoor HTTP 403 for 'SAP S/4HANA'
+  [glassdoor] Glassdoor HTTP 403 for 'SAP S/4HANA'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'SAP S/4HANA' in UK
+  [womenintech] 10 jobs for 'SAP S/4HANA' in UK
+  [instahyre] No jobs parsed for 'SAP S/4HANA' in India
+  [web] 10 jobs for 'lead SAP consultant' in India
+  [web] 10 jobs for 'lead SAP consultant' in Remote
+  [indeed] Indeed HTTP 403 for 'lead SAP consultant'
+  [indeed] Indeed HTTP 403 for 'lead SAP consultant'
+  [naukri] 20 jobs for 'lead SAP consultant' in India
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP consultant'
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP consultant'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'lead SAP consultant' in UK
+  [womenintech] 10 jobs for 'lead SAP consultant' in UK
+  [instahyre] No jobs parsed for 'lead SAP consultant' in India
+  [web] 10 jobs for 'SAP' in India
+  [web] 10 jobs for 'SAP' in Remote
+  [indeed] Indeed HTTP 403 for 'SAP'
+  [indeed] Indeed HTTP 403 for 'SAP'
+  [naukri] 20 jobs for 'SAP' in India
+  [glassdoor] Glassdoor HTTP 403 for 'SAP'
+  [glassdoor] Glassdoor HTTP 403 for 'SAP'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'SAP' in UK
+  [womenintech] 10 jobs for 'SAP' in UK
+  [instahyre] No jobs parsed for 'SAP' in India
+  [web] 10 jobs for 'lead SAP FICO' in India
+  [web] 10 jobs for 'lead SAP FICO' in Remote
+  [indeed] Indeed HTTP 403 for 'lead SAP FICO'
+  [indeed] Indeed HTTP 403 for 'lead SAP FICO'
+  [naukri] 20 jobs for 'lead SAP FICO' in India
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP FICO'
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP FICO'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'lead SAP FICO' in UK
+  [womenintech] 10 jobs for 'lead SAP FICO' in UK
+  [instahyre] No jobs parsed for 'lead SAP FICO' in India
+  [web] 10 jobs for 'SAP MM' in India
+  [web] 10 jobs for 'SAP MM' in Remote
+  [indeed] Indeed HTTP 403 for 'SAP MM'
+  [indeed] Indeed HTTP 403 for 'SAP MM'
+  [naukri] 20 jobs for 'SAP MM' in India
+  [glassdoor] Glassdoor HTTP 403 for 'SAP MM'
+  [glassdoor] Glassdoor HTTP 403 for 'SAP MM'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'SAP MM' in UK
+  [womenintech] 10 jobs for 'SAP MM' in UK
+  [instahyre] No jobs parsed for 'SAP MM' in India
+  [web] 10 jobs for 'ai+git+procurement' in India
+  [web] 10 jobs for 'ai+git+procurement' in Remote
+  [indeed] Indeed HTTP 403 for 'ai+git+procurement'
+  [indeed] Indeed HTTP 403 for 'ai+git+procurement'
+  [naukri] 20 jobs for 'ai+git+procurement' in India
+  [glassdoor] Glassdoor HTTP 403 for 'ai+git+procurement'
+  [glassdoor] Glassdoor HTTP 403 for 'ai+git+procurement'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'ai+git+procurement' in UK
+  [womenintech] 10 jobs for 'ai+git+procurement' in UK
+  [instahyre] No jobs parsed for 'ai+git+procurement' in India
+  [web] 10 jobs for 'lead SAP MM' in India
+  [web] 10 jobs for 'lead SAP MM' in Remote
+  [indeed] Indeed HTTP 403 for 'lead SAP MM'
+  [indeed] Indeed HTTP 403 for 'lead SAP MM'
+  [naukri] 20 jobs for 'lead SAP MM' in India
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP MM'
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP MM'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'lead SAP MM' in UK
+  [womenintech] 10 jobs for 'lead SAP MM' in UK
+  [instahyre] No jobs parsed for 'lead SAP MM' in India
+  [web] 10 jobs for 'SAP consultant' in India
+  [web] 10 jobs for 'SAP consultant' in Remote
+  [indeed] Indeed HTTP 403 for 'SAP consultant'
+  [indeed] Indeed HTTP 403 for 'SAP consultant'
+  [naukri] 20 jobs for 'SAP consultant' in India
+  [glassdoor] Glassdoor HTTP 403 for 'SAP consultant'
+  [glassdoor] Glassdoor HTTP 403 for 'SAP consultant'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'SAP consultant' in UK
+  [womenintech] 10 jobs for 'SAP consultant' in UK
+  [instahyre] No jobs parsed for 'SAP consultant' in India
+  [web] 10 jobs for 'senior SAP consultant' in India
+  [web] 10 jobs for 'senior SAP consultant' in Remote
+  [indeed] Indeed HTTP 403 for 'senior SAP consultant'
+  [indeed] Indeed HTTP 403 for 'senior SAP consultant'
+  [naukri] 20 jobs for 'senior SAP consultant' in India
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP consultant'
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP consultant'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'senior SAP consultant' in UK
+  [womenintech] 10 jobs for 'senior SAP consultant' in UK
+  [instahyre] No jobs parsed for 'senior SAP consultant' in India
+  [web] 10 jobs for 'senior SAP' in India
+  [web] 10 jobs for 'senior SAP' in Remote
+  [indeed] Indeed HTTP 403 for 'senior SAP'
+  [indeed] Indeed HTTP 403 for 'senior SAP'
+  [naukri] 20 jobs for 'senior SAP' in India
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP'
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'senior SAP' in UK
+  [womenintech] 10 jobs for 'senior SAP' in UK
+  [instahyre] No jobs parsed for 'senior SAP' in India
+  [web] 10 jobs for 'lead SAP S/4HANA' in India
+  [web] 10 jobs for 'lead SAP S/4HANA' in Remote
+  [indeed] Indeed HTTP 403 for 'lead SAP S/4HANA'
+  [indeed] Indeed HTTP 403 for 'lead SAP S/4HANA'
+  [naukri] 20 jobs for 'lead SAP S/4HANA' in India
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP S/4HANA'
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP S/4HANA'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'lead SAP S/4HANA' in UK
+  [womenintech] 10 jobs for 'lead SAP S/4HANA' in UK
+  [instahyre] No jobs parsed for 'lead SAP S/4HANA' in India
+  [web] 10 jobs for 'lead SAP' in India
+  [web] 10 jobs for 'lead SAP' in Remote
+  [indeed] Indeed HTTP 403 for 'lead SAP'
+  [indeed] Indeed HTTP 403 for 'lead SAP'
+  [naukri] 20 jobs for 'lead SAP' in India
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP'
+  [glassdoor] Glassdoor HTTP 403 for 'lead SAP'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'lead SAP' in UK
+  [womenintech] 10 jobs for 'lead SAP' in UK
+  [instahyre] No jobs parsed for 'lead SAP' in India
+  [web] 10 jobs for 'senior SAP MM' in India
+  [web] 10 jobs for 'senior SAP MM' in Remote
+  [indeed] Indeed HTTP 403 for 'senior SAP MM'
+  [indeed] Indeed HTTP 403 for 'senior SAP MM'
+  [naukri] 20 jobs for 'senior SAP MM' in India
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP MM'
+  [glassdoor] Glassdoor HTTP 403 for 'senior SAP MM'
+  [simplyhired] HTTP 403
+  [simplyhired] HTTP 403
+  [womenintech] 10 jobs for 'senior SAP MM' in UK
+  [womenintech] 10 jobs for 'senior SAP MM' in UK
+  [instahyre] No jobs parsed for 'senior SAP MM' in India
+  [web] 10 jobs for 'senior SAP S/4HANA' in India
+  [web] 10 jobs for 'senior SAP S/4HANA' in Remote

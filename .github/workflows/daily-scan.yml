@@ -11,7 +11,8 @@ on:
         options:
           - all
           - "1"
-          - "2"
+          - "2a"
+          - "2b"
           - "3"
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
@@ -76,9 +77,13 @@ jobs:
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '1' }}
         run: python daily_scan.py --resume "$RESUME" --batch 1 2>&1 | tee scan_batch1.log
 
-      - name: Batch 2 - Job Boards
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 2 2>&1 | tee scan_batch2.log
+      - name: Batch 2a - Global Job Boards
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2a' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 2a 2>&1 | tee scan_batch2a.log
+
+      - name: Batch 2b - Niche/Regional Boards
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2b' }}
+        run: python daily_scan.py --resume "$RESUME" --batch 2b 2>&1 | tee scan_batch2b.log
 
       - name: Batch 3 - Playwright + Merge + Email
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
