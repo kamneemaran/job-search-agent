@@ -2505,6 +2505,74 @@ class JobTracker:
                 print("  [tracker] Email scan timed out (60s)")
                 return []
 
+    def load_from_gsheet(self):
+        """Load tracked jobs from Google Sheets 'All Jobs' tab.
+        Falls back to local file if sheets unavailable."""
+        gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+        gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+        if not gsheet_id or not os.path.exists(gsheet_sa_path):
+            return False
+        try:
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+
+            SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+            creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
+            service = build("sheets", "v4", credentials=creds)
+            sheet = service.spreadsheets()
+
+            spreadsheet = sheet.get(spreadsheetId=gsheet_id).execute()
+            existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
+
+            all_tab = None
+            for t in existing_tabs:
+                if t.lower().startswith("all jobs"):
+                    all_tab = t
+                    break
+            if not all_tab:
+                return False
+
+            result = sheet.values().get(spreadsheetId=gsheet_id, range=f"'{all_tab}'!A:H").execute()
+            rows = result.get("values", [])
+            if not rows or len(rows) < 2:
+                return False
+
+            count = 0
+            for row in rows[1:]:
+                if len(row) < 3:
+                    continue
+                title = row[1].strip()
+                company = row[2].strip()
+                status = row[6].strip().lower() if len(row) > 6 else "new"
+                url = row[4].strip() if len(row) > 4 else ""
+                score = int(row[0]) if len(row) > 0 and row[0].strip().isdigit() else 0
+                date_found = row[7].strip() if len(row) > 7 else ""
+
+                if not title or not company:
+                    continue
+                if status not in ("new", "applied", "rejected", "offer"):
+                    status = "new"
+
+                key = self.job_key(title, company)
+                self.data["jobs"][key] = {
+                    "title": title,
+                    "company": company,
+                    "url": url,
+                    "score": score,
+                    "status": status,
+                    "resume": "",
+                    "date_found": date_found,
+                    "date_updated": datetime.now().isoformat(),
+                }
+                count += 1
+
+            print(f"  [gsheet] Loaded {count} tracked jobs from '{all_tab}'")
+            self._save()
+            return True
+        except Exception as e:
+            print(f"  [gsheet] Load error (starting fresh): {e}")
+            return False
+
 
 def search_remotive(query, location="Remote", max_results=25):
     """Search Remotive public API for remote jobs."""
@@ -2848,6 +2916,7 @@ def main():
 
     # --- Load job tracker ---
     tracker = JobTracker()
+    tracker.load_from_gsheet()
     print(f"  [tracker] {len(tracker.data['jobs'])} tracked jobs loaded")
 
     # --email-scan-only: scan Gmail for rejections and exit

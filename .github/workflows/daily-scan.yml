@@ -14,9 +14,8 @@ on:
           - "2"
           - "3"
       resume_url:
-        description: "URL to download resume PDF (leave empty for repo default)"
-        required: false
-        default: ""
+        description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
+        required: true
 
 env:
   GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
@@ -33,6 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore Google service account
+        run: echo '${{ secrets.GSHEET_SERVICE_ACCOUNT_JSON }}' > gsheet_service_account.json
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -43,15 +45,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
-      - name: Download resume (if URL provided)
-        if: ${{ github.event.inputs.resume_url != '' }}
+      - name: Download resume from URL
         run: |
           curl -L -o resume.pdf "${{ github.event.inputs.resume_url }}"
           echo "RESUME=resume.pdf" >> "$GITHUB_ENV"
-
-      - name: Use repo resume (default)
-        if: ${{ github.event.inputs.resume_url == '' }}
-        run: echo "RESUME=CV_Pradeep_SAP MM.pdf" >> "$GITHUB_ENV"
 
       - name: Validate config
         run: |

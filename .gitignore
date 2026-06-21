@@ -10,3 +10,4 @@ credentials.json
 .venv/
 last_scan_results.json
 job_tracker.json
+*.pdf
