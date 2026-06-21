@@ -48,6 +48,13 @@ jobs:
       - name: Download resume from URL
         run: |
           curl -L -o resume.pdf "${{ github.event.inputs.resume_url }}"
+          if [ "$(head -c 4 resume.pdf)" != "%PDF" ]; then
+            head -c 500 resume.pdf
+            echo ""
+            echo "ERROR: Downloaded file is not a PDF (no %PDF header)"
+            echo "If using Google Drive, add &confirm=t to the URL"
+            exit 1
+          fi
           echo "RESUME=resume.pdf" >> "$GITHUB_ENV"
 
       - name: Validate config
