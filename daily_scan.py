@@ -2230,10 +2230,31 @@ def search_simplyhired(query, location="India", max_results=25):
                     break
                 u = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
                 l = locs[i].strip() if i < len(locs) else location
+                # Fetch actual description from job detail page (first 10 total)
+                full_desc = ""
+                if u and len(jobs) < 10:
+                    try:
+                        jd_html = _playwright_html(u, timeout=15000)
+                        if jd_html:
+                            body = re.search(r'<body[^>]*>(.*)</body>', jd_html, re.DOTALL)
+                            if body:
+                                content = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', body.group(1), flags=re.DOTALL)
+                                text = re.sub(r'<[^>]+>', '\n', content)
+                                lines = [l.strip() for l in text.split('\n') if l.strip()]
+                                text = '\n'.join(lines)
+                                desc_start = text.find('Job Details')
+                                desc_end = text.find('Report this job') if 'Report this job' in text else len(text)
+                                if desc_start >= 0:
+                                    full_desc = text[desc_start:desc_end][:3000]
+                                else:
+                                    full_desc = text[:3000]
+                    except Exception:
+                        pass
+                desc = full_desc or f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}"
                 jobs.append({
                     "title": titles[i].strip(), "company": companies[i].strip(),
                     "location": l, "url": u,
-                    "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
+                    "description": desc,
                 })
             if len(jobs) >= max_results:
                 break
