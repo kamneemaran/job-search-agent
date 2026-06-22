@@ -668,7 +668,7 @@ def _derive_title_keywords(current_role, years_experience):
     # Add individual meaningful words from base role (for partial title matches)
     # e.g., "sap consultant" → also match titles containing "consultant"
     # Skip generic words that would match too broadly
-    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst"}
+    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst", "consultant"}
     role_words = [w for w in base_role.split() if len(w) > 3 and w not in _generic_words]
     for word in role_words:
         if word not in keywords:
@@ -784,8 +784,9 @@ def score_job(title, description, company, location=""):
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
-    # --- Skill scoring (dynamic denominator based on resume skill count) ---
-    skill_hits = sum(1 for skill in PROFILE["core_skills"] if skill in text)
+    # --- Skill scoring (word-boundary matching; up to 50 points) ---
+    skill_hits = sum(1 for skill in PROFILE["core_skills"]
+                     if re.search(r'\b' + re.escape(skill) + r'\b', text))
     total_skills = len(PROFILE["core_skills"])
     # Need 40% of resume skills to appear in JD for full score (min 5 hits)
     skill_denominator = max(int(total_skills * 0.4), 5)
@@ -795,8 +796,13 @@ def score_job(title, description, company, location=""):
     title_relevance = 0
     exp_years = PROFILE["years_experience"]
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
-    if title_keywords and any(kw in title_lower for kw in title_keywords):
-        title_relevance = 30  # +30 for matching role domain in title
+    # Full phrase match (e.g., "sap mm consultant") = 30, partial word match = 10
+    if title_keywords:
+        base_role = title_keywords[0]  # first entry is always the base role
+        if base_role in title_lower:
+            title_relevance = 30
+        elif any(kw in title_lower for kw in title_keywords):
+            title_relevance = 10
 
     # --- Seniority scoring (experience-appropriate) ---
     seniority_keywords = _get_seniority_keywords(exp_years)
