@@ -3960,6 +3960,8 @@ def main():
                     subject = f"{person_name}-Job matches-{label}"
                     html = build_email_html(all_matches)
                     send_email(html, subject=subject)
+                else:
+                    print(f"  [email] No matches found for resume - skipping email")
                 return
 
         # Terminal batch (eu): load all previous batch results and merge
@@ -3996,17 +3998,20 @@ def main():
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
 
-    html = build_email_html(all_matches)
-    person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
-    batch_labels = {
-        "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
-        "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
-        "eu": "EU Companies", "global": "Global Companies",
-        "apac": "APAC Companies", "us-canada": "US-Canada Companies",
-        "middle-east": "Middle East Companies",
-    }
-    label = batch_labels.get(args.batch, "All Sources") if args.batch else "All Sources"
-    send_email(html, subject=f"{person_name}-Job matches-{label}")
+    if all_matches:
+        html = build_email_html(all_matches)
+        person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
+        batch_labels = {
+            "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
+            "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
+            "eu": "EU Companies", "global": "Global Companies",
+            "apac": "APAC Companies", "us-canada": "US-Canada Companies",
+            "middle-east": "Middle East Companies",
+        }
+        label = batch_labels.get(args.batch, "All Sources") if args.batch else "All Sources"
+        send_email(html, subject=f"{person_name}-Job matches-{label}")
+    else:
+        print(f"  [email] No matches found for resume - skipping email")
 
     # WhatsApp disabled per user request - all results go via email only
     # if all_matches:
