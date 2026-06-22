@@ -644,7 +644,10 @@ def _derive_title_keywords(current_role, years_experience):
     """
     if not current_role:
         return []
-    role_lower = current_role.lower().strip()
+    # Strip pipe-separated descriptions (e.g. "Senior Backend Engineer | Distributed Systems | ...")
+    role_lower = current_role.lower().strip().split("|")[0].strip()
+    # Strip trailing noise like dashes, commas, etc.
+    role_lower = role_lower.rstrip("-–—,")
 
     # Strip seniority prefix to get base role (e.g., "software engineer" from "Senior Software Engineer")
     base_role = role_lower
@@ -693,8 +696,11 @@ def score_job(title, description, company, location=""):
     Returns (score 0-100, note string).
     For roles outside India: visa sponsorship & relocation support are mandatory.
     """
-    text = (title + " " + description).lower()
-    title_lower = title.lower()
+    raw_title_lower = title.lower()
+    text = (raw_title_lower + " " + description).lower()
+    # Normalize hyphens: "back-end" → "backend" so matching works uniformly
+    title_lower = raw_title_lower.replace("-", "")
+    text = text.replace("-", "")
     loc_lower = location.lower()
 
     if any(re.search(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])', text) for flag in PROFILE["junior_red_flags"]):
