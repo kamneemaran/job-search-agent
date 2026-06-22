@@ -51,10 +51,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+
       - name: Download resume from URL
         run: |
           URL="${{ github.event.inputs.resume_url }}"
-          # Convert Google Drive share/view URLs to direct download
           if echo "$URL" | grep -q 'drive.google.com/file/d/'; then
             FILE_ID=$(echo "$URL" | sed 's|.*drive.google.com/file/d/\([^/]*\).*|\1|')
             URL="https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t"
@@ -91,39 +91,39 @@ jobs:
 
       - name: Batch 1 - Company ATS
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '1' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 1 2>&1 | tee scan_batch1.log
+        run: python daily_scan.py --resume "$RESUME" --batch ats 2>&1 | tee scan_batch1.log
 
       - name: Batch 2a - Global Job Boards
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2a' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 2a 2>&1 | tee scan_batch2a.log
+        run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2a.log
 
       - name: Batch 2b - Niche/Regional Boards
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2b' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 2b 2>&1 | tee scan_batch2b.log
+        run: python daily_scan.py --resume "$RESUME" --batch boards-niche 2>&1 | tee scan_batch2b.log
 
       - name: Batch 3 - Playwright + Merge + Email
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 3 2>&1 | tee scan_batch3.log
+        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch3.log
 
       - name: Batch 4 - EU Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '4' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 4 2>&1 | tee scan_batch4.log
+        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch4.log
 
       - name: Batch 5 - Global Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '5' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 5 2>&1 | tee scan_batch5.log
+        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch5.log
 
       - name: Batch 6 - APAC Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '6' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 6 2>&1 | tee scan_batch6.log
+        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch6.log
 
       - name: Batch 7 - US/Canada Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '7' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 7 2>&1 | tee scan_batch7.log
+        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch7.log
 
       - name: Batch 8 - Middle East Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '8' }}
-        run: python daily_scan.py --resume "$RESUME" --batch 8 2>&1 | tee scan_batch8.log
+        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch8.log
 
       - uses: actions/upload-artifact@v5
         if: always()
