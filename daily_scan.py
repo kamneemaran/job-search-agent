@@ -96,6 +96,7 @@ PROFILE = {
         "fintech", "payments", "compliance", "incident management",
         "ci/cd", "terraform", "architecture", "soa", "data pipelines",
     ],
+    "current_role": "Senior Software Engineer",
     "seniority_keywords": ["senior", "staff", "lead", "principal", "sde-3", "sde 3"],
     "junior_red_flags": ["junior", "intern", "entry level", "graduate", "0-2 years"],
     # Job titles that are NOT relevant (different career tracks)
@@ -299,6 +300,23 @@ ROLE_DOMAINS = {
             "ux designer", "product designer",
         ],
     },
+    "sap_erp": {
+        "skills": {
+            "sap", "sap mm", "sap sd", "sap fico", "sap hana", "sap abap", "abap",
+            "sap basis", "sap pp", "sap wm", "sap ewm", "sap ariba", "sap s/4hana",
+            "sap bw", "sap crm", "erp", "materials management", "procurement",
+            "supply chain", "inventory management", "warehouse management",
+            "functional consultant", "configuration", "customizing",
+        },
+        "red_flags": [
+            "frontend", "front-end", "ui engineer", "web engineer",
+            "android", "ios", "swift", "kotlin",
+            "machine learning", "ml engineer", "data scientist",
+            "network engineer", "sre", "devops engineer",
+            "ux designer", "product designer",
+            "react", "angular", "vue",
+        ],
+    },
 }
 
 # Engineering domains that should NOT filter each other out (compatible tracks)
@@ -308,6 +326,7 @@ COMPATIBLE_DOMAINS = {
     "fullstack": {"backend", "frontend"},
     "devops_sre": {"backend"},
     "data_ml": {"backend"},
+    "sap_erp": set(),  # SAP is a distinct domain, no cross-compatibility
 }
 
 # Universal filters that apply regardless of role (always-on non-engineering tracks)
@@ -371,6 +390,16 @@ VISA_RELOCATION_KEYWORDS = [
     "we sponsor", "will sponsor", "work authorization",
     "relocation assistance available", "global mobility",
     "visa", "relocation",
+]
+
+# Explicit "no sponsorship" phrases — hard reject for non-India roles
+NO_SPONSORSHIP_KEYWORDS = [
+    "no visa sponsorship", "not sponsor", "cannot sponsor", "will not sponsor",
+    "unable to sponsor", "no sponsorship", "not eligible for visa",
+    "must be authorized to work", "must have existing right to work",
+    "no relocation", "not provide visa", "only citizens",
+    "do not offer sponsorship", "without sponsorship",
+    "not able to sponsor", "sponsorship is not available",
 ]
 
 # Keywords that suggest the role requires a specific non-English language
@@ -604,6 +633,61 @@ COMPANY_RESUME_MAP = {
 # 2. FIT SCORING
 # ---------------------------------------------------------------------------
 
+# Seniority prefixes to strip when extracting base role
+_SENIORITY_PREFIXES = ["senior ", "sr. ", "sr ", "lead ", "staff ", "principal ", "junior ", "associate ", "chief "]
+
+
+def _derive_title_keywords(current_role, years_experience):
+    """
+    From a resume's current_role + years of experience, derive title keywords
+    for scoring JD titles. Returns list of keyword phrases to match.
+    """
+    if not current_role:
+        return []
+    role_lower = current_role.lower().strip()
+
+    # Strip seniority prefix to get base role (e.g., "software engineer" from "Senior Software Engineer")
+    base_role = role_lower
+    for prefix in _SENIORITY_PREFIXES:
+        if base_role.startswith(prefix):
+            base_role = base_role[len(prefix):]
+            break
+
+    keywords = [base_role]  # always match base role
+
+    # Add seniority variants based on experience level
+    if years_experience >= 10:
+        keywords.extend([f"senior {base_role}", f"staff {base_role}", f"lead {base_role}",
+                         f"principal {base_role}", "sde-3", "sde 3", "sde-4", "sde 4", "sde-5"])
+    elif years_experience >= 5:
+        keywords.extend([f"senior {base_role}", f"lead {base_role}"])
+    elif years_experience >= 3:
+        keywords.append(f"senior {base_role}")
+    # For <3 years, only base role matches
+
+    # Add individual meaningful words from base role (for partial title matches)
+    # e.g., "sap consultant" → also match titles containing "consultant"
+    # Skip generic words that would match too broadly
+    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst"}
+    role_words = [w for w in base_role.split() if len(w) > 3 and w not in _generic_words]
+    for word in role_words:
+        if word not in keywords:
+            keywords.append(word)
+
+    return keywords
+
+
+def _get_seniority_keywords(years_experience):
+    """Return appropriate seniority keywords based on years of experience."""
+    if years_experience >= 10:
+        return ["senior", "staff", "lead", "principal", "sde-3", "sde 3", "sde-4", "sde 4"]
+    elif years_experience >= 5:
+        return ["senior", "lead", "experienced"]
+    elif years_experience >= 3:
+        return ["mid", "intermediate"]
+    else:
+        return []  # No seniority bonus for <3 years
+
 def score_job(title, description, company, location=""):
     """
     Returns (score 0-100, note string).
@@ -669,30 +753,36 @@ def score_job(title, description, company, location=""):
     if any(re.search(p, text) for p in travel_patterns):
         return 0, "Filtered: role requires travel"
 
-    # --- For roles outside India / Remote: require visa & relocation support ---
+    # --- For roles outside India / Remote: visa & relocation assessment ---
     is_outside_india = "india" not in loc_lower and "india" not in text
     is_remote = "remote" in loc_lower or "remote" in text
+    visa_note = ""
 
     if is_outside_india or is_remote:
-        # Check if description mentions visa/relocation keywords
-        has_visa_relo = any(kw in text for kw in VISA_RELOCATION_KEYWORDS)
-        # Check if company is in the friendly list
         company_lower = company.lower()
-        in_friendly_list = any(co in company_lower for co in RELOCATION_FRIENDLY)
-        # Check for known blockers
-        in_blocked_list = any(co in company_lower for co in NO_RELOCATION_FLAGS)
 
+        # Hard reject: company known to NOT sponsor/relocate
+        in_blocked_list = any(co in company_lower for co in NO_RELOCATION_FLAGS)
         if in_blocked_list:
             note = next(NO_RELOCATION_FLAGS[c] for c in NO_RELOCATION_FLAGS if c in company_lower)
             return 0, f"No visa/relocation: {note}"
 
-        if not has_visa_relo and not in_friendly_list:
-            return 0, "Filtered: no mention of visa sponsorship or relocation support"
+        # Hard reject: JD explicitly says no sponsorship
+        if any(kw in text for kw in NO_SPONSORSHIP_KEYWORDS):
+            return 0, "Filtered: job explicitly states no visa sponsorship"
 
-        # Check if role requires a specific non-English language (filter out)
+        # Hard reject: non-English language required (and English not mentioned)
         if any(lang_kw in text for lang_kw in NON_ENGLISH_LANGUAGE_KEYWORDS):
             if "english" not in text:
                 return 0, "Filtered: non-English language requirement detected"
+
+        # Informational note: does the JD mention visa/relocation?
+        has_visa_relo = any(kw in text for kw in VISA_RELOCATION_KEYWORDS)
+        in_friendly_list = any(co in company_lower for co in RELOCATION_FRIENDLY)
+        if has_visa_relo or in_friendly_list:
+            visa_note = "Visa sponsorship mentioned"
+        else:
+            visa_note = "Visa sponsorship details not mentioned"
 
     # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
     title_lower = title.lower()
@@ -701,11 +791,30 @@ def score_job(title, description, company, location=""):
     if has_sap_in_title and has_sap_skills and "sap mm" not in text:
         return 0, "Filtered: SAP role requires SAP MM in JD"
 
-    # --- Skill scoring ---
+    # --- Skill scoring (dynamic denominator based on resume skill count) ---
     skill_hits = sum(1 for skill in PROFILE["core_skills"] if skill in text)
-    skill_score = min(skill_hits / 8, 1.0) * 60  # up to 60 points for skill overlap
+    total_skills = len(PROFILE["core_skills"])
+    # Need 40% of resume skills to appear in JD for full score (min 5 hits)
+    skill_denominator = max(int(total_skills * 0.4), 5)
+    skill_score = min(skill_hits / skill_denominator, 1.0) * 50  # up to 50 points
 
-    seniority_score = 25 if any(k in text for k in PROFILE["seniority_keywords"]) else 10
+    # --- Title relevance scoring (derived from resume's current_role) ---
+    title_relevance = 0
+    exp_years = PROFILE["years_experience"]
+    title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
+    if title_keywords and any(kw in title_lower for kw in title_keywords):
+        title_relevance = 30  # +30 for matching role domain in title
+
+    # --- Seniority scoring (experience-appropriate) ---
+    seniority_keywords = _get_seniority_keywords(exp_years)
+    if seniority_keywords and any(k in text for k in seniority_keywords):
+        seniority_score = 15
+    elif not seniority_keywords:
+        # Junior profiles (<3 yrs): give 10 points if role doesn't demand seniority
+        senior_in_text = any(k in text for k in ["senior", "staff", "lead", "principal"])
+        seniority_score = 10 if not senior_in_text else 0
+    else:
+        seniority_score = 5
 
     # --- Relocation bonus ---
     relocation_bonus = 0
@@ -713,13 +822,15 @@ def score_job(title, description, company, location=""):
     company_lower = company.lower()
     for friendly_co, note in RELOCATION_FRIENDLY.items():
         if friendly_co in company_lower:
-            relocation_bonus = 15
+            relocation_bonus = 5
             relocation_note = note
             break
 
-    score = round(skill_score + seniority_score + relocation_bonus)
+    score = round(skill_score + title_relevance + seniority_score + relocation_bonus)
     score = max(0, min(100, score))
-    return score, relocation_note
+    # Combine relocation note and visa note
+    notes = " | ".join(n for n in [relocation_note, visa_note] if n)
+    return score, notes
 
 
 def pick_resume(company):
@@ -3373,7 +3484,7 @@ def main():
     parser.add_argument("--email-to", help="Email recipient (overrides .env EMAIL_TO)")
     parser.add_argument("--gmail-user", help="Gmail address (overrides .env GMAIL_ADDRESS)")
     parser.add_argument("--gmail-pass", help="Gmail App Password (overrides .env)")
-    parser.add_argument("--threshold", type=int, default=60, help="Match score threshold (default: 60)")
+    parser.add_argument("--threshold", type=int, default=70, help="Match score threshold (default: 70)")
     parser.add_argument("--source-types", default="all",
                         choices=["all", "ats", "boards", "playwright"],
                         help="Which source types to scan: ats (Greenhouse/Lever/Ashby), "
@@ -3398,11 +3509,17 @@ def main():
             PROFILE["core_skills"] = parsed["core_skills"]
         if parsed["years_experience"]:
             PROFILE["years_experience"] = parsed["years_experience"]
+        if parsed.get("current_role"):
+            PROFILE["current_role"] = parsed["current_role"]
+        # Auto-configure title filters based on detected role domain
+        PROFILE["title_red_flags"] = auto_detect_title_red_flags(PROFILE["core_skills"])
         os.environ["RESUME_PATH"] = args.resume
         # Auto-set recipient email from resume (sender stays as .env GMAIL_ADDRESS)
         if parsed["email"] and not args.email_to:
             os.environ["EMAIL_TO"] = parsed["email"]
             print(f"  Auto-detected email: {parsed['email']}")
+        print(f"  Profile: {PROFILE['name']} | {PROFILE['years_experience']}yr | role: {PROFILE.get('current_role', 'N/A')}")
+        print(f"  Skills ({len(PROFILE['core_skills'])}): {', '.join(PROFILE['core_skills'][:10])}...")
 
     # Override PROFILE from CLI args (takes priority over resume parse)
     if args.name:
