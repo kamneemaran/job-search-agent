@@ -3886,16 +3886,14 @@ def main():
             json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch != "3":
-            batch_sequence = {"1": "2a", "2a": "2b", "2b": "3", "4": "5", "5": "6", "6": "7", "7": "8", "8": "3"}
+        if args.batch != "8":
+            batch_sequence = {"1": "2a", "2a": "2b", "2b": "3", "3": "4", "4": "5", "5": "6", "6": "7", "7": "8"}
             batch_next = batch_sequence.get(args.batch)
-            if batch_next and batch_next != "3":
+            if batch_next:
                 print(f"Batch {args.batch} done. Run --batch {batch_next} next for remaining sources.")
                 return
-            elif not batch_next:
-                # Standalone batch (no next step) - proceed to merge
-                pass
-        # Last batch: load previous batch results and merge
+
+        # Batch 8 (terminal): load all previous batch results and merge
         all_batch_ids = ["1", "2a", "2b", "3", "4", "5", "6", "7", "8"]
         for b in all_batch_ids:
             if b == args.batch:
