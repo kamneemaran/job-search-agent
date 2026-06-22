@@ -3546,11 +3546,47 @@ def main():
 
     # --- If --resume is provided, auto-build profile from PDF ---
     if args.resume:
-        if not os.path.exists(args.resume):
-            print(f"Error: resume not found at {args.resume}")
+        resume_path = args.resume
+        # Handle Google Drive URLs
+        if "drive.google.com" in resume_path:
+            import re as _re
+            file_id_match = _re.search(r'/file/d/([^/]+)', resume_path)
+            if not file_id_match:
+                file_id_match = _re.search(r'id=([^&]+)', resume_path)
+            if file_id_match:
+                file_id = file_id_match.group(1)
+                dl_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+                print(f"Downloading resume from Google Drive (file ID: {file_id})...")
+                try:
+                    import requests as _requests
+                    resp = _requests.get(dl_url, timeout=30)
+                    if "downloadWarning" in resp.text or "Google Drive" in resp.text[:500]:
+                        # Try with confirm token
+                        import re as _re2
+                        confirm = _re2.search(r'confirm=([^&\"]+)', resp.text)
+                        if confirm:
+                            dl_url += f"&confirm={confirm.group(1)}"
+                            resp = _requests.get(dl_url, timeout=30)
+                    ct = resp.headers.get("Content-Type", "")
+                    if "pdf" not in ct.lower() and "octet" not in ct.lower():
+                        print(f"  Unexpected content type: {ct}, trying alternate download...")
+                        dl_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+                        resp = _requests.get(dl_url, timeout=30)
+                    resume_path = f"/tmp/resume_{file_id}.pdf"
+                    with open(resume_path, "wb") as f:
+                        f.write(resp.content)
+                    print(f"  Downloaded ({len(resp.content)} bytes) to {resume_path}")
+                except Exception as e:
+                    print(f"Error downloading from Google Drive: {e}")
+                    sys.exit(1)
+            else:
+                print(f"Error: could not extract file ID from Google Drive URL: {resume_path}")
+                sys.exit(1)
+        if not os.path.exists(resume_path):
+            print(f"Error: resume not found at {resume_path}")
             sys.exit(1)
-        print(f"Loading resume: {args.resume}")
-        parsed, _missing = parse_resume_pdf(args.resume)
+        print(f"Loading resume: {resume_path}")
+        parsed, _missing = parse_resume_pdf(resume_path)
         PROFILE["name"] = parsed["name"] or args.name or PROFILE["name"]
         if parsed["core_skills"]:
             PROFILE["core_skills"] = parsed["core_skills"]
@@ -3560,7 +3596,7 @@ def main():
             PROFILE["current_role"] = parsed["current_role"]
         # Auto-configure title filters based on detected role domain
         PROFILE["title_red_flags"] = auto_detect_title_red_flags(PROFILE["core_skills"])
-        os.environ["RESUME_PATH"] = args.resume
+        os.environ["RESUME_PATH"] = resume_path
         # Auto-set recipient email from resume (sender stays as .env GMAIL_ADDRESS)
         if parsed["email"] and not args.email_to:
             os.environ["EMAIL_TO"] = parsed["email"]

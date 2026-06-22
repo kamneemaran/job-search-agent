@@ -55,16 +55,25 @@ jobs:
       - name: Download resume from URL
         run: |
           URL="${{ github.event.inputs.resume_url }}"
-          if echo "$URL" | grep -q 'drive.google.com/file/d/'; then
-            FILE_ID=$(echo "$URL" | sed 's|.*drive.google.com/file/d/\([^/]*\).*|\1|')
-            URL="https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t"
-            echo "Converted Google Drive URL to direct download"
-          elif echo "$URL" | grep -q 'drive.google.com/open?id='; then
-            FILE_ID=$(echo "$URL" | sed 's|.*open?id=\([^&]*\).*|\1|')
-            URL="https://drive.google.com/uc?export=download&id=${FILE_ID}&confirm=t"
-            echo "Converted Google Drive URL to direct download"
+          if echo "$URL" | grep -q 'drive.google.com'; then
+            FILE_ID=$(echo "$URL" | sed 's|.*[=/]\([a-zA-Z0-9_-]\{25,\}\).*|\1|')
+            echo "Downloading from Google Drive (file ID: $FILE_ID)..."
+            pip install gdown 2>/dev/null
+            gdown "$FILE_ID" -O resume.pdf --fuzzy 2>&1 || python -c "
+import requests, re, sys
+file_id = '$FILE_ID'
+url = f'https://drive.google.com/uc?export=download&id={file_id}'
+s = requests.Session()
+resp = s.get(url, timeout=30)
+confirm = re.search(r'confirm=([^&\"]+)', resp.text)
+if confirm:
+    resp = s.get(f'{url}&confirm={confirm.group(1)}', timeout=30)
+with open('resume.pdf', 'wb') as f:
+    f.write(resp.content)
+" 2>&1
+          else
+            curl -L -o resume.pdf "$URL"
           fi
-          curl -L -o resume.pdf "$URL"
           if [ "$(head -c 4 resume.pdf)" != "%PDF" ]; then
             head -c 500 resume.pdf
             echo ""
