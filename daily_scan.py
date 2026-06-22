@@ -1883,7 +1883,7 @@ def search_linkedin(query, location="India", max_results=25):
 
 
 def search_indeed(query, location="India", max_results=25):
-    """Search Indeed for jobs matching a query using Playwright."""
+    """Search Indeed for jobs matching a query."""
     jobs = []
     loc_param = location.replace(" ", "+")
     query_param = query.replace(" ", "+")
@@ -1905,13 +1905,28 @@ def search_indeed(query, location="India", max_results=25):
 
         min_len = min(len(titles), len(companies), len(locations))
         for i in range(min(min_len, max_results)):
-            url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+            raw_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+            # Extract jk from tracking URL for direct viewjob link
+            jk_match = re.search(r'[?&]jk=([^&]+)', raw_url)
+            view_url = f"https://www.indeed.com/viewjob?jk={jk_match.group(1)}" if jk_match else raw_url
+            # Fetch full description from job detail page using Playwright
+            full_desc = ""
+            if jk_match and i < 10:
+                try:
+                    jd_html = _playwright_html(view_url, timeout=15000)
+                    if jd_html:
+                        desc_match = re.search(r'<div[^>]*id="jobDescriptionText"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
+                        if desc_match:
+                            full_desc = strip_html(desc_match.group(1))[:2000]
+                except Exception:
+                    pass
+            desc = full_desc or f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}"
             jobs.append({
                 "title": titles[i].strip(),
                 "company": companies[i].strip() if i < len(companies) else "Unknown",
                 "location": locations[i].strip() if i < len(locations) else location,
-                "url": url,
-                "description": f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}",
+                "url": view_url,
+                "description": desc,
             })
         if jobs:
             print(f"  [indeed] {len(jobs)} jobs for '{query}' in {location}")
@@ -1967,12 +1982,20 @@ def search_naukri(query, location="India", max_results=25):
             loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
             location_str = loc_clean if loc_clean else location
             job_url = job.get("urlStr", "")
+            # Naukri API returns jobDesc with the actual job description
+            job_desc = job.get("jobDesc", "").strip()
+            if job_desc:
+                # Also append company profile for richer matching
+                company_profile = job.get("companyProfile", "")
+                if company_profile:
+                    job_desc += " " + strip_html(company_profile)
+            desc = job_desc if job_desc else f"Naukri job: {title} at {company}"
             jobs.append({
                 "title": title,
                 "company": company,
                 "location": location_str,
                 "url": job_url,
-                "description": f"Naukri job: {title} at {company}",
+                "description": desc,
             })
         if jobs:
             print(f"  [naukri] {len(jobs)} jobs for '{query}' in {location}")
@@ -2162,12 +2185,16 @@ def search_glassdoor(query, location="India", max_results=25):
         min_len = min(len(titles), len(companies), len(locations))
         for i in range(min(min_len, max_results)):
             link = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+            # Fetch full description from job detail page
+            # Note: Glassdoor loads descriptions dynamically via JS API,
+            # so we only get placeholders here
+            desc = f"Glassdoor job: {titles[i]} at {companies[i]}"
             jobs.append({
                 "title": titles[i].strip(),
                 "company": companies[i].strip() if i < len(companies) else "Unknown",
                 "location": locations[i].strip() if i < len(locations) else location,
                 "url": link,
-                "description": f"Glassdoor job: {titles[i]} at {companies[i]}",
+                "description": desc,
             })
         if jobs:
             print(f"  [glassdoor] {len(jobs)} jobs for '{query}' in {location}")
@@ -2798,25 +2825,35 @@ def parse_resume_pdf(path):
         profile["email"] = email_match.group(0)
 
     # --- Extract most recent role (first job title in experience section) ---
+    # First try the header area (first few lines after name, before any section)
     role_keywords = [
         "engineer", "developer", "architect", "manager", "lead", "intern",
         "consultant", "specialist", "analyst", "scientist", "director",
         "head", "principal", "staff", "sde", "swe",
     ]
-    in_experience = False
-    for line in non_empty:
+    for line in non_empty[:10]:
         stripped = line.strip().lower()
-        if any(kw in stripped for kw in ["experience", "work experience", "employment",
-                                           "professional experience", "work history"]):
-            in_experience = True
-            continue
-        if in_experience and not profile["current_role"]:
-            if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
-                profile["current_role"] = line.strip()
-        if in_experience and profile["current_role"] and any(
-            kw in stripped for kw in ["education", "skills", "projects", "certifications"]
-        ):
+        if any(kw in stripped for kw in ["experience", "education", "skills"]):
             break
+        if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
+            profile["current_role"] = line.strip()
+            break
+    # Fallback: search inside experience section using word boundaries
+    if not profile["current_role"]:
+        in_experience = False
+        for line in non_empty:
+            stripped = line.strip().lower()
+            if any(kw in stripped for kw in ["experience", "work experience", "employment",
+                                               "professional experience", "work history"]):
+                in_experience = True
+                continue
+            if in_experience and not profile["current_role"]:
+                if any(re.search(r'\b' + re.escape(kw) + r'\b', stripped) for kw in role_keywords) and len(stripped) > 5:
+                    profile["current_role"] = line.strip()
+            if in_experience and profile["current_role"] and any(
+                kw in stripped for kw in ["education", "skills", "projects", "certifications"]
+            ):
+                break
 
     # --- Extract skills ---
     skill_section_text = ""
@@ -2824,8 +2861,8 @@ def parse_resume_pdf(path):
     for line in lines:
         stripped = line.strip().lower()
         if any(kw in stripped for kw in ["technical skills", "technologies", "tech stack",
-                                           "skills &", "skills:", "core competencies",
-                                           "programming languages", "tools &"]):
+                                           "skills &", "skills:", "skill set", "skill set:",
+                                           "core competencies", "programming languages", "tools &"]):
             in_skills = True
             continue
         if in_skills:
@@ -2835,11 +2872,9 @@ def parse_resume_pdf(path):
                     break
             skill_section_text += line + " "
 
-    if not skill_section_text:
-        skill_section_text = raw
-
+    # Always use full resume text for keyword matching (skill section may be narrow)
     found_skills = set()
-    text_lower = skill_section_text.lower()
+    text_lower = raw.lower()
     for kw in COMMON_TECH_KEYWORDS:
         if kw in text_lower:
             found_skills.add(kw)
@@ -3089,18 +3124,32 @@ class JobTracker:
 
 
 def search_remotive(query, location="Remote", max_results=25):
-    """Search Remotive public API for remote jobs."""
+    """Search Remotive public API for remote jobs.
+
+    Note: the free API does not support search filtering server-side.
+    All jobs are fetched and filtered client-side by the query.
+    """
     jobs = []
     try:
-        resp = requests.get("https://remotive.com/api/remote-jobs", params={"search": query, "limit": max_results}, timeout=15)
+        resp = requests.get("https://remotive.com/api/remote-jobs", params={"limit": 50}, timeout=15)
         if resp.status_code == 200:
+            tag_words = set(query.lower().split()) if query else set()
             for job in resp.json().get("jobs", []):
+                title = job.get("title", "")
+                company = job.get("company_name", "")
+                desc = job.get("description", "")
+                desc_plain = re.sub(r'<[^>]+>', '', desc) if desc else ""
+                search_text = (title + " " + company + " " + desc_plain).lower()
+                if query and not any(w in search_text for w in tag_words):
+                    continue
                 jobs.append({
-                    "title": job.get("title", ""), "company": job.get("company_name", ""),
+                    "title": title, "company": company,
                     "location": job.get("candidate_required_location", "Remote"),
                     "url": job.get("url", ""),
-                    "description": f"Remotive: {job.get('title', '')} @ {job.get('company_name', '')}",
+                    "description": desc_plain[:2000] or f"Remotive: {title} @ {company}",
                 })
+                if len(jobs) >= max_results:
+                    break
             if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [remotive] Error: {e}")
