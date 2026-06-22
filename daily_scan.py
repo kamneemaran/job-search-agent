@@ -3766,7 +3766,7 @@ def main():
     if args.batch:
         batch_path = f"last_scan_results_batch_{args.batch}.json"
         with open(batch_path, "w") as f:
-            json.dump(all_matches, f, indent=2)
+            json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
         if args.batch != "3":
@@ -3825,7 +3825,7 @@ def main():
     #     send_whatsapp(whatsapp_msg)
 
     with open("last_scan_results.json", "w") as f:
-        json.dump(all_matches, f, indent=2)
+        json.dump(all_matches, f, indent=2, default=str)
 
     # Also save as CSV for Google Sheets / Excel
     csv_path = "job_matches.csv"
