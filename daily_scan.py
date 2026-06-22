@@ -1813,7 +1813,7 @@ def fetch_jobs_from_source(source):
 
 
 def search_linkedin(query, location="India", max_results=25):
-    """Search LinkedIn Guest API for jobs matching a query."""
+    """Search LinkedIn Guest API for jobs matching a query (paginated)."""
     jobs = []
     headers = {
         "User-Agent": (
@@ -1823,44 +1823,57 @@ def search_linkedin(query, location="India", max_results=25):
         ),
         "Accept": "text/html,application/xhtml+xml",
     }
-    params = {"keywords": query, "location": location, "start": 0}
-    try:
-        resp = requests.get(
-            "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
-            params=params,
-            headers=headers,
-            timeout=15,
-        )
+    start = 0
+    page_size = 25
+    seen_urls = set()
+    while len(jobs) < max_results:
+        params = {"keywords": query, "location": location, "start": start}
+        try:
+            resp = requests.get(
+                "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
+                params=params,
+                headers=headers,
+                timeout=15,
+            )
+        except Exception:
+            break
         if resp.status_code != 200:
-            print(f"  [web] LinkedIn HTTP {resp.status_code} for '{query}' in {location}")
-            return jobs
+            if start == 0:
+                print(f"  [web] LinkedIn HTTP {resp.status_code} for '{query}' in {location}")
+            break
 
         html = resp.text
-        # Parse job cards from LinkedIn guest HTML
-        # Extract from script tags with JSON or from li/job-card-container elements
         titles = re.findall(r'<h3[^>]*class="[^"]*base-search-card__title[^"]*"[^>]*>\s*([^<]+?)\s*</h3>', html, re.DOTALL)
         companies = re.findall(r'<h4[^>]*class="[^"]*base-search-card__subtitle[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+?)\s*</a>', html, re.DOTALL)
         locations = re.findall(r'<span[^>]*class="[^"]*job-search-card__location[^"]*"[^>]*>\s*([^<]+?)\s*</span>', html, re.DOTALL)
         links = re.findall(r'<a[^>]*class="[^"]*base-card__full-link[^"]*"[^>]*href="([^"]+)"', html)
 
-        # Fallback patterns
         if not titles:
             titles = re.findall(r'"title":"([^"]+)"', html)
             companies = re.findall(r'"companyName":"([^"]+)"', html)
             locations = re.findall(r'"formattedLocation":"([^"]+)"', html)
             links = re.findall(r'"jobUrl":"([^"]+)"', html)
 
+        if not titles:
+            break  # no more results
+
         min_len = min(len(titles), len(companies), len(locations))
-        for i in range(min(min_len, max_results)):
+        new_count = 0
+        for i in range(min_len):
+            if len(jobs) >= max_results:
+                break
             url = links[i] if i < len(links) else ""
-            # Try to fetch actual job description from the LinkedIn job page
+            if url and url in seen_urls:
+                continue
+            if url:
+                seen_urls.add(url)
+            # Try to fetch actual job description
             full_desc = ""
             if url:
                 try:
                     jd_resp = requests.get(url, headers=headers, timeout=10)
                     if jd_resp.status_code == 200:
                         jd_html = jd_resp.text
-                        # Extract description from LinkedIn job detail page
                         desc_match = re.search(r'<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
                         if desc_match:
                             full_desc = strip_html(desc_match.group(1))[:2000]
@@ -1878,13 +1891,16 @@ def search_linkedin(query, location="India", max_results=25):
                 "url": url,
                 "description": desc,
             })
+            new_count += 1
 
-        if jobs:
-            print(f"  [web] {len(jobs)} jobs for '{query}' in {location}")
-        else:
-            print(f"  [web] No jobs parsed for '{query}' in {location}")
-    except Exception as e:
-        print(f"  [web] Error searching '{query}' in {location}: {e}")
+        if new_count == 0:
+            break  # no new jobs on this page
+        start += page_size
+
+    if jobs:
+        print(f"  [web] {len(jobs)} jobs for '{query}' in {location} (paginated)")
+    elif start == 0:
+        print(f"  [web] No jobs parsed for '{query}' in {location}")
     return jobs
 
 
