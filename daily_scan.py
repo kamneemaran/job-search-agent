@@ -582,8 +582,8 @@ JOB_SOURCES = [
     {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "intermategroupgmbh"},
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
     {"name": "JetBrains", "url": "https://job-boards.eu.greenhouse.io/jetbrains", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "jetbrains"},
-    {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
-    {"name": "Limehome", "url": "https://career.limehome.de/careerslimehome-tz49z", "region": "DE", "type": "company"},
+    {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Limehome", "url": "https://career.limehome.de", "region": "DE", "type": "company", "playwright": True},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
@@ -783,13 +783,6 @@ def score_job(title, description, company, location=""):
             visa_note = "Visa sponsorship mentioned"
         else:
             visa_note = "Visa sponsorship details not mentioned"
-
-    # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
-    title_lower = title.lower()
-    has_sap_in_title = "sap" in title_lower or "abap" in title_lower
-    has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
-    if has_sap_in_title and has_sap_skills and "sap mm" not in text:
-        return 0, "Filtered: SAP role requires SAP MM in JD"
 
     # --- Skill scoring (dynamic denominator based on resume skill count) ---
     skill_hits = sum(1 for skill in PROFILE["core_skills"] if skill in text)
@@ -2371,15 +2364,14 @@ def search_jobspresso(query, location="Remote", max_results=25):
 def search_englishjobsearch(query, location="Remote", max_results=25):
     """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU.
 
-    Uses plain HTTP + regex (the site is server-rendered, no JS needed).
+    Uses cloudscraper to bypass Cloudflare protection, then regex to parse.
     """
     jobs = []
     q = query.replace(" ", "+")
     try:
-        resp = requests.get(
+        scraper = cloudscraper.create_scraper()
+        resp = scraper.get(
             f"https://englishjobsearch.ch/jobs/{q}",
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"},
             timeout=15,
         )
         if resp.status_code != 200:
@@ -3121,7 +3113,7 @@ def search_remoteco(query, location="Remote", max_results=25):
     scraper = cloudscraper.create_scraper()
     q = query.replace(" ", "+")
     try:
-        resp = scraper.get(f"https://remote.co/remote-jobs/search/?search_keywords={q}", timeout=20)
+        resp = scraper.get(f"https://remote.co/remote-jobs/search/?search_keywords={q}", timeout=30)
         if resp.status_code == 200:
             titles = re.findall(r'class="m-0"[^>]*>\s*<a[^>]*>\s*([^<]+)', resp.text)
             companies = re.findall(r'class="team"[^>]*>\s*([^<]+)', resp.text)
@@ -3619,7 +3611,6 @@ def main():
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
         ("Remotive", search_remotive),
-        ("RemoteCo", search_remoteco),
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),

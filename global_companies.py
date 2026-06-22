@@ -2,7 +2,7 @@
 
 GLOBAL_JOB_SOURCES = [
     {"name": "7 Peak", "url": "https://7peakssoftware-hr.freshteam.com/jobs", "region": "Global", "type": "company", "ats": "freshteam"},
-    {"name": "astroscale", "url": "https://astroscale.bamboohr.com/careers?source=LinkedIn", "region": "Global", "type": "company", "playwright": True},
+    {"name": "astroscale", "url": "https://www.astroscale.com/en/careers", "region": "Global", "type": "company", "playwright": True},
     {"name": "Moonpay", "url": "https://jobs.lever.co/moonpay", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "moonpay"},
     {"name": "Washmen Dubai", "url": "https://jobs.lever.co/Washmen", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "Washmen"},
 
