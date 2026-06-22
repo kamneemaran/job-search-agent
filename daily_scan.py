@@ -3492,8 +3492,8 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
-    parser.add_argument("--batch", type=str, choices=["1", "2a", "2b", "3", "4", "5", "6", "7", "8"], default="",
-                        help="Run in batches: 1=company ATS, 2a=global job boards, 2b=niche/regional boards, 3=playwright, 4=EU companies, 5=Global, 6=APAC, 7=US/Canada. Run sequentially to avoid hangs.")
+    parser.add_argument("--batch", type=str, choices=["ats", "boards-major", "boards-niche", "playwright", "eu", "global", "apac", "us-canada", "middle-east"], default="",
+                        help="Run in batches: ats=company ATS APIs, boards-major=LinkedIn/Indeed/Glassdoor etc, boards-niche=regional/niche boards, playwright=JS-rendered pages, eu/global/apac/us-canada/middle-east=region companies. Run sequentially.")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -3577,7 +3577,7 @@ def main():
             return False
         return True
 
-    if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "1"):
+    if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "ats"):
         for source in _interleave_sources(JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
             t0 = datetime.now()
@@ -3626,14 +3626,14 @@ def main():
         ("VisaSponsor", search_visasponsor),
         ("Incluso", search_incluso),
     ]
-    # Split batch 2: 2a = global/major boards, 2b = niche/regional boards
+    # Split boards: boards-major = global/major boards, boards-niche = niche/regional boards
     _split = 10
-    if args.batch == "2a":
+    if args.batch == "boards-major":
         board_scrapers = board_scrapers[:_split]
-    elif args.batch == "2b":
+    elif args.batch == "boards-niche":
         board_scrapers = board_scrapers[_split:]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("2a", "2b")):
+    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-niche")):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
@@ -3686,7 +3686,7 @@ def main():
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
     ]
-    if args.source_types in ("all", "playwright") and (args.batch == "" or args.batch == "3"):
+    if args.source_types in ("all", "playwright") and (args.batch == "" or args.batch == "playwright"):
         for pw_name, pw_fn in pw_scrapers:
             print(f"  [{pw_name.lower()}] Processing")
             t0 = datetime.now()
@@ -3730,8 +3730,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
 
-    # --- EU companies (batch 4) ---
-    if args.batch == "4":
+    # --- EU companies (batch: eu) ---
+    if args.batch == "eu":
         for source in _interleave_sources(EU_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
             t0 = datetime.now()
@@ -3756,8 +3756,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
-    # --- Global companies / recruiters (batch 5) ---
-    if args.batch == "5":
+    # --- Global companies / recruiters (batch: global) ---
+    if args.batch == "global":
         for source in _interleave_sources(GLOBAL_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Global')}) - {source['url']}")
             t0 = datetime.now()
@@ -3782,8 +3782,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
-    # --- APAC companies (batch 6) ---
-    if args.batch == "6":
+    # --- APAC companies (batch: apac) ---
+    if args.batch == "apac":
         for source in _interleave_sources(APAC_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','APAC')}) - {source['url']}")
             t0 = datetime.now()
@@ -3808,8 +3808,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
-    # --- US/Canada companies (batch 7) ---
-    if args.batch == "7":
+    # --- US/Canada companies (batch: us-canada) ---
+    if args.batch == "us-canada":
         for source in _interleave_sources(US_CANADA_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','US/Canada')}) - {source['url']}")
             t0 = datetime.now()
@@ -3834,8 +3834,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
-    # --- Middle East companies (batch 8) ---
-    if args.batch == "8":
+    # --- Middle East companies (batch: middle-east) ---
+    if args.batch == "middle-east":
         for source in _interleave_sources(MIDDLE_EAST_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Middle East')}) - {source['url']}")
             t0 = datetime.now()
@@ -3886,15 +3886,24 @@ def main():
             json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch != "8":
-            batch_sequence = {"1": "2a", "2a": "2b", "2b": "3", "3": "4", "4": "5", "5": "6", "6": "7", "7": "8"}
+        if args.batch != "middle-east":
+            batch_sequence = {
+                "ats": "boards-major",
+                "boards-major": "boards-niche",
+                "boards-niche": "playwright",
+                "playwright": "eu",
+                "eu": "global",
+                "global": "apac",
+                "apac": "us-canada",
+                "us-canada": "middle-east",
+            }
             batch_next = batch_sequence.get(args.batch)
             if batch_next:
-                print(f"Batch {args.batch} done. Run --batch {batch_next} next for remaining sources.")
+                print(f"Batch '{args.batch}' done. Run --batch {batch_next} next for remaining sources.")
                 return
 
-        # Batch 8 (terminal): load all previous batch results and merge
-        all_batch_ids = ["1", "2a", "2b", "3", "4", "5", "6", "7", "8"]
+        # Terminal batch (middle-east): load all previous batch results and merge
+        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
         for b in all_batch_ids:
             if b == args.batch:
                 continue  # current batch is already in all_matches
