@@ -658,14 +658,30 @@ def _derive_title_keywords(current_role, years_experience):
 
     keywords = [base_role]  # always match base role
 
+    # "software engineer" is a universal title valid for any engineering profile
+    _generic_titles = ["software engineer"]
+    for gt in _generic_titles:
+        if gt not in keywords:
+            keywords.append(gt)
+
     # Add seniority variants based on experience level
     if years_experience >= 10:
         keywords.extend([f"senior {base_role}", f"staff {base_role}", f"lead {base_role}",
                          f"principal {base_role}", "sde-3", "sde 3", "sde-4", "sde 4", "sde-5"])
+        for gt in _generic_titles:
+            keywords.append(f"senior {gt}")
+            keywords.append(f"staff {gt}")
+            keywords.append(f"lead {gt}")
+            keywords.append(f"principal {gt}")
     elif years_experience >= 5:
         keywords.extend([f"senior {base_role}", f"lead {base_role}"])
+        for gt in _generic_titles:
+            keywords.append(f"senior {gt}")
+            keywords.append(f"lead {gt}")
     elif years_experience >= 3:
         keywords.append(f"senior {base_role}")
+        for gt in _generic_titles:
+            keywords.append(f"senior {gt}")
     # For <3 years, only base role matches
 
     # Add individual meaningful words from base role (for partial title matches)
@@ -805,7 +821,7 @@ def score_job(title, description, company, location=""):
     # Full phrase match (e.g., "sap mm consultant") = 30, partial word match = 10
     if title_keywords:
         base_role = title_keywords[0]  # first entry is always the base role
-        if base_role in title_lower:
+        if base_role in title_lower or "software engineer" in title_lower:
             title_relevance = 30
         elif any(kw in title_lower for kw in title_keywords):
             title_relevance = 10
@@ -1915,47 +1931,57 @@ def search_indeed(query, location="India", max_results=25):
     jobs = []
     loc_param = location.replace(" ", "+")
     query_param = query.replace(" ", "+")
-    url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}"
     try:
-        html = _playwright_html(url)
-        titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
-        companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
-        if not companies:
-            companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
-        if not companies:
-            companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
-        locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
-        if not locations:
-            locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
-        links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
-        if not links:
-            links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
+        for page in range(1, 4):
+            start_offset = (page - 1) * 10
+            url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}&start={start_offset}"
+            html = _playwright_html(url)
+            if not html:
+                if page == 1:
+                    print(f"  [indeed] No response for '{query}' in {location}")
+                break
+            titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
+            companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
+            if not companies:
+                companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
+            if not companies:
+                companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
+            locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
+            if not locations:
+                locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
+            links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
+            if not links:
+                links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
 
-        min_len = min(len(titles), len(companies), len(locations))
-        for i in range(min(min_len, max_results)):
-            raw_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-            # Extract jk from tracking URL for direct viewjob link
-            jk_match = re.search(r'[?&]jk=([^&]+)', raw_url)
-            view_url = f"https://www.indeed.com/viewjob?jk={jk_match.group(1)}" if jk_match else raw_url
-            # Fetch full description from job detail page using Playwright
-            full_desc = ""
-            if jk_match and i < 10:
-                try:
-                    jd_html = _playwright_html(view_url, timeout=15000)
-                    if jd_html:
-                        desc_match = re.search(r'<div[^>]*id="jobDescriptionText"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
-                        if desc_match:
-                            full_desc = strip_html(desc_match.group(1))[:2000]
-                except Exception:
-                    pass
-            desc = full_desc or f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}"
-            jobs.append({
-                "title": titles[i].strip(),
-                "company": companies[i].strip() if i < len(companies) else "Unknown",
-                "location": locations[i].strip() if i < len(locations) else location,
-                "url": view_url,
-                "description": desc,
-            })
+            page_len = min(len(titles), len(companies), len(locations))
+            if page_len == 0:
+                break
+            for i in range(page_len):
+                if len(jobs) >= max_results:
+                    break
+                raw_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+                jk_match = re.search(r'[?&]jk=([^&]+)', raw_url)
+                view_url = f"https://www.indeed.com/viewjob?jk={jk_match.group(1)}" if jk_match else raw_url
+                full_desc = ""
+                if jk_match and i < 10:
+                    try:
+                        jd_html = _playwright_html(view_url, timeout=15000)
+                        if jd_html:
+                            desc_match = re.search(r'<div[^>]*id="jobDescriptionText"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
+                            if desc_match:
+                                full_desc = strip_html(desc_match.group(1))[:2000]
+                    except Exception:
+                        pass
+                desc = full_desc or f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}"
+                jobs.append({
+                    "title": titles[i].strip(),
+                    "company": companies[i].strip() if i < len(companies) else "Unknown",
+                    "location": locations[i].strip() if i < len(locations) else location,
+                    "url": view_url,
+                    "description": desc,
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [indeed] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -1986,45 +2012,52 @@ def search_naukri(query, location="India", max_results=25):
     try:
         session.get("https://www.naukri.com", timeout=15)
         keyword = query.replace(" ", "+")
-        api_url = f"https://www.naukri.com/jobapi/v2/search?keyword={keyword}&location={location}"
         session.headers["Referer"] = f"https://www.naukri.com/{keyword.replace('+', '-')}-jobs"
-        resp = session.get(api_url, timeout=15)
-        if resp.status_code != 200:
-            print(f"  [naukri] Naukri HTTP {resp.status_code} for '{query}'")
-            return jobs
-        data = resp.json()
-        listings = data.get("list", [])
-        for i, job in enumerate(listings[:max_results]):
-            title = job.get("post", "").strip()
-            if not title:
-                title = job.get("JOB_SPEC", "").strip()
-            company = job.get("companyName", "Unknown").strip()
-            loc_raw = job.get("cityfield", "")
-            loc_clean = re.sub(r'\s{2,}', ', ', loc_raw).strip()
-            loc_clean = re.sub(r'\s*\(.*?\)\s*', '', loc_clean)
-            loc_clean = ', '.join(dict.fromkeys(loc_clean.split(', ')))
-            for tag in ["Metropolitan Cities", "Top", "Popular Locations", "Preferred Jobseeker",
-                         "Anywhere in", "South India", "West India", "North India",
-                         "Southindia", "westindia", "northindia"]:
-                loc_clean = loc_clean.replace(tag, "").strip()
-            loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
-            location_str = loc_clean if loc_clean else location
-            job_url = job.get("urlStr", "")
-            # Naukri API returns jobDesc with the actual job description
-            job_desc = job.get("jobDesc", "").strip()
-            if job_desc:
-                # Also append company profile for richer matching
-                company_profile = job.get("companyProfile", "")
-                if company_profile:
-                    job_desc += " " + strip_html(company_profile)
-            desc = job_desc if job_desc else f"Naukri job: {title} at {company}"
-            jobs.append({
-                "title": title,
-                "company": company,
-                "location": location_str,
-                "url": job_url,
-                "description": desc,
-            })
+        for page in range(1, 4):
+            api_url = f"https://www.naukri.com/jobapi/v2/search?keyword={keyword}&location={location}&page={page}"
+            resp = session.get(api_url, timeout=15)
+            if resp.status_code != 200:
+                if page == 1:
+                    print(f"  [naukri] Naukri HTTP {resp.status_code} for '{query}'")
+                    return jobs
+                break
+            data = resp.json()
+            listings = data.get("list", [])
+            if not listings:
+                break
+            for job in listings:
+                if len(jobs) >= max_results:
+                    break
+                title = job.get("post", "").strip()
+                if not title:
+                    title = job.get("JOB_SPEC", "").strip()
+                company = job.get("companyName", "Unknown").strip()
+                loc_raw = job.get("cityfield", "")
+                loc_clean = re.sub(r'\s{2,}', ', ', loc_raw).strip()
+                loc_clean = re.sub(r'\s*\(.*?\)\s*', '', loc_clean)
+                loc_clean = ', '.join(dict.fromkeys(loc_clean.split(', ')))
+                for tag in ["Metropolitan Cities", "Top", "Popular Locations", "Preferred Jobseeker",
+                             "Anywhere in", "South India", "West India", "North India",
+                             "Southindia", "westindia", "northindia"]:
+                    loc_clean = loc_clean.replace(tag, "").strip()
+                loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
+                location_str = loc_clean if loc_clean else location
+                job_url = job.get("urlStr", "")
+                job_desc = job.get("jobDesc", "").strip()
+                if job_desc:
+                    company_profile = job.get("companyProfile", "")
+                    if company_profile:
+                        job_desc += " " + strip_html(company_profile)
+                desc = job_desc if job_desc else f"Naukri job: {title} at {company}"
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": location_str,
+                    "url": job_url,
+                    "description": desc,
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [naukri] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2050,35 +2083,45 @@ def search_instahyre(query, location="India", max_results=25):
         "X-Requested-With": "XMLHttpRequest",
     })
     query_param = query.replace(" ", "+")
-    api_url = f"https://www.instahyre.com/api/v1/job_search?search={query_param}&location={location}"
+    base_url = f"https://www.instahyre.com/api/v1/job_search?search={query_param}&location={location}"
     try:
-        resp = scraper.get(api_url, timeout=15)
-        if resp.status_code != 200:
-            print(f"  [instahyre] Instahyre HTTP {resp.status_code} for '{query}'")
-            return jobs
-        data = resp.json()
-        objects = data.get("objects", [])
-        query_lower = query.lower()
-        query_terms = query_lower.split()
-        for obj in objects:
-            title = obj.get("candidate_title") or obj.get("title", "").strip()
-            company = obj.get("employer", {}).get("company_name", "Unknown").strip()
-            loc = obj.get("locations", location).strip()
-            keywords = " ".join(obj.get("keywords", []) or []).lower()
-            # Client-side filter since API doesn't filter for anonymous users
-            text = f"{title.lower()} {company.lower()} {keywords}"
-            if not all(term in text for term in query_terms):
-                continue
-            job_url = obj.get("public_url", "")
-            jobs.append({
-                "title": title,
-                "company": company,
-                "location": loc,
-                "url": job_url,
-                "description": f"Instahyre job: {title} at {company}",
-            })
+        next_url = base_url
+        for page in range(1, 4):
+            resp = scraper.get(next_url, timeout=15)
+            if resp.status_code != 200:
+                if page == 1:
+                    print(f"  [instahyre] Instahyre HTTP {resp.status_code} for '{query}'")
+                break
+            data = resp.json()
+            objects = data.get("objects", [])
+            if not objects:
+                break
+            query_lower = query.lower()
+            query_terms = query_lower.split()
+            for obj in objects:
+                if len(jobs) >= max_results:
+                    break
+                title = obj.get("candidate_title") or obj.get("title", "").strip()
+                company = obj.get("employer", {}).get("company_name", "Unknown").strip()
+                loc = obj.get("locations", location).strip()
+                keywords = " ".join(obj.get("keywords", []) or []).lower()
+                text = f"{title.lower()} {company.lower()} {keywords}"
+                if not all(term in text for term in query_terms):
+                    continue
+                job_url = obj.get("public_url", "")
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": job_url,
+                    "description": f"Instahyre job: {title} at {company}",
+                })
             if len(jobs) >= max_results:
                 break
+            next_path = data.get("meta", {}).get("next", "")
+            if not next_path:
+                break
+            next_url = "https://www.instahyre.com" + next_path
         if jobs:
             print(f"  [instahyre] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2168,23 +2211,32 @@ def search_simplyhired(query, location="India", max_results=25):
     jobs = []
     q = query.replace(" ", "+")
     try:
-        html = _playwright_html(f"https://www.simplyhired.com/search?q={q}")
-        if not html:
-            print(f"  [simplyhired] No response for '{query}'")
-            return jobs
-        titles = re.findall(r'<h2[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
-        companies = re.findall(r'data-testid="companyName"[^>]*>\s*([^<]+)', html)
-        locs = re.findall(r'data-testid="searchSerpJobLocation"[^>]*>\s*([^<]+)', html)
-        links = re.findall(r'href="(/job/[^"]+)"', html)
-        min_len = min(len(titles), len(companies))
-        for i in range(min(min_len, max_results)):
-            url = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
-            l = locs[i].strip() if i < len(locs) else location
-            jobs.append({
-                "title": titles[i].strip(), "company": companies[i].strip(),
-                "location": l, "url": url,
-                "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
-            })
+        for page in range(1, 4):
+            url = f"https://www.simplyhired.com/search?q={q}&page={page}"
+            html = _playwright_html(url)
+            if not html:
+                if page == 1:
+                    print(f"  [simplyhired] No response for '{query}'")
+                break
+            titles = re.findall(r'<h2[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
+            companies = re.findall(r'data-testid="companyName"[^>]*>\s*([^<]+)', html)
+            locs = re.findall(r'data-testid="searchSerpJobLocation"[^>]*>\s*([^<]+)', html)
+            links = re.findall(r'href="(/job/[^"]+)"', html)
+            if not titles or not companies:
+                break
+            page_len = min(len(titles), len(companies))
+            for i in range(page_len):
+                if len(jobs) >= max_results:
+                    break
+                u = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
+                l = locs[i].strip() if i < len(locs) else location
+                jobs.append({
+                    "title": titles[i].strip(), "company": companies[i].strip(),
+                    "location": l, "url": u,
+                    "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [simplyhired] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2198,32 +2250,37 @@ def search_glassdoor(query, location="India", max_results=25):
     loc_map = {"India": "113", "Remote": "0"}
     loc_id = loc_map.get(location, "113")
     query_param = query.replace(" ", "+")
-    url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}"
     try:
-        html = _playwright_html(url)
-        if not html:
-            print(f"  [glassdoor] No response for '{query}' in {location}")
-            return jobs
-        titles = re.findall(r'class="[^"]*JobCard_jobTitle[^"]*"[^>]*>\s*([^<]+)', html)
-        companies = re.findall(r'class="[^"]*EmployerProfile_compactEmployerName[^"]*"[^>]*>\s*([^<]+)', html)
-        if not companies:
-            companies = re.findall(r'class="[^"]*EmployerProfile_employerName[^"]*"[^>]*>\s*([^<]+)', html)
-        locations = re.findall(r'class="[^"]*JobCard_location[^"]*"[^>]*>\s*([^<]+)', html)
-        links = re.findall(r'href="(/partner/jobListing[^"]+)"', html)
-        min_len = min(len(titles), len(companies), len(locations))
-        for i in range(min(min_len, max_results)):
-            link = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-            # Fetch full description from job detail page
-            # Note: Glassdoor loads descriptions dynamically via JS API,
-            # so we only get placeholders here
-            desc = f"Glassdoor job: {titles[i]} at {companies[i]}"
-            jobs.append({
-                "title": titles[i].strip(),
-                "company": companies[i].strip() if i < len(companies) else "Unknown",
-                "location": locations[i].strip() if i < len(locations) else location,
-                "url": link,
-                "description": desc,
-            })
+        for page in range(1, 4):
+            url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}&pn={page}"
+            html = _playwright_html(url)
+            if not html:
+                if page == 1:
+                    print(f"  [glassdoor] No response for '{query}' in {location}")
+                break
+            titles = re.findall(r'class="[^"]*JobCard_jobTitle[^"]*"[^>]*>\s*([^<]+)', html)
+            companies = re.findall(r'class="[^"]*EmployerProfile_compactEmployerName[^"]*"[^>]*>\s*([^<]+)', html)
+            if not companies:
+                companies = re.findall(r'class="[^"]*EmployerProfile_employerName[^"]*"[^>]*>\s*([^<]+)', html)
+            locations = re.findall(r'class="[^"]*JobCard_location[^"]*"[^>]*>\s*([^<]+)', html)
+            links = re.findall(r'href="(/partner/jobListing[^"]+)"', html)
+            page_len = min(len(titles), len(companies), len(locations))
+            if page_len == 0:
+                break
+            for i in range(page_len):
+                if len(jobs) >= max_results:
+                    break
+                link = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+                desc = f"Glassdoor job: {titles[i]} at {companies[i]}"
+                jobs.append({
+                    "title": titles[i].strip(),
+                    "company": companies[i].strip() if i < len(companies) else "Unknown",
+                    "location": locations[i].strip() if i < len(locations) else location,
+                    "url": link,
+                    "description": desc,
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [glassdoor] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2313,21 +2370,29 @@ def search_skipthedrive(query, location="Remote", max_results=25):
     scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
     q = query.replace(" ", "+")
     try:
-        resp = scraper.get(f"https://www.skipthedrive.com/?s={q}", timeout=20)
-        if resp.status_code != 200:
-            return jobs
-        html = resp.text
-        titles = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
-        links = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^"]*href="([^"]+)"', html)
-        for i in range(min(len(titles), max_results)):
-            t = titles[i].strip()
-            t = re.sub(r'&#8211;', '-', t)
-            t = re.sub(r'&#\d+;', '', t)
-            jobs.append({
-                "title": t, "company": "SkipTheDrive",
-                "location": "Remote", "url": links[i] if i < len(links) else "",
-                "description": f"SkipTheDrive: {t}",
-            })
+        for page in range(1, 4):
+            page_url = f"https://www.skipthedrive.com/page/{page}/?s={q}" if page > 1 else f"https://www.skipthedrive.com/?s={q}"
+            resp = scraper.get(page_url, timeout=20)
+            if resp.status_code != 200:
+                if page == 1:
+                    return jobs
+                break
+            html = resp.text
+            titles = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
+            links = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^"]*href="([^"]+)"', html)
+            if not titles:
+                break
+            for i in range(min(len(titles), max_results - len(jobs))):
+                t = titles[i].strip()
+                t = re.sub(r'&#8211;', '-', t)
+                t = re.sub(r'&#\d+;', '', t)
+                jobs.append({
+                    "title": t, "company": "SkipTheDrive",
+                    "location": "Remote", "url": links[i] if i < len(links) else "",
+                    "description": f"SkipTheDrive: {t}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [skipthedrive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2425,46 +2490,44 @@ def search_englishjobsearch(query, location="Remote", max_results=25):
     q = query.replace(" ", "+")
     try:
         scraper = cloudscraper.create_scraper()
-        resp = scraper.get(
-            f"https://englishjobsearch.ch/jobs/{q}",
-            timeout=15,
-        )
-        if resp.status_code != 200:
-            print(f"  [englishjobsearch] HTTP {resp.status_code}")
-            return jobs
+        for page in range(1, 4):
+            page_url = f"https://englishjobsearch.ch/jobs/{q}?page={page}" if page > 1 else f"https://englishjobsearch.ch/jobs/{q}"
+            resp = scraper.get(page_url, timeout=15)
+            if resp.status_code != 200:
+                if page == 1:
+                    print(f"  [englishjobsearch] HTTP {resp.status_code}")
+                break
 
-        html = resp.text
-        # Each job is a div with class "job js-job"
-        job_blocks = re.findall(
-            r'class="job js-job[^"]*"[^>]*>(.*?)(?=class="job js-job|$)',
-            html, re.DOTALL,
-        )
-        for block in job_blocks[:max_results]:
-            # Title from <h3 itemprop="title">
-            h3 = re.search(r'<h3[^>]*>(.*?)</h3>', block, re.DOTALL)
-            title = re.sub(r'<[^>]+>', '', h3.group(1)).strip() if h3 else ""
-            if not title or len(title) < 4:
-                continue
-
-            # Clickout link
-            link_match = re.search(r'href="(/clickout/[^"]+)"', block)
-            url = f"https://englishjobsearch.ch{link_match.group(1)}" if link_match else ""
-            # Unescape &amp; in URL
-            url = url.replace("&amp;", "&")
-
-            # Company and location from <li> text nodes (1st = company, 2nd = location)
-            li_texts = re.findall(r'<li[^>]*>.*?</svg>\s*([^<]+)', block, re.DOTALL)
-            li_texts = [t.strip() for t in li_texts if t.strip()]
-            company = li_texts[0] if len(li_texts) >= 1 else "EnglishJobSearch"
-            loc = li_texts[1] if len(li_texts) >= 2 else "Switzerland"
-
-            jobs.append({
-                "title": title,
-                "company": company,
-                "location": loc,
-                "url": url,
-                "description": f"EnglishJobSearch: {title} at {company}",
-            })
+            html = resp.text
+            job_blocks = re.findall(
+                r'class="job js-job[^"]*"[^>]*>(.*?)(?=class="job js-job|$)',
+                html, re.DOTALL,
+            )
+            if not job_blocks:
+                break
+            for block in job_blocks:
+                if len(jobs) >= max_results:
+                    break
+                h3 = re.search(r'<h3[^>]*>(.*?)</h3>', block, re.DOTALL)
+                title = re.sub(r'<[^>]+>', '', h3.group(1)).strip() if h3 else ""
+                if not title or len(title) < 4:
+                    continue
+                link_match = re.search(r'href="(/clickout/[^"]+)"', block)
+                url = f"https://englishjobsearch.ch{link_match.group(1)}" if link_match else ""
+                url = url.replace("&amp;", "&")
+                li_texts = re.findall(r'<li[^>]*>.*?</svg>\s*([^<]+)', block, re.DOTALL)
+                li_texts = [t.strip() for t in li_texts if t.strip()]
+                company = li_texts[0] if len(li_texts) >= 1 else "EnglishJobSearch"
+                loc = li_texts[1] if len(li_texts) >= 2 else "Switzerland"
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": url,
+                    "description": f"EnglishJobSearch: {title} at {company}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [englishjobsearch] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2552,38 +2615,48 @@ def search_stepstone(query, location="Germany", max_results=25):
     jobs = []
     q = query.replace(" ", "-").lower()
     loc = location.lower().replace(" ", "-")
-    url = f"https://www.stepstone.de/jobs/{q}/{loc}.html"
+    base_url = f"https://www.stepstone.de/jobs/{q}/{loc}.html"
     try:
-        titles = _playwright_scrape(
-            url,
-            "[data-at='job-item-title']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
-            wait_selector="[data-at='job-item-title']",
-        )
-        companies = _playwright_scrape(
-            url,
-            "[data-at='job-item-company']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
-        )
-        locations = _playwright_scrape(
-            url,
-            "[data-at='job-item-location']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
-        )
-        links = _playwright_scrape(
-            url,
-            "a[data-at='job-item-title']",
-            "els => els.map(e => e.href)",
-        )
-        min_len = min(len(titles), len(companies), len(links))
-        for i in range(min(min_len, max_results)):
-            jobs.append({
-                "title": titles[i],
-                "company": companies[i] if i < len(companies) else "Unknown",
-                "location": locations[i] if i < len(locations) else location,
-                "url": links[i],
-                "description": f"StepStone: {titles[i]} at {companies[i]}",
-            })
+        for page in range(1, 4):
+            page_url = f"{base_url}?page={page}" if page > 1 else base_url
+            titles = _playwright_scrape(
+                page_url,
+                "[data-at='job-item-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
+                wait_selector="[data-at='job-item-title']",
+            )
+            companies = _playwright_scrape(
+                page_url,
+                "[data-at='job-item-company']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            locations = _playwright_scrape(
+                page_url,
+                "[data-at='job-item-location']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            links = _playwright_scrape(
+                page_url,
+                "a[data-at='job-item-title']",
+                "els => els.map(e => e.href)",
+            )
+            if not titles:
+                if page == 1:
+                    print(f"  [stepstone] No results for '{query}'")
+                break
+            remaining = max_results - len(jobs)
+            if remaining <= 0:
+                break
+            for i in range(min(len(titles), len(companies), len(links), remaining)):
+                jobs.append({
+                    "title": titles[i],
+                    "company": companies[i] if i < len(companies) else "Unknown",
+                    "location": locations[i] if i < len(locations) else location,
+                    "url": links[i],
+                    "description": f"StepStone: {titles[i]} at {companies[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [stepstone] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2596,38 +2669,48 @@ def search_monsterde(query, location="Germany", max_results=25):
     jobs = []
     q = query.replace(" ", "-").lower()
     loc = location.lower().replace(" ", "-")
-    url = f"https://www.monster.de/jobs/suche/?q={q}&where={loc}"
+    base_url = f"https://www.monster.de/jobs/suche/?q={q}&where={loc}"
     try:
-        titles = _playwright_scrape(
-            url,
-            "[data-testid='jobTitle']",
-            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
-            wait_selector="[data-testid='jobTitle']",
-        )
-        companies = _playwright_scrape(
-            url,
-            "[data-testid='company']",
-            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
-        )
-        locations = _playwright_scrape(
-            url,
-            "[data-testid='location']",
-            "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
-        )
-        links = _playwright_scrape(
-            url,
-            "a[data-testid='jobTitle']",
-            "els => els.map(e => e.href)",
-        )
-        min_len = min(len(titles), len(companies), len(links))
-        for i in range(min(min_len, max_results)):
-            jobs.append({
-                "title": titles[i],
-                "company": companies[i] if i < len(companies) else "Unknown",
-                "location": locations[i] if i < len(locations) else location,
-                "url": links[i],
-                "description": f"MonsterDE: {titles[i]} at {companies[i]}",
-            })
+        for page in range(1, 4):
+            page_url = f"{base_url}&page={page}" if page > 1 else base_url
+            titles = _playwright_scrape(
+                page_url,
+                "[data-testid='jobTitle']",
+                "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+                wait_selector="[data-testid='jobTitle']",
+            )
+            companies = _playwright_scrape(
+                page_url,
+                "[data-testid='company']",
+                "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+            )
+            locations = _playwright_scrape(
+                page_url,
+                "[data-testid='location']",
+                "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
+            )
+            links = _playwright_scrape(
+                page_url,
+                "a[data-testid='jobTitle']",
+                "els => els.map(e => e.href)",
+            )
+            if not titles:
+                if page == 1:
+                    print(f"  [monsterde] No results for '{query}'")
+                break
+            remaining = max_results - len(jobs)
+            if remaining <= 0:
+                break
+            for i in range(min(len(titles), len(companies), len(links), remaining)):
+                jobs.append({
+                    "title": titles[i],
+                    "company": companies[i] if i < len(companies) else "Unknown",
+                    "location": locations[i] if i < len(locations) else location,
+                    "url": links[i],
+                    "description": f"MonsterDE: {titles[i]} at {companies[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [monsterde] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -3159,10 +3242,19 @@ def search_remotive(query, location="Remote", max_results=25):
     """
     jobs = []
     try:
-        resp = requests.get("https://remotive.com/api/remote-jobs", params={"limit": 50}, timeout=15)
-        if resp.status_code == 200:
-            tag_words = set(query.lower().split()) if query else set()
-            for job in resp.json().get("jobs", []):
+        tag_words = set(query.lower().split()) if query else set()
+        for page in range(1, 4):
+            resp = requests.get("https://remotive.com/api/remote-jobs", params={"limit": 50, "page": page}, timeout=15)
+            if resp.status_code != 200:
+                if page == 1:
+                    print(f"  [remotive] HTTP {resp.status_code} for '{query}'")
+                break
+            page_jobs = resp.json().get("jobs", [])
+            if not page_jobs:
+                break
+            for job in page_jobs:
+                if len(jobs) >= max_results:
+                    break
                 title = job.get("title", "")
                 company = job.get("company_name", "")
                 desc = job.get("description", "")
@@ -3176,9 +3268,9 @@ def search_remotive(query, location="Remote", max_results=25):
                     "url": job.get("url", ""),
                     "description": desc_plain[:2000] or f"Remotive: {title} @ {company}",
                 })
-                if len(jobs) >= max_results:
-                    break
-            if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
+            if len(jobs) >= max_results:
+                break
+        if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [remotive] Error: {e}")
     return jobs
@@ -3336,27 +3428,35 @@ def search_xing(query, location="Germany", max_results=25):
     jobs = []
     q = query.replace(" ", "+")
     try:
-        titles = _playwright_scrape(
-            f"https://www.xing.com/jobs/search?keywords={q}",
-            "a[href*='/jobs/'] > span, a[class*='job-title'], [data-qa='jobTitle']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
-        )
-        companies = _playwright_scrape(
-            f"https://www.xing.com/jobs/search?keywords={q}",
-            "span[class*='company'], [data-qa='companyName']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        links = _playwright_scrape(
-            f"https://www.xing.com/jobs/search?keywords={q}",
-            "a[href*='/jobs/']",
-            "els => els.map(e => e.href).filter(h => h.includes('/jobs/'))"
-        )
-        for i in range(min(len(titles), max_results)):
-            jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "Xing",
-                "location": location, "url": links[i] if i < len(links) else "",
-                "description": f"Xing DE: {titles[i]}",
-            })
+        for page in range(1, 4):
+            page_url = f"https://www.xing.com/jobs/search?keywords={q}&page={page}"
+            titles = _playwright_scrape(
+                page_url,
+                "a[href*='/jobs/'] > span, a[class*='job-title'], [data-qa='jobTitle']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+            )
+            companies = _playwright_scrape(
+                page_url,
+                "span[class*='company'], [data-qa='companyName']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+            )
+            links = _playwright_scrape(
+                page_url,
+                "a[href*='/jobs/']",
+                "els => els.map(e => e.href).filter(h => h.includes('/jobs/'))"
+            )
+            if not titles:
+                if page == 1:
+                    print(f"  [xing] No results for '{query}'")
+                break
+            for i in range(min(len(titles), len(companies), len(links), max_results - len(jobs))):
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "Xing",
+                    "location": location, "url": links[i] if i < len(links) else "",
+                    "description": f"Xing DE: {titles[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
         if jobs: print(f"  [xing] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [xing] Error: {e}")
