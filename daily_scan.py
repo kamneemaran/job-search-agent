@@ -1569,7 +1569,9 @@ def fetch_jobs_from_source(source):
                 except (ValueError, KeyError) as e:
                     print(f"  [warn] Personio JSON parse error for {source['name']}: {e}")
             elif resp:
-                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
+                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}. Check manually: {source['url']}")
+            else:
+                print(f"  [warn] Personio API unreachable for {source['name']}. Check manually: {source['url']}")
 
         elif source.get("ats") == "recruitee":
             # Recruitee: https://{company}.recruitee.com/api/offers/
@@ -1793,17 +1795,21 @@ def fetch_jobs_from_source(source):
             if region and region not in ("Remote", "Global"):
                 locations_to_try.insert(0, region)
             for loc in locations_to_try:
-                li_jobs = search_linkedin(source["name"], location=loc, max_results=25)
+                li_jobs = search_linkedin(source_name_clean, location=loc, max_results=25)
                 for j in li_jobs:
                     lc = j.get("company", "").lower()
                     if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
+                        j["url"] = j.get("url") or source["url"]
+                        j["company"] = source["name"]
                         jobs.append(j)
                 if jobs:
                     break
             if jobs:
                 print(f"  [linkedin] {len(jobs)} jobs for {source['name']} (fallback)")
+            else:
+                print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
         except Exception:
-            pass
+            print(f"  [warn] LinkedIn fallback failed for {source['name']}. Check manually: {source['url']}")
     return jobs
 
 

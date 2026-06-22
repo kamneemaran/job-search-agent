@@ -1,17 +1,17 @@
 """EU-based company career pages (batch 4)."""
 
 EU_JOB_SOURCES = [
-    {"name": "Aklamio GmbH Marketing", "url": "https://aklamio.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
+    {"name": "Aklamio GmbH Marketing", "url": "https://aklamio.bamboohr.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Akur8", "url": "https://apply.workable.com/akur8", "region": "EU", "type": "company", "ats": "workable"},
-    {"name": "Astroscale", "url": "https://astroscale.bamboohr.com/careers/513", "region": "EU", "type": "company", "ats": "bamboohr"},
+    {"name": "Astroscale", "url": "https://astroscale.bamboohr.com/careers/513", "region": "EU", "type": "company", "playwright": True},
     {"name": "Atheneum Partners GmbH Information", "url": "https://atheneum.recruitee.com", "region": "EU", "type": "company", "ats": "recruitee"},
     {"name": "Autobahn Security GmbH", "url": "https://autobahn-security.breezy.hr", "region": "EU", "type": "company", "ats": "breezy"},
     {"name": "Boards", "url": "https://boards.eu.greenhouse.io/wunderflats", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "wunderflats"},
-    {"name": "Dine In Taste Gmbh", "url": "https://dine-in-taste-gmbh.jobs.personio.de", "region": "EU", "type": "company", "ats": "personio"},
+    {"name": "Dine In Taste Gmbh", "url": "https://join.com/companies/getvoila", "region": "EU", "type": "company"},
     {"name": "Evmos Blockchain", "url": "https://cryptocurrencyjobs.co/startups/evmos", "region": "EU", "type": "company", "playwright": True},
     {"name": "gamigo AG", "url": "https://apply.workable.com/gamigo", "region": "EU", "type": "company", "ats": "workable"},
     {"name": "Geton", "url": "https://geton.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
-    {"name": "Gymondo GmbH", "url": "https://gymondo-gmbh.jobs.personio.com", "region": "EU", "type": "company", "ats": "personio"},
+    {"name": "Gymondo GmbH", "url": "https://gymondo-gmbh.jobs.personio.com", "region": "EU", "type": "company"},
     {"name": "Hamburg", "url": "https://xchange.recruitee.com", "region": "EU", "type": "company", "ats": "recruitee"},
     {"name": "HOLOPLOT GmbH", "url": "https://holoplot.jobs.personio.de", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "HousingAnywhere", "url": "https://job-boards.greenhouse.io/housinganywhere", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "housinganywhere"},
@@ -32,7 +32,7 @@ EU_JOB_SOURCES = [
     {"name": "Voltaira Group", "url": "https://voltaira.recruitee.com", "region": "EU", "type": "company", "ats": "recruitee"},
     {"name": "Walkolution GmbH", "url": "https://walkolution-gmbh.breezy.hr", "region": "EU", "type": "company", "ats": "breezy"},
     {"name": "XOUXOU - Keep Moving GmbH", "url": "https://xouxou.jobs.personio.de", "region": "EU", "type": "company", "ats": "personio"},
-    {"name": "Zivid", "url": "https://zivid.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
+    {"name": "Zivid", "url": "https://zivid.bamboohr.com/careers", "region": "EU", "type": "company", "playwright": True},
 
     {"name": "4.screen GmbH", "url": "https://www.4screen.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "ABB Deutschland Automation", "url": "https://careers.abb/dach/de/home", "region": "EU", "type": "company", "playwright": True},
