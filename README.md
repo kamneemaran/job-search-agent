@@ -29,7 +29,7 @@ Optional flags:
 | Flag | Description |
 |------|-------------|
 | `--resume path/to/resume.pdf` | Auto-detect profile from PDF |
-| `--threshold 70` | Minimum match score (default: 60) |
+| `--threshold 70` | Minimum match score (default: 70) |
 | `--name "Your Name"` | Override profile name |
 | `--skills "java, python, aws"` | Override skills |
 | `--exp 8` | Override experience years |
@@ -102,16 +102,63 @@ Connect from any MCP host (Claude Desktop, Cursor, VS Code etc.) to get tools fo
 
 ---
 
-## Scoring (0–100)
+## Scoring (0–100) — Resume-Adaptive
 
-1. **Red-flag check** — junior roles, non-relevant titles, travel requirements → immediate 0
-2. **Seniority filter** — rejects if title is too senior for your experience
-3. **Experience range** — matches JD's explicit experience requirements
-4. **Visa/relocation** — for non-India roles, requires sponsorship keywords or known friendly company
-5. **Language filter** — rejects non-English roles
-6. **Skill match** — up to 60pts for keyword overlap with your core skills
-7. **Seniority bonus** — 25pt (senior/staff/lead/principal) or 10pt
-8. **Relocation bonus** — 15pt for relocation-friendly companies
+Scoring is **fully dynamic** based on the active resume. When `--resume` is provided, the system extracts skills, current role, and years of experience from the PDF and uses them for all scoring decisions.
+
+### Hard Filters (instant reject = 0 score)
+
+| Filter | Logic |
+|--------|-------|
+| Junior/entry-level | Rejects if JD contains "junior", "intern", "entry level", "graduate", "0-2 years" |
+| Title red flags | Auto-detected from resume's domain (e.g., backend resume filters out frontend/mobile/QA titles) |
+| Seniority too high | If resume has 6yr exp, rejects VP/Director/Principal titles that need 8-12+ years |
+| Experience mismatch | Compares JD's explicit "X years required" against candidate's range |
+| Travel required | Rejects roles mentioning mandatory travel |
+| No visa/relocation | For non-India roles: hard rejects only if JD **explicitly** says no sponsorship (e.g., "cannot sponsor", "must be authorized to work"). Jobs without visa mention are kept with an informational note. |
+| Language barrier | Rejects roles requiring non-English fluency |
+
+### Scoring Components (after passing filters)
+
+| Component | Max Points | How It Works |
+|-----------|-----------|--------------|
+| **Skill Match** | 50 | Counts how many of the resume's skills appear in the JD. Needs 40% of resume skills to match for full 50 points. Denominator scales with resume size (e.g., 14 skills = need 6 matches for max; 35 skills = need 14 matches). |
+| **Title Relevance** | 30 | Derived from resume's `current_role`. Strips seniority prefix to get base role, then matches JD title against it + experience-appropriate variants. E.g., "SAP MM Consultant" with 6yr exp matches: "sap mm consultant", "senior sap mm consultant", "lead sap mm consultant". |
+| **Seniority Fit** | 15 | Experience-aware: 10+ yr profiles get points for senior/staff/lead/principal. 5-9yr profiles for senior/lead. 3-5yr for mid-level. <3yr profiles get points for NOT requiring seniority. |
+| **Relocation Bonus** | 5 | If company is in the known relocation-friendly list (80+ companies with confirmed visa sponsorship). |
+
+**Max possible score: 100** (50 + 30 + 15 + 5)
+
+### Scoring Examples
+
+**Backend Engineer (10yr, current role: "Senior Software Engineer"):**
+
+| Job Title | Skills in JD | Score | Outcome |
+|-----------|-------------|-------|---------|
+| Senior Backend Engineer | java, kafka, microservices, spring boot, k8s, aws, docker, distributed systems | 85% | Pass |
+| Staff Software Engineer | python, golang, system design, redis, postgresql, architecture | 78% | Pass |
+| Data Platform Engineer | python, aws, docker, ci/cd | 43% | Reject (below 70) |
+
+**SAP Consultant (6yr, current role: "SAP MM Consultant"):**
+
+| Job Title | Skills in JD | Score | Outcome |
+|-----------|-------------|-------|---------|
+| SAP Materials Management Consultant | sap, sap mm, procurement, inventory management, sap hana, configuration | 75% | Pass |
+| SAP Functional Consultant | sap, configuration, functional consultant, procurement | 65% | Borderline |
+| Senior Software Engineer | java, python, microservices, kafka | 15% | Reject |
+
+### How Title Keywords Are Derived
+
+From the resume's `current_role`, the system:
+1. Strips seniority prefix ("Senior Software Engineer" -> "software engineer")
+2. Generates experience-appropriate variants:
+   - **10+ yr:** base, senior X, staff X, lead X, principal X, SDE-3/4/5
+   - **5-9 yr:** base, senior X, lead X
+   - **3-5 yr:** base, senior X
+   - **<3 yr:** base only
+3. Adds meaningful domain words (skipping generic "engineer"/"developer")
+
+This means each resume automatically gets relevant title matching without manual configuration.
 
 ---
 
@@ -129,11 +176,19 @@ Connect from any MCP host (Claude Desktop, Cursor, VS Code etc.) to get tools fo
 
 ## Configuration
 
-Edit `PROFILE` in `daily_scan.py` to customize:
-- `core_skills` — your tech stack keywords
-- `years_experience` — used for seniority / experience matching
-- `title_red_flags` — role titles to exclude
-- `seniority_keywords` — what counts as senior
-- `junior_red_flags` — entry-level patterns to reject
+The system builds its scoring profile from the resume PDF (`--resume`). Manual overrides in `daily_scan.py`:
+
+- `PROFILE["core_skills"]` — default tech stack (used when no resume is provided)
+- `PROFILE["current_role"]` — default role for title matching
+- `PROFILE["years_experience"]` — used for seniority / experience matching
+- `PROFILE["seniority_keywords"]` — what counts as senior (used for search query expansion)
+- `PROFILE["junior_red_flags"]` — entry-level patterns to reject
+- `ROLE_DOMAINS` — domain definitions (backend, frontend, mobile, data_ml, devops_sre, sap_erp, qa, fullstack) with associated skills and red flags
+
+When `--resume` is provided, these are auto-populated from the PDF:
+- `core_skills` extracted from resume text (matched against 80+ known tech keywords)
+- `current_role` from most recent job title
+- `years_experience` from work history dates
+- `title_red_flags` auto-configured by detecting the candidate's domain from their skills
 
 See `AGENTS.md` for user preferences and tracker status definitions.
