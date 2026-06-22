@@ -341,7 +341,7 @@ UNIVERSAL_RED_FLAGS = [
     "people operations", "people partner",
     "marketing", "content writer", "social media", "brand ",
     "public relations", "pr ", "communications",
-    "finance", "accounting", "legal", "lawyer", "compliance",
+    "finance", "accounting", "tax", "audit", "legal", "lawyer", "compliance",
     "payments risk", "risk manager", "risk analyst",
     "operations manager", "business operations", "strategy",
     "partner manager", "channel partner",
