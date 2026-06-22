@@ -3932,16 +3932,16 @@ def main():
             json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch != "middle-east":
+        if args.batch != "eu":
             batch_sequence = {
                 "ats": "boards-major",
                 "boards-major": "boards-niche",
                 "boards-niche": "playwright",
-                "playwright": "eu",
-                "eu": "global",
+                "playwright": "global",
                 "global": "apac",
                 "apac": "us-canada",
                 "us-canada": "middle-east",
+                "middle-east": "eu",
             }
             batch_next = batch_sequence.get(args.batch)
             if batch_next:
@@ -3962,8 +3962,8 @@ def main():
                     send_email(html, subject=subject)
                 return
 
-        # Terminal batch (middle-east): load all previous batch results and merge
-        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
+        # Terminal batch (eu): load all previous batch results and merge
+        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "global", "apac", "us-canada", "middle-east", "eu"]
         for b in all_batch_ids:
             if b == args.batch:
                 continue  # current batch is already in all_matches
