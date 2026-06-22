@@ -424,7 +424,7 @@ RemoteOK, WorkingNomads, Jobspresso, EnglishJobSearch, BulldogJob, WorkAtAStartu
 1. **Configuration** — your skills, experience, target regions, and red flags are in `PROFILE` in `daily_scan.py`
 2. **Scheduled scan** — runs daily via cron/GitHub Actions (or manually with `python daily_scan.py`)
 3. **Fetch** — iterates all configured job sources, fetches live postings
-4. **Score** — each job is scored 0-100; only jobs above threshold (default 60) proceed
+4. **Score** — each job is scored 0-100; only jobs above threshold (default 70) proceed
 5. **Track** — new matches are saved to `job_tracker.json` with status "new"
 6. **Email** — a daily HTML digest is sent with match details, scores, and resume tailoring tips
 7. **Sheets** — results sync to Google Sheets
@@ -441,7 +441,7 @@ You're now talking to the interactive MCP interface, which lets you search, scor
 def _search_jobs(
     query: str,
     location: str = "Remote",
-    threshold: int = 65,
+    threshold: int = 70,
     require_visa: bool = True,
     exclude_companies: list[str] | None = None,
     focus_role: str = "",
