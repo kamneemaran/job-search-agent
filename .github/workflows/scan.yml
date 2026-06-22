@@ -56,10 +56,9 @@ jobs:
         run: |
           URL="${{ github.event.inputs.resume_url }}"
           if echo "$URL" | grep -q 'drive.google.com'; then
-            FILE_ID=$(echo "$URL" | sed 's|.*[=/]\([a-zA-Z0-9_-]\{25,\}\).*|\1|')
-            echo "Downloading from Google Drive (file ID: $FILE_ID)..."
+            echo "Downloading from Google Drive..."
             pip install gdown -q 2>/dev/null
-            gdown "$FILE_ID" -O resume.pdf --fuzzy
+            gdown "$URL" -O resume.pdf
           else
             curl -L -o resume.pdf "$URL"
           fi
