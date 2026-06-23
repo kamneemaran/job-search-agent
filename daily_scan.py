@@ -3421,38 +3421,7 @@ def search_remotive(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_remoteco(query, location="Remote", max_results=50):
-    """Search Remote.co for remote jobs (paginated)."""
-    jobs = []
-    scraper = cloudscraper.create_scraper()
-    q = query.replace(" ", "+")
-    max_pages = 3
-    try:
-        for page_num in range(1, max_pages + 1):
-            page_url = f"https://remote.co/remote-jobs/search/?search_keywords={q}&paged={page_num}" if page_num > 1 else f"https://remote.co/remote-jobs/search/?search_keywords={q}"
-            resp = scraper.get(page_url, timeout=20)
-            if resp.status_code != 200:
-                break
-            titles = re.findall(r'class="m-0"[^>]*>\s*<a[^>]*>\s*([^<]+)', resp.text)
-            companies = re.findall(r'class="team"[^>]*>\s*([^<]+)', resp.text)
-            links = re.findall(r'class="m-0"[^>]*>\s*<a[^"]*href="([^"]+)"', resp.text)
-            if not titles:
-                break  # No more results
-            for i in range(len(titles)):
-                if len(jobs) >= max_results:
-                    break
-                jobs.append({
-                    "title": titles[i].strip(), "company": companies[i].strip() if i < len(companies) else "Remote.co",
-                    "location": "Remote", "url": links[i] if i < len(links) else "",
-                    "description": f"Remote.co: {titles[i].strip()}",
-                })
-            if len(jobs) >= max_results:
-                break
-            time.sleep(1)
-        if jobs: print(f"  [remoteco] {len(jobs)} jobs for '{query}'")
-    except Exception as e:
-        print(f"  [remoteco] Error: {e}")
-    return jobs
+
 
 
 def search_foundit(query, location="India", max_results=50):
@@ -4032,7 +4001,7 @@ def main():
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
         ("Remotive", search_remotive),
-        ("RemoteCo", search_remoteco),
+
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),
