@@ -231,11 +231,9 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend", "ui engineer", "web engineer",
-            "backend", "distributed systems", "microservices",
-            "qa", "quality assurance", "sdet",
+            "qa", "quality assurance", "sdet", "automation engineer",
             "devops", "sre", "network engineer",
             "data scientist", "ml engineer",
-            "cloud engineer", "infrastructure",
         ],
     },
     "data_ml": {
@@ -249,7 +247,6 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "network engineer", "sre", "devops engineer",
-            "backend engineer", "microservices",
             "mobile developer",
         ],
     },
@@ -266,7 +263,6 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "data scientist", "ml engineer",
-            "backend engineer", "software engineer",
             "mobile developer",
         ],
     },
@@ -278,11 +274,9 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend engineer", "ui engineer",
-            "backend engineer", "distributed systems",
             "android", "ios", "swift", "kotlin",
             "data scientist", "ml engineer",
             "network engineer", "sre", "devops engineer",
-            "software engineer", "full stack",
         ],
     },
     "fullstack": {
@@ -341,7 +335,7 @@ UNIVERSAL_RED_FLAGS = [
     "people operations", "people partner",
     "marketing", "content writer", "social media", "brand ",
     "public relations", "pr ", "communications",
-    "finance", "accounting", "legal", "lawyer", "compliance",
+    "finance", "accounting", "tax", "audit", "legal", "lawyer", "compliance",
     "payments risk", "risk manager", "risk analyst",
     "operations manager", "business operations", "strategy",
     "partner manager", "channel partner",
@@ -585,7 +579,7 @@ JOB_SOURCES = [
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
     {"name": "Limehome", "url": "https://career.limehome.de/careerslimehome-tz49z", "region": "DE", "type": "company"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
-    {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Nexthink", "url": "https://nexthink.com/company/careers/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Payabl.", "url": "https://apply.workable.com/payabl/", "region": "DE", "type": "company", "playwright": True},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
@@ -646,6 +640,13 @@ def _derive_title_keywords(current_role, years_experience):
         return []
     role_lower = current_role.lower().strip()
 
+    # Strip pipe-separated extras (e.g., "Senior Engineer | Team Lead" → "Senior Engineer")
+    if "|" in role_lower:
+        role_lower = role_lower.split("|")[0].strip()
+
+    # Normalize hyphens to spaces (e.g., "full-stack" → "full stack")
+    role_lower = role_lower.replace("-", " ")
+
     # Strip seniority prefix to get base role (e.g., "software engineer" from "Senior Software Engineer")
     base_role = role_lower
     for prefix in _SENIORITY_PREFIXES:
@@ -668,7 +669,7 @@ def _derive_title_keywords(current_role, years_experience):
     # Add individual meaningful words from base role (for partial title matches)
     # e.g., "sap consultant" → also match titles containing "consultant"
     # Skip generic words that would match too broadly
-    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst"}
+    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst", "consultant"}
     role_words = [w for w in base_role.split() if len(w) > 3 and w not in _generic_words]
     for word in role_words:
         if word not in keywords:
@@ -786,14 +787,15 @@ def score_job(title, description, company, location=""):
             visa_note = "Visa sponsorship details not mentioned"
 
     # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
-    title_lower = title.lower()
+    title_lower = title.lower().replace("-", " ")  # normalize hyphens for matching
     has_sap_in_title = "sap" in title_lower or "abap" in title_lower
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
     if has_sap_in_title and has_sap_skills and "sap mm" not in text:
         return 0, "Filtered: SAP role requires SAP MM in JD"
 
-    # --- Skill scoring (dynamic denominator based on resume skill count) ---
-    skill_hits = sum(1 for skill in PROFILE["core_skills"] if skill in text)
+    # --- Skill scoring (word-boundary matching; up to 50 points) ---
+    skill_hits = sum(1 for skill in PROFILE["core_skills"]
+                     if re.search(r'\b' + re.escape(skill) + r'\b', text))
     total_skills = len(PROFILE["core_skills"])
     # Need 40% of resume skills to appear in JD for full score (min 5 hits)
     skill_denominator = max(int(total_skills * 0.4), 5)
@@ -803,8 +805,13 @@ def score_job(title, description, company, location=""):
     title_relevance = 0
     exp_years = PROFILE["years_experience"]
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
-    if title_keywords and any(kw in title_lower for kw in title_keywords):
-        title_relevance = 30  # +30 for matching role domain in title
+    # Full phrase match (e.g., "sap mm consultant") = 30, partial word match = 10
+    if title_keywords:
+        base_role = title_keywords[0]  # first entry is always the base role
+        if base_role in title_lower:
+            title_relevance = 30
+        elif any(kw in title_lower for kw in title_keywords):
+            title_relevance = 10
 
     # --- Seniority scoring (experience-appropriate) ---
     seniority_keywords = _get_seniority_keywords(exp_years)
@@ -1208,46 +1215,81 @@ def _scrape_company_career_page(source):
     def _extract_links(pg):
         result = []
         try:
-            links = pg.eval_on_selector_all("a", """
-                els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
-                    .filter(e => e.text.length > 8 && e.text.length < 120)
+            raw = pg.eval_on_selector_all("a", """
+                els => els.map(e => {
+                    const href = e.href || '';
+                    const text = (e.innerText || '').trim();
+                    let titleFromCard = '';
+                    const card = e.closest('li, [class*="card"], [class*="item"], [class*="job"], [class*="row"], [class*="result"], [class*="flex"], [class*="p-"]') || e.parentElement;
+                    if (card) {
+                        const cardText = card.innerText || '';
+                        const lines = cardText.split('\\n').filter(l => l.trim().length > 5);
+                        let fallback = '';
+                        for (const ln of lines) {
+                            const t = ln.trim().toLowerCase();
+                            const generic = ['job listing', 'apply now', 'learn more', 'read more', 'view', 'open positions'];
+                            if (generic.some(g => t.includes(g))) continue;
+                            // Skip single-word category headers (all caps or short words like "ENGINEERING", "SALES")
+                            const words = t.split(/\\s+/);
+                            if (words.length <= 2 && t === t.toUpperCase() && t.length < 20) continue;
+                            if (!fallback) fallback = ln.trim();
+                            if (t.includes('engineer') || t.includes('developer') || t.includes('manager')
+                                || t.includes('architect') || t.includes('specialist') || t.includes('consultant')
+                                || t.includes('sap') || t.includes('senior') || t.includes('staff')
+                                || t.includes('lead') || t.includes('principal') || t.includes('software')
+                                || t.includes('backend') || t.includes('platform') || t.includes('full stack')
+                                || t.includes('infrastructure') || t.includes('sde') || t.includes('analyst')) {
+                                titleFromCard = ln.trim();
+                                break;
+                            }
+                        }
+                        if (!titleFromCard && fallback) titleFromCard = fallback;
+                    }
+                    return {href, text, titleFromCard};
+                })
                     .filter(e => {
-                        const h = e.href.toLowerCase();
                         const t = e.text.toLowerCase();
+                        const h = e.href.toLowerCase();
+                        const c = (e.titleFromCard || '').toLowerCase();
                         const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
                         if (skip.some(s => t.includes(s))) return false;
-                        const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
-                            || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
-                            || t.includes('consultant') || t.includes('sap') || t.includes('senior')
-                            || t.includes('staff') || t.includes('lead') || t.includes('principal');
+                        const hasTextKw = t.includes('engineer') || t.includes('developer')
+                            || t.includes('senior') || t.includes('software') || t.includes('backend')
+                            || t.includes('platform') || t.includes('lead');
+                        const cardHasKw = c.includes('engineer') || c.includes('developer')
+                            || c.includes('senior') || c.includes('software') || c.includes('backend');
                         const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
                             || h.includes('/position/') || h.includes('/opening/')
-                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
-                        return hasKw || urlIsJob;
+                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=')
+                            || h.includes('smartrecruiters.com/') || h.includes('workable.com/')
+                            || h.includes('bamboohr.com/');
+                        return (hasTextKw || cardHasKw) || urlIsJob;
                     })
             """)
             seen_local = set()
-            for link in links:
-                title = link["text"].split('\n')[0].strip()
+            for link in raw:
                 href = link["href"]
                 if not href or href in seen_local:
                     continue
                 seen_local.add(href)
+                title = link["titleFromCard"] or link["text"].split('\n')[0].strip()
+                if not title or len(title) < 5:
+                    continue
                 if _is_relevant(title):
                     result.append({
-                        "title": title,
+                        "title": title[:120],
                         "company": source["name"],
                         "location": source.get("region", ""),
                         "url": href,
-                        "description": title,
+                        "description": title[:120],
                         "posted_at": None,
                     })
             if not result:
-                links = pg.eval_on_selector_all("a[href], h2, h3", """
-                    els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
+                fallback = pg.eval_on_selector_all("a[href], h2, h3, h4, [class*='cursor-pointer'], [class*='clickable']", """
+                    els => els.map(e => ({href: e.href || '', text: (e.innerText || '').trim()}))
                         .filter(e => e.text.length > 10 && e.text.length < 120)
                 """)
-                for link in links:
+                for link in fallback:
                     title = link["text"].split('\n')[0].strip()
                     href = link["href"]
                     if href in seen_local:
@@ -1255,11 +1297,11 @@ def _scrape_company_career_page(source):
                     seen_local.add(href)
                     if _is_relevant(title):
                         result.append({
-                            "title": title,
+                            "title": title[:120],
                             "company": source["name"],
                             "location": source.get("region", ""),
                             "url": href or source["url"],
-                            "description": title,
+                            "description": title[:120],
                             "posted_at": None,
                         })
         except Exception:
@@ -1812,7 +1854,37 @@ def fetch_jobs_from_source(source):
                 print(f"  [warn] Spotify API error: {e}")
 
         elif source.get("playwright"):
-            jobs = _scrape_company_career_page(source)
+            # For LinkedIn URLs, skip Playwright and use LinkedIn job search API directly
+            if "linkedin.com/company/" in source["url"].lower():
+                from urllib.parse import urlparse as _urlparse
+                li_path = _urlparse(source["url"]).path.rstrip("/")
+                company_slug = li_path.split("/company/")[-1].replace("-", " ").strip()
+                locations_to_try = ["Remote"]
+                region = source.get("region", "")
+                if region and region not in ("Remote", "Global"):
+                    locations_to_try.insert(0, region)
+                queries = build_domain_queries()
+                for loc in locations_to_try:
+                    for q in queries[:6]:
+                        try:
+                            li_jobs = search_linkedin(q, location=loc, max_results=25)
+                            for j in li_jobs:
+                                lc = j.get("company", "").lower()
+                                if company_slug in lc or any(w in lc for w in company_slug.split() if len(w) > 3):
+                                    j["url"] = j.get("url") or source["url"]
+                                    j["company"] = source["name"]
+                                    if j not in jobs:
+                                        jobs.append(j)
+                        except Exception:
+                            pass
+                    if jobs:
+                        break
+                if jobs:
+                    print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
+                else:
+                    print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
+            else:
+                jobs = _scrape_company_career_page(source)
 
         else:
             print(f"  [skip] {source['name']} - no public ATS API detected. "
@@ -1827,12 +1899,20 @@ def fetch_jobs_from_source(source):
             region = source.get("region", "")
             if region and region not in ("Remote", "Global"):
                 locations_to_try.insert(0, region)
+            queries = build_domain_queries()
             for loc in locations_to_try:
-                li_jobs = search_linkedin(source["name"], location=loc, max_results=25)
-                for j in li_jobs:
-                    lc = j.get("company", "").lower()
-                    if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
-                        jobs.append(j)
+                for q in queries[:6]:
+                    try:
+                        li_jobs = search_linkedin(q, location=loc, max_results=25)
+                        for j in li_jobs:
+                            lc = j.get("company", "").lower()
+                            if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
+                                j["url"] = j.get("url") or source["url"]
+                                j["company"] = source["name"]
+                                if j not in jobs:
+                                    jobs.append(j)
+                    except Exception:
+                        pass
                 if jobs:
                     break
             if jobs:
@@ -2200,7 +2280,8 @@ def search_weworkremotely(query, location="Remote", max_results=25):
 
 
 def search_simplyhired(query, location="India", max_results=50):
-    """Search SimplyHired for jobs matching a query using Playwright (paginated)."""
+    """Search SimplyHired for jobs matching a query using Playwright (paginated).
+    Fetches actual job descriptions from detail pages for better scoring."""
     jobs = []
     q = query.replace(" ", "+")
     max_pages = 3
@@ -2229,12 +2310,48 @@ def search_simplyhired(query, location="India", max_results=50):
                 jobs.append({
                     "title": titles[i].strip(), "company": companies[i].strip(),
                     "location": l, "url": url,
-                    "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
+                    "description": "",  # filled below from detail page
                 })
 
             if len(jobs) >= max_results:
                 break
             time.sleep(2)  # Polite delay between pages
+
+        # Fetch actual job descriptions from detail pages (top results)
+        for job in jobs[:20]:  # Limit to top 20 to avoid excessive requests
+            if not job["url"]:
+                continue
+            try:
+                detail_html = _playwright_html(job["url"])
+                if detail_html:
+                    # Extract job description text
+                    desc_match = re.search(
+                        r'data-testid="viewJobBodyJobFullDescriptionContent"[^>]*>(.*?)</div>',
+                        detail_html, re.DOTALL)
+                    if not desc_match:
+                        desc_match = re.search(
+                            r'class="[^"]*jobposting-description[^"]*"[^>]*>(.*?)</div>',
+                            detail_html, re.DOTALL)
+                    if not desc_match:
+                        desc_match = re.search(
+                            r'id="[^"]*job[-_]?desc[^"]*"[^>]*>(.*?)</(?:div|section)>',
+                            detail_html, re.DOTALL | re.IGNORECASE)
+                    if desc_match:
+                        job["description"] = strip_html(desc_match.group(1))[:3000]
+                    else:
+                        # Fallback: grab all text from the main content area
+                        body = re.sub(r'<script[^>]*>.*?</script>', '', detail_html, flags=re.DOTALL)
+                        body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.DOTALL)
+                        text = strip_html(body)
+                        # Take a reasonable chunk as description
+                        if len(text) > 500:
+                            job["description"] = text[:3000]
+                time.sleep(1)  # Polite delay between detail page fetches
+            except Exception:
+                pass
+            # Set fallback description if still empty
+            if not job["description"]:
+                job["description"] = f"SimplyHired: {job['title']} at {job['company']}"
 
         if jobs:
             print(f"  [simplyhired] {len(jobs)} jobs for '{query}'")
@@ -3894,11 +4011,47 @@ def main():
 
     # --- If --resume is provided, auto-build profile from PDF ---
     if args.resume:
-        if not os.path.exists(args.resume):
-            print(f"Error: resume not found at {args.resume}")
+        resume_path = args.resume
+        # Handle Google Drive URLs
+        if "drive.google.com" in resume_path:
+            import re as _re
+            file_id_match = _re.search(r'/file/d/([^/]+)', resume_path)
+            if not file_id_match:
+                file_id_match = _re.search(r'id=([^&]+)', resume_path)
+            if file_id_match:
+                file_id = file_id_match.group(1)
+                dl_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+                print(f"Downloading resume from Google Drive (file ID: {file_id})...")
+                try:
+                    import requests as _requests
+                    resp = _requests.get(dl_url, timeout=30)
+                    if "downloadWarning" in resp.text or "Google Drive" in resp.text[:500]:
+                        # Try with confirm token
+                        import re as _re2
+                        confirm = _re2.search(r'confirm=([^&"]+)', resp.text)
+                        if confirm:
+                            dl_url += f"&confirm={confirm.group(1)}"
+                            resp = _requests.get(dl_url, timeout=30)
+                    ct = resp.headers.get("Content-Type", "")
+                    if "pdf" not in ct.lower() and "octet" not in ct.lower():
+                        print(f"  Unexpected content type: {ct}, trying alternate download...")
+                        dl_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+                        resp = _requests.get(dl_url, timeout=30)
+                    resume_path = f"/tmp/resume_{file_id}.pdf"
+                    with open(resume_path, "wb") as f:
+                        f.write(resp.content)
+                    print(f"  Downloaded ({len(resp.content)} bytes) to {resume_path}")
+                except Exception as e:
+                    print(f"Error downloading from Google Drive: {e}")
+                    sys.exit(1)
+            else:
+                print(f"Error: could not extract file ID from Google Drive URL: {resume_path}")
+                sys.exit(1)
+        if not os.path.exists(resume_path):
+            print(f"Error: resume not found at {resume_path}")
             sys.exit(1)
-        print(f"Loading resume: {args.resume}")
-        parsed, _missing = parse_resume_pdf(args.resume)
+        print(f"Loading resume: {resume_path}")
+        parsed, _missing = parse_resume_pdf(resume_path)
         PROFILE["name"] = parsed["name"] or args.name or PROFILE["name"]
         if parsed["core_skills"]:
             PROFILE["core_skills"] = parsed["core_skills"]
@@ -3908,7 +4061,7 @@ def main():
             PROFILE["current_role"] = parsed["current_role"]
         # Auto-configure title filters based on detected role domain
         PROFILE["title_red_flags"] = auto_detect_title_red_flags(PROFILE["core_skills"])
-        os.environ["RESUME_PATH"] = args.resume
+        os.environ["RESUME_PATH"] = resume_path
         # Auto-set recipient email from resume (sender stays as .env GMAIL_ADDRESS)
         if parsed["email"] and not args.email_to:
             os.environ["EMAIL_TO"] = parsed["email"]
@@ -4281,24 +4434,41 @@ def main():
             json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch != "middle-east":
+        # Send email after every batch run with that batch's results
+        if all_matches:
+            person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
+            batch_labels = {
+                "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
+                "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
+                "eu": "EU Companies", "global": "Global Companies",
+                "apac": "APAC Companies", "us-canada": "US-Canada Companies",
+                "middle-east": "Middle East Companies",
+            }
+            label = batch_labels.get(args.batch, args.batch)
+            subject = f"{person_name}-Job matches-{label}"
+            html = build_email_html(all_matches)
+            send_email(html, subject=subject)
+        else:
+            print(f"  [email] No matches found for resume - skipping email")
+
+        if args.batch != "eu":
             batch_sequence = {
                 "ats": "boards-major",
                 "boards-major": "boards-niche",
                 "boards-niche": "playwright",
-                "playwright": "eu",
-                "eu": "global",
+                "playwright": "global",
                 "global": "apac",
                 "apac": "us-canada",
                 "us-canada": "middle-east",
+                "middle-east": "eu",
             }
             batch_next = batch_sequence.get(args.batch)
             if batch_next:
                 print(f"Batch '{args.batch}' done. Run --batch {batch_next} next for remaining sources.")
                 return
 
-        # Terminal batch (middle-east): load all previous batch results and merge
-        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
+        # Terminal batch (eu): load all previous batch results and merge
+        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "global", "apac", "us-canada", "middle-east", "eu"]
         for b in all_batch_ids:
             if b == args.batch:
                 continue  # current batch is already in all_matches
@@ -4331,8 +4501,20 @@ def main():
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
 
-    html = build_email_html(all_matches)
-    send_email(html, subject=f"Daily Job Matches - {len(all_matches)} new roles")
+    if all_matches:
+        html = build_email_html(all_matches)
+        person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
+        batch_labels = {
+            "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
+            "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
+            "eu": "EU Companies", "global": "Global Companies",
+            "apac": "APAC Companies", "us-canada": "US-Canada Companies",
+            "middle-east": "Middle East Companies",
+        }
+        label = batch_labels.get(args.batch, "All Sources") if args.batch else "All Sources"
+        send_email(html, subject=f"{person_name}-Job matches-{label}")
+    else:
+        print(f"  [email] No matches found for resume - skipping email")
 
     # WhatsApp disabled per user request - all results go via email only
     # if all_matches:
