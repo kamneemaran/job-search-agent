@@ -231,11 +231,9 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend", "ui engineer", "web engineer",
-            "backend", "distributed systems", "microservices",
-            "qa", "quality assurance", "sdet",
+            "qa", "quality assurance", "sdet", "automation engineer",
             "devops", "sre", "network engineer",
             "data scientist", "ml engineer",
-            "cloud engineer", "infrastructure",
         ],
     },
     "data_ml": {
@@ -249,7 +247,6 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "network engineer", "sre", "devops engineer",
-            "backend engineer", "microservices",
             "mobile developer",
         ],
     },
@@ -266,7 +263,6 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "data scientist", "ml engineer",
-            "backend engineer", "software engineer",
             "mobile developer",
         ],
     },
@@ -278,11 +274,9 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend engineer", "ui engineer",
-            "backend engineer", "distributed systems",
             "android", "ios", "swift", "kotlin",
             "data scientist", "ml engineer",
             "network engineer", "sre", "devops engineer",
-            "software engineer", "full stack",
         ],
     },
     "fullstack": {
