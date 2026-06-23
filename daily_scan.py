@@ -579,7 +579,7 @@ JOB_SOURCES = [
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Limehome", "url": "https://career.limehome.de", "region": "DE", "type": "company", "playwright": True},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
-    {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Nexthink", "url": "https://nexthink.com/company/careers/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Payabl.", "url": "https://apply.workable.com/payabl/", "region": "DE", "type": "company", "playwright": True},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
@@ -1222,46 +1222,81 @@ def _scrape_company_career_page(source):
     def _extract_links(pg):
         result = []
         try:
-            links = pg.eval_on_selector_all("a", """
-                els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
-                    .filter(e => e.text.length > 8 && e.text.length < 120)
+            raw = pg.eval_on_selector_all("a", """
+                els => els.map(e => {
+                    const href = e.href || '';
+                    const text = (e.innerText || '').trim();
+                    let titleFromCard = '';
+                    const card = e.closest('li, [class*="card"], [class*="item"], [class*="job"], [class*="row"], [class*="result"], [class*="flex"], [class*="p-"]') || e.parentElement;
+                    if (card) {
+                        const cardText = card.innerText || '';
+                        const lines = cardText.split('\\n').filter(l => l.trim().length > 5);
+                        let fallback = '';
+                        for (const ln of lines) {
+                            const t = ln.trim().toLowerCase();
+                            const generic = ['job listing', 'apply now', 'learn more', 'read more', 'view', 'open positions'];
+                            if (generic.some(g => t.includes(g))) continue;
+                            // Skip single-word category headers (all caps or short words like "ENGINEERING", "SALES")
+                            const words = t.split(/\\s+/);
+                            if (words.length <= 2 && t === t.toUpperCase() && t.length < 20) continue;
+                            if (!fallback) fallback = ln.trim();
+                            if (t.includes('engineer') || t.includes('developer') || t.includes('manager')
+                                || t.includes('architect') || t.includes('specialist') || t.includes('consultant')
+                                || t.includes('sap') || t.includes('senior') || t.includes('staff')
+                                || t.includes('lead') || t.includes('principal') || t.includes('software')
+                                || t.includes('backend') || t.includes('platform') || t.includes('full stack')
+                                || t.includes('infrastructure') || t.includes('sde') || t.includes('analyst')) {
+                                titleFromCard = ln.trim();
+                                break;
+                            }
+                        }
+                        if (!titleFromCard && fallback) titleFromCard = fallback;
+                    }
+                    return {href, text, titleFromCard};
+                })
                     .filter(e => {
-                        const h = e.href.toLowerCase();
                         const t = e.text.toLowerCase();
+                        const h = e.href.toLowerCase();
+                        const c = (e.titleFromCard || '').toLowerCase();
                         const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
                         if (skip.some(s => t.includes(s))) return false;
-                        const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
-                            || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
-                            || t.includes('consultant') || t.includes('sap') || t.includes('senior')
-                            || t.includes('staff') || t.includes('lead') || t.includes('principal');
+                        const hasTextKw = t.includes('engineer') || t.includes('developer')
+                            || t.includes('senior') || t.includes('software') || t.includes('backend')
+                            || t.includes('platform') || t.includes('lead');
+                        const cardHasKw = c.includes('engineer') || c.includes('developer')
+                            || c.includes('senior') || c.includes('software') || c.includes('backend');
                         const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
                             || h.includes('/position/') || h.includes('/opening/')
-                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
-                        return hasKw || urlIsJob;
+                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=')
+                            || h.includes('smartrecruiters.com/') || h.includes('workable.com/')
+                            || h.includes('bamboohr.com/');
+                        return (hasTextKw || cardHasKw) || urlIsJob;
                     })
             """)
             seen_local = set()
-            for link in links:
-                title = link["text"].split('\n')[0].strip()
+            for link in raw:
                 href = link["href"]
                 if not href or href in seen_local:
                     continue
                 seen_local.add(href)
+                title = link["titleFromCard"] or link["text"].split('\n')[0].strip()
+                if not title or len(title) < 5:
+                    continue
                 if _is_relevant(title):
                     result.append({
-                        "title": title,
+                        "title": title[:120],
                         "company": source["name"],
                         "location": source.get("region", ""),
                         "url": href,
-                        "description": title,
+                        "description": title[:120],
                         "posted_at": None,
                     })
             if not result:
-                links = pg.eval_on_selector_all("a[href], h2, h3", """
-                    els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
+                fallback = pg.eval_on_selector_all("a[href], h2, h3, h4, [class*='cursor-pointer'], [class*='clickable']", """
+                    els => els.map(e => ({href: e.href || '', text: (e.innerText || '').trim()}))
                         .filter(e => e.text.length > 10 && e.text.length < 120)
                 """)
-                for link in links:
+                for link in fallback:
                     title = link["text"].split('\n')[0].strip()
                     href = link["href"]
                     if href in seen_local:
@@ -1269,11 +1304,11 @@ def _scrape_company_career_page(source):
                     seen_local.add(href)
                     if _is_relevant(title):
                         result.append({
-                            "title": title,
+                            "title": title[:120],
                             "company": source["name"],
                             "location": source.get("region", ""),
                             "url": href or source["url"],
-                            "description": title,
+                            "description": title[:120],
                             "posted_at": None,
                         })
         except Exception:
@@ -1794,7 +1829,37 @@ def fetch_jobs_from_source(source):
                 print(f"  [warn] Spotify API error: {e}")
 
         elif source.get("playwright"):
-            jobs = _scrape_company_career_page(source)
+            # For LinkedIn URLs, skip Playwright and use LinkedIn job search API directly
+            if "linkedin.com/company/" in source["url"].lower():
+                from urllib.parse import urlparse as _urlparse
+                li_path = _urlparse(source["url"]).path.rstrip("/")
+                company_slug = li_path.split("/company/")[-1].replace("-", " ").strip()
+                locations_to_try = ["Remote"]
+                region = source.get("region", "")
+                if region and region not in ("Remote", "Global"):
+                    locations_to_try.insert(0, region)
+                queries = build_domain_queries()
+                for loc in locations_to_try:
+                    for q in queries[:6]:
+                        try:
+                            li_jobs = search_linkedin(q, location=loc, max_results=25)
+                            for j in li_jobs:
+                                lc = j.get("company", "").lower()
+                                if company_slug in lc or any(w in lc for w in company_slug.split() if len(w) > 3):
+                                    j["url"] = j.get("url") or source["url"]
+                                    j["company"] = source["name"]
+                                    if j not in jobs:
+                                        jobs.append(j)
+                        except Exception:
+                            pass
+                    if jobs:
+                        break
+                if jobs:
+                    print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
+                else:
+                    print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
+            else:
+                jobs = _scrape_company_career_page(source)
 
         else:
             print(f"  [skip] {source['name']} - no public ATS API detected. "
@@ -1809,14 +1874,20 @@ def fetch_jobs_from_source(source):
             region = source.get("region", "")
             if region and region not in ("Remote", "Global"):
                 locations_to_try.insert(0, region)
+            queries = build_domain_queries()
             for loc in locations_to_try:
-                li_jobs = search_linkedin(source_name_clean, location=loc, max_results=25)
-                for j in li_jobs:
-                    lc = j.get("company", "").lower()
-                    if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
-                        j["url"] = j.get("url") or source["url"]
-                        j["company"] = source["name"]
-                        jobs.append(j)
+                for q in queries[:6]:
+                    try:
+                        li_jobs = search_linkedin(q, location=loc, max_results=25)
+                        for j in li_jobs:
+                            lc = j.get("company", "").lower()
+                            if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
+                                j["url"] = j.get("url") or source["url"]
+                                j["company"] = source["name"]
+                                if j not in jobs:
+                                    jobs.append(j)
+                    except Exception:
+                        pass
                 if jobs:
                     break
             if jobs:
