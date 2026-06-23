@@ -231,9 +231,11 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend", "ui engineer", "web engineer",
-            "qa", "quality assurance", "sdet", "automation engineer",
+            "backend", "distributed systems", "microservices",
+            "qa", "quality assurance", "sdet",
             "devops", "sre", "network engineer",
             "data scientist", "ml engineer",
+            "cloud engineer", "infrastructure",
         ],
     },
     "data_ml": {
@@ -247,6 +249,7 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "network engineer", "sre", "devops engineer",
+            "backend engineer", "microservices",
             "mobile developer",
         ],
     },
@@ -263,6 +266,7 @@ ROLE_DOMAINS = {
             "android", "ios", "swift", "kotlin",
             "qa engineer", "test engineer",
             "data scientist", "ml engineer",
+            "backend engineer", "software engineer",
             "mobile developer",
         ],
     },
@@ -274,9 +278,11 @@ ROLE_DOMAINS = {
         },
         "red_flags": [
             "frontend engineer", "ui engineer",
+            "backend engineer", "distributed systems",
             "android", "ios", "swift", "kotlin",
             "data scientist", "ml engineer",
             "network engineer", "sre", "devops engineer",
+            "software engineer", "full stack",
         ],
     },
     "fullstack": {
@@ -335,7 +341,7 @@ UNIVERSAL_RED_FLAGS = [
     "people operations", "people partner",
     "marketing", "content writer", "social media", "brand ",
     "public relations", "pr ", "communications",
-    "finance", "accounting", "tax", "audit", "legal", "lawyer", "compliance",
+    "finance", "accounting", "legal", "lawyer", "compliance",
     "payments risk", "risk manager", "risk analyst",
     "operations manager", "business operations", "strategy",
     "partner manager", "channel partner",
@@ -576,10 +582,10 @@ JOB_SOURCES = [
     {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "intermategroupgmbh"},
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
     {"name": "JetBrains", "url": "https://job-boards.eu.greenhouse.io/jetbrains", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "jetbrains"},
-    {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Limehome", "url": "https://career.limehome.de", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company"},
+    {"name": "Limehome", "url": "https://career.limehome.de/careerslimehome-tz49z", "region": "DE", "type": "company"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
-    {"name": "Nexthink", "url": "https://nexthink.com/company/careers/jobs", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Nexthink", "url": "https://nexthink.com/company/careers", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Payabl.", "url": "https://apply.workable.com/payabl/", "region": "DE", "type": "company", "playwright": True},
     {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "DE", "type": "company", "playwright": True},
@@ -638,10 +644,7 @@ def _derive_title_keywords(current_role, years_experience):
     """
     if not current_role:
         return []
-    # Strip pipe-separated descriptions (e.g. "Senior Backend Engineer | Distributed Systems | ...")
-    role_lower = current_role.lower().strip().split("|")[0].strip()
-    # Strip trailing noise like dashes, commas, etc.
-    role_lower = role_lower.rstrip("-–—,")
+    role_lower = current_role.lower().strip()
 
     # Strip seniority prefix to get base role (e.g., "software engineer" from "Senior Software Engineer")
     base_role = role_lower
@@ -652,36 +655,20 @@ def _derive_title_keywords(current_role, years_experience):
 
     keywords = [base_role]  # always match base role
 
-    # "software engineer" is a universal title valid for any engineering profile
-    _generic_titles = ["software engineer"]
-    for gt in _generic_titles:
-        if gt not in keywords:
-            keywords.append(gt)
-
     # Add seniority variants based on experience level
     if years_experience >= 10:
         keywords.extend([f"senior {base_role}", f"staff {base_role}", f"lead {base_role}",
                          f"principal {base_role}", "sde-3", "sde 3", "sde-4", "sde 4", "sde-5"])
-        for gt in _generic_titles:
-            keywords.append(f"senior {gt}")
-            keywords.append(f"staff {gt}")
-            keywords.append(f"lead {gt}")
-            keywords.append(f"principal {gt}")
     elif years_experience >= 5:
         keywords.extend([f"senior {base_role}", f"lead {base_role}"])
-        for gt in _generic_titles:
-            keywords.append(f"senior {gt}")
-            keywords.append(f"lead {gt}")
     elif years_experience >= 3:
         keywords.append(f"senior {base_role}")
-        for gt in _generic_titles:
-            keywords.append(f"senior {gt}")
     # For <3 years, only base role matches
 
     # Add individual meaningful words from base role (for partial title matches)
     # e.g., "sap consultant" → also match titles containing "consultant"
     # Skip generic words that would match too broadly
-    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst", "consultant"}
+    _generic_words = {"engineer", "developer", "manager", "lead", "senior", "junior", "specialist", "analyst"}
     role_words = [w for w in base_role.split() if len(w) > 3 and w not in _generic_words]
     for word in role_words:
         if word not in keywords:
@@ -706,11 +693,8 @@ def score_job(title, description, company, location=""):
     Returns (score 0-100, note string).
     For roles outside India: visa sponsorship & relocation support are mandatory.
     """
-    raw_title_lower = title.lower()
-    text = (raw_title_lower + " " + description).lower()
-    # Normalize hyphens: "back-end" → "backend" so matching works uniformly
-    title_lower = raw_title_lower.replace("-", "")
-    text = text.replace("-", "")
+    text = (title + " " + description).lower()
+    title_lower = title.lower()
     loc_lower = location.lower()
 
     if any(re.search(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])', text) for flag in PROFILE["junior_red_flags"]):
@@ -800,9 +784,15 @@ def score_job(title, description, company, location=""):
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
-    # --- Skill scoring (word-boundary matching; up to 50 points) ---
-    skill_hits = sum(1 for skill in PROFILE["core_skills"]
-                     if re.search(r'\b' + re.escape(skill) + r'\b', text))
+    # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
+    title_lower = title.lower()
+    has_sap_in_title = "sap" in title_lower or "abap" in title_lower
+    has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
+    if has_sap_in_title and has_sap_skills and "sap mm" not in text:
+        return 0, "Filtered: SAP role requires SAP MM in JD"
+
+    # --- Skill scoring (dynamic denominator based on resume skill count) ---
+    skill_hits = sum(1 for skill in PROFILE["core_skills"] if skill in text)
     total_skills = len(PROFILE["core_skills"])
     # Need 40% of resume skills to appear in JD for full score (min 5 hits)
     skill_denominator = max(int(total_skills * 0.4), 5)
@@ -812,13 +802,8 @@ def score_job(title, description, company, location=""):
     title_relevance = 0
     exp_years = PROFILE["years_experience"]
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
-    # Full phrase match (e.g., "sap mm consultant") = 30, partial word match = 10
-    if title_keywords:
-        base_role = title_keywords[0]  # first entry is always the base role
-        if base_role in title_lower or "software engineer" in title_lower:
-            title_relevance = 30
-        elif any(kw in title_lower for kw in title_keywords):
-            title_relevance = 10
+    if title_keywords and any(kw in title_lower for kw in title_keywords):
+        title_relevance = 30  # +30 for matching role domain in title
 
     # --- Seniority scoring (experience-appropriate) ---
     seniority_keywords = _get_seniority_keywords(exp_years)
@@ -1222,81 +1207,46 @@ def _scrape_company_career_page(source):
     def _extract_links(pg):
         result = []
         try:
-            raw = pg.eval_on_selector_all("a", """
-                els => els.map(e => {
-                    const href = e.href || '';
-                    const text = (e.innerText || '').trim();
-                    let titleFromCard = '';
-                    const card = e.closest('li, [class*="card"], [class*="item"], [class*="job"], [class*="row"], [class*="result"], [class*="flex"], [class*="p-"]') || e.parentElement;
-                    if (card) {
-                        const cardText = card.innerText || '';
-                        const lines = cardText.split('\\n').filter(l => l.trim().length > 5);
-                        let fallback = '';
-                        for (const ln of lines) {
-                            const t = ln.trim().toLowerCase();
-                            const generic = ['job listing', 'apply now', 'learn more', 'read more', 'view', 'open positions'];
-                            if (generic.some(g => t.includes(g))) continue;
-                            // Skip single-word category headers (all caps or short words like "ENGINEERING", "SALES")
-                            const words = t.split(/\\s+/);
-                            if (words.length <= 2 && t === t.toUpperCase() && t.length < 20) continue;
-                            if (!fallback) fallback = ln.trim();
-                            if (t.includes('engineer') || t.includes('developer') || t.includes('manager')
-                                || t.includes('architect') || t.includes('specialist') || t.includes('consultant')
-                                || t.includes('sap') || t.includes('senior') || t.includes('staff')
-                                || t.includes('lead') || t.includes('principal') || t.includes('software')
-                                || t.includes('backend') || t.includes('platform') || t.includes('full stack')
-                                || t.includes('infrastructure') || t.includes('sde') || t.includes('analyst')) {
-                                titleFromCard = ln.trim();
-                                break;
-                            }
-                        }
-                        if (!titleFromCard && fallback) titleFromCard = fallback;
-                    }
-                    return {href, text, titleFromCard};
-                })
+            links = pg.eval_on_selector_all("a", """
+                els => els.map(e => ({href: e.href, text: e.innerText.trim()}))
+                    .filter(e => e.text.length > 8 && e.text.length < 120)
                     .filter(e => {
-                        const t = e.text.toLowerCase();
                         const h = e.href.toLowerCase();
-                        const c = (e.titleFromCard || '').toLowerCase();
+                        const t = e.text.toLowerCase();
                         const skip = ['consent', 'cookie', 'privacy', 'sign in', 'log in', 'subscribe'];
                         if (skip.some(s => t.includes(s))) return false;
-                        const hasTextKw = t.includes('engineer') || t.includes('developer')
-                            || t.includes('senior') || t.includes('software') || t.includes('backend')
-                            || t.includes('platform') || t.includes('lead');
-                        const cardHasKw = c.includes('engineer') || c.includes('developer')
-                            || c.includes('senior') || c.includes('software') || c.includes('backend');
+                        const hasKw = t.includes('engineer') || t.includes('developer') || t.includes('manager')
+                            || t.includes('architect') || t.includes('analyst') || t.includes('specialist')
+                            || t.includes('consultant') || t.includes('sap') || t.includes('senior')
+                            || t.includes('staff') || t.includes('lead') || t.includes('principal');
                         const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
                             || h.includes('/position/') || h.includes('/opening/')
-                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=')
-                            || h.includes('smartrecruiters.com/') || h.includes('workable.com/')
-                            || h.includes('bamboohr.com/');
-                        return (hasTextKw || cardHasKw) || urlIsJob;
+                            || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=');
+                        return hasKw || urlIsJob;
                     })
             """)
             seen_local = set()
-            for link in raw:
+            for link in links:
+                title = link["text"].split('\n')[0].strip()
                 href = link["href"]
                 if not href or href in seen_local:
                     continue
                 seen_local.add(href)
-                title = link["titleFromCard"] or link["text"].split('\n')[0].strip()
-                if not title or len(title) < 5:
-                    continue
                 if _is_relevant(title):
                     result.append({
-                        "title": title[:120],
+                        "title": title,
                         "company": source["name"],
                         "location": source.get("region", ""),
                         "url": href,
-                        "description": title[:120],
+                        "description": title,
                         "posted_at": None,
                     })
             if not result:
-                fallback = pg.eval_on_selector_all("a[href], h2, h3, h4, [class*='cursor-pointer'], [class*='clickable']", """
-                    els => els.map(e => ({href: e.href || '', text: (e.innerText || '').trim()}))
+                links = pg.eval_on_selector_all("a[href], h2, h3", """
+                    els => els.map(e => ({href: e.href || '', text: e.innerText.trim()}))
                         .filter(e => e.text.length > 10 && e.text.length < 120)
                 """)
-                for link in fallback:
+                for link in links:
                     title = link["text"].split('\n')[0].strip()
                     href = link["href"]
                     if href in seen_local:
@@ -1304,11 +1254,11 @@ def _scrape_company_career_page(source):
                     seen_local.add(href)
                     if _is_relevant(title):
                         result.append({
-                            "title": title[:120],
+                            "title": title,
                             "company": source["name"],
                             "location": source.get("region", ""),
                             "url": href or source["url"],
-                            "description": title[:120],
+                            "description": title,
                             "posted_at": None,
                         })
         except Exception:
@@ -1619,9 +1569,7 @@ def fetch_jobs_from_source(source):
                 except (ValueError, KeyError) as e:
                     print(f"  [warn] Personio JSON parse error for {source['name']}: {e}")
             elif resp:
-                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}. Check manually: {source['url']}")
-            else:
-                print(f"  [warn] Personio API unreachable for {source['name']}. Check manually: {source['url']}")
+                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "recruitee":
             # Recruitee: https://{company}.recruitee.com/api/offers/
@@ -1644,53 +1592,77 @@ def fetch_jobs_from_source(source):
         elif source.get("ats") == "smartrecruiters":
             slug = source.get("ats_slug") or source["name"].lower().replace(" ", "")
             api_url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
-            resp = requests.get(api_url, timeout=10)
-            if resp.status_code == 200:
-                for posting in resp.json().get("content", []):
-                    loc = posting.get("location", {})
-                    city = loc.get("city", "")
-                    country = loc.get("country", "")
-                    location = f"{city}, {country}".strip(", ")
-                    jobs.append({
-                        "title": posting.get("name", ""),
-                        "company": source["name"],
-                        "location": location or source.get("region", ""),
-                        "url": posting.get("applyUrl", posting.get("postingUrl", source["url"])),
-                        "description": posting.get("name", ""),
-                        "posted_at": _parse_date(posting.get("releasedDate")),
-                    })
-            else:
-                print(f"  [warn] SmartRecruiters API returned {resp.status_code} for {source['name']}")
+            offset = 0
+            limit = 100  # Max per page for SmartRecruiters
+            while True:
+                resp = requests.get(api_url, params={"offset": offset, "limit": limit}, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    postings = data.get("content", [])
+                    if not postings:
+                        break
+                    for posting in postings:
+                        loc = posting.get("location", {})
+                        city = loc.get("city", "")
+                        country = loc.get("country", "")
+                        location = f"{city}, {country}".strip(", ")
+                        jobs.append({
+                            "title": posting.get("name", ""),
+                            "company": source["name"],
+                            "location": location or source.get("region", ""),
+                            "url": posting.get("applyUrl", posting.get("postingUrl", source["url"])),
+                            "description": posting.get("name", ""),
+                            "posted_at": _parse_date(posting.get("releasedDate")),
+                        })
+                    # Check if there are more pages
+                    total = data.get("totalFound", 0)
+                    offset += limit
+                    if offset >= total or len(postings) < limit:
+                        break
+                else:
+                    print(f"  [warn] SmartRecruiters API returned {resp.status_code} for {source['name']}")
+                    break
 
         elif source.get("ats") == "teamtailor":
             # Teamtailor JSON Feed: https://company.teamtailor.com/jobs.json
             base_url = source["url"].rstrip("/")
             if not base_url.endswith("/jobs"):
                 base_url += "/jobs"
-            api_url = base_url.rstrip("/") + ".json"
-            resp = requests.get(api_url, timeout=10)
-            if resp.status_code == 200:
-                for item in resp.json().get("items", []):
-                    title = item.get("title", "")
-                    if not title:
-                        continue
-                    jp = item.get("_jobposting", {})
-                    company = jp.get("hiringOrganization", {}).get("name", source["name"]) if jp else source["name"]
-                    locs = jp.get("jobLocation", []) if jp else []
-                    loc = ", ".join(
-                        l.get("address", {}).get("addressLocality", "")
-                        for l in locs if l.get("address", {}).get("addressLocality")
-                    ) if locs else source.get("region", "")
-                    jobs.append({
-                        "title": title,
-                        "company": company,
-                        "location": loc,
-                        "url": item.get("url", source["url"]),
-                        "description": item.get("content_text", "")[:2000] or title,
-                        "posted_at": _parse_date(item.get("date_published")),
-                    })
-            else:
-                print(f"  [warn] Teamtailor API returned {resp.status_code} for {source['name']}")
+            feed_base = base_url.rstrip("/") + ".json"
+            max_pages = 5  # Fetch up to 5 pages
+            for page_num in range(1, max_pages + 1):
+                api_url = f"{feed_base}?page={page_num}" if page_num > 1 else feed_base
+                resp = requests.get(api_url, timeout=10)
+                if resp.status_code == 200:
+                    items = resp.json().get("items", [])
+                    if not items:
+                        break
+                    for item in items:
+                        title = item.get("title", "")
+                        if not title:
+                            continue
+                        jp = item.get("_jobposting", {})
+                        company = jp.get("hiringOrganization", {}).get("name", source["name"]) if jp else source["name"]
+                        locs = jp.get("jobLocation", []) if jp else []
+                        loc = ", ".join(
+                            l.get("address", {}).get("addressLocality", "")
+                            for l in locs if l.get("address", {}).get("addressLocality")
+                        ) if locs else source.get("region", "")
+                        jobs.append({
+                            "title": title,
+                            "company": company,
+                            "location": loc,
+                            "url": item.get("url", source["url"]),
+                            "description": item.get("content_text", "")[:2000] or title,
+                            "posted_at": _parse_date(item.get("date_published")),
+                        })
+                    # If fewer items than expected, no more pages
+                    if len(items) < 20:
+                        break
+                else:
+                    if page_num == 1:
+                        print(f"  [warn] Teamtailor API returned {resp.status_code} for {source['name']}")
+                    break
 
         elif source.get("ats") == "workable" or ("workable.com" in source["url"] and not source.get("playwright")):
             # Workable: https://apply.workable.com/{company} → API at /api/v1/widget/accounts/{company}
@@ -1809,57 +1781,37 @@ def fetch_jobs_from_source(source):
         elif source.get("ats") == "spotify":
             # Spotify custom API: https://api.lifeatspotify.com/wp-json/animal/v1/job/search
             try:
-                resp = requests.get("https://api.lifeatspotify.com/wp-json/animal/v1/job/search",
-                                    params={"per_page": 100}, timeout=10)
-                if resp.status_code == 200:
-                    for posting in resp.json().get("result", []):
-                        locs = posting.get("locations", [])
-                        loc = locs[0].get("location", "Remote") if locs else "Remote"
-                        jobs.append({
-                            "title": posting.get("text", ""),
-                            "company": source["name"],
-                            "location": loc,
-                            "url": f"https://www.lifeatspotify.com/jobs/{posting.get('id', '')}",
-                            "description": posting.get("text", ""),
-                            "posted_at": None,
-                        })
-                else:
-                    print(f"  [warn] Spotify API returned {resp.status_code}")
+                per_page = 100
+                max_pages = 5  # Fetch up to 500 jobs
+                for page_num in range(1, max_pages + 1):
+                    resp = requests.get("https://api.lifeatspotify.com/wp-json/animal/v1/job/search",
+                                        params={"per_page": per_page, "page": page_num}, timeout=10)
+                    if resp.status_code == 200:
+                        postings = resp.json().get("result", [])
+                        if not postings:
+                            break
+                        for posting in postings:
+                            locs = posting.get("locations", [])
+                            loc = locs[0].get("location", "Remote") if locs else "Remote"
+                            jobs.append({
+                                "title": posting.get("text", ""),
+                                "company": source["name"],
+                                "location": loc,
+                                "url": f"https://www.lifeatspotify.com/jobs/{posting.get('id', '')}",
+                                "description": posting.get("text", ""),
+                                "posted_at": None,
+                            })
+                        if len(postings) < per_page:
+                            break  # Last page
+                    else:
+                        if page_num == 1:
+                            print(f"  [warn] Spotify API returned {resp.status_code}")
+                        break
             except Exception as e:
                 print(f"  [warn] Spotify API error: {e}")
 
         elif source.get("playwright"):
-            # For LinkedIn URLs, skip Playwright and use LinkedIn job search API directly
-            if "linkedin.com/company/" in source["url"].lower():
-                from urllib.parse import urlparse as _urlparse
-                li_path = _urlparse(source["url"]).path.rstrip("/")
-                company_slug = li_path.split("/company/")[-1].replace("-", " ").strip()
-                locations_to_try = ["Remote"]
-                region = source.get("region", "")
-                if region and region not in ("Remote", "Global"):
-                    locations_to_try.insert(0, region)
-                queries = build_domain_queries()
-                for loc in locations_to_try:
-                    for q in queries[:6]:
-                        try:
-                            li_jobs = search_linkedin(q, location=loc, max_results=25)
-                            for j in li_jobs:
-                                lc = j.get("company", "").lower()
-                                if company_slug in lc or any(w in lc for w in company_slug.split() if len(w) > 3):
-                                    j["url"] = j.get("url") or source["url"]
-                                    j["company"] = source["name"]
-                                    if j not in jobs:
-                                        jobs.append(j)
-                        except Exception:
-                            pass
-                    if jobs:
-                        break
-                if jobs:
-                    print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
-                else:
-                    print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
-            else:
-                jobs = _scrape_company_career_page(source)
+            jobs = _scrape_company_career_page(source)
 
         else:
             print(f"  [skip] {source['name']} - no public ATS API detected. "
@@ -1874,32 +1826,22 @@ def fetch_jobs_from_source(source):
             region = source.get("region", "")
             if region and region not in ("Remote", "Global"):
                 locations_to_try.insert(0, region)
-            queries = build_domain_queries()
             for loc in locations_to_try:
-                for q in queries[:6]:
-                    try:
-                        li_jobs = search_linkedin(q, location=loc, max_results=25)
-                        for j in li_jobs:
-                            lc = j.get("company", "").lower()
-                            if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
-                                j["url"] = j.get("url") or source["url"]
-                                j["company"] = source["name"]
-                                if j not in jobs:
-                                    jobs.append(j)
-                    except Exception:
-                        pass
+                li_jobs = search_linkedin(source["name"], location=loc, max_results=25)
+                for j in li_jobs:
+                    lc = j.get("company", "").lower()
+                    if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
+                        jobs.append(j)
                 if jobs:
                     break
             if jobs:
                 print(f"  [linkedin] {len(jobs)} jobs for {source['name']} (fallback)")
-            else:
-                print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
         except Exception:
-            print(f"  [warn] LinkedIn fallback failed for {source['name']}. Check manually: {source['url']}")
+            pass
     return jobs
 
 
-def search_linkedin(query, location="India", max_results=25):
+def search_linkedin(query, location="India", max_results=75):
     """Search LinkedIn Guest API for jobs matching a query (paginated)."""
     jobs = []
     headers = {
@@ -1910,101 +1852,95 @@ def search_linkedin(query, location="India", max_results=25):
         ),
         "Accept": "text/html,application/xhtml+xml",
     }
-    start = 0
-    page_size = 25
-    seen_urls = set()
-    while len(jobs) < max_results:
-        params = {"keywords": query, "location": location, "start": start}
-        try:
+    page_size = 25  # LinkedIn returns ~25 results per page
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    try:
+        for page_num in range(max_pages):
+            start = page_num * page_size
+            params = {"keywords": query, "location": location, "start": start}
             resp = requests.get(
                 "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
                 params=params,
                 headers=headers,
                 timeout=15,
             )
-        except Exception:
-            break
-        if resp.status_code != 200:
-            if start == 0:
-                print(f"  [web] LinkedIn HTTP {resp.status_code} for '{query}' in {location}")
-            break
+            if resp.status_code != 200:
+                if page_num == 0:
+                    print(f"  [web] LinkedIn HTTP {resp.status_code} for '{query}' in {location}")
+                break
 
-        html = resp.text
-        titles = re.findall(r'<h3[^>]*class="[^"]*base-search-card__title[^"]*"[^>]*>\s*([^<]+?)\s*</h3>', html, re.DOTALL)
-        companies = re.findall(r'<h4[^>]*class="[^"]*base-search-card__subtitle[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+?)\s*</a>', html, re.DOTALL)
-        locations = re.findall(r'<span[^>]*class="[^"]*job-search-card__location[^"]*"[^>]*>\s*([^<]+?)\s*</span>', html, re.DOTALL)
-        links = re.findall(r'<a[^>]*class="[^"]*base-card__full-link[^"]*"[^>]*href="([^"]+)"', html)
+            html = resp.text
+            # Parse job cards from LinkedIn guest HTML
+            titles = re.findall(r'<h3[^>]*class="[^"]*base-search-card__title[^"]*"[^>]*>\s*([^<]+?)\s*</h3>', html, re.DOTALL)
+            companies = re.findall(r'<h4[^>]*class="[^"]*base-search-card__subtitle[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+?)\s*</a>', html, re.DOTALL)
+            locations = re.findall(r'<span[^>]*class="[^"]*job-search-card__location[^"]*"[^>]*>\s*([^<]+?)\s*</span>', html, re.DOTALL)
+            links = re.findall(r'<a[^>]*class="[^"]*base-card__full-link[^"]*"[^>]*href="([^"]+)"', html)
 
-        if not titles:
-            titles = re.findall(r'"title":"([^"]+)"', html)
-            companies = re.findall(r'"companyName":"([^"]+)"', html)
-            locations = re.findall(r'"formattedLocation":"([^"]+)"', html)
-            links = re.findall(r'"jobUrl":"([^"]+)"', html)
+            # Fallback patterns
+            if not titles:
+                titles = re.findall(r'"title":"([^"]+)"', html)
+                companies = re.findall(r'"companyName":"([^"]+)"', html)
+                locations = re.findall(r'"formattedLocation":"([^"]+)"', html)
+                links = re.findall(r'"jobUrl":"([^"]+)"', html)
 
-        if not titles:
-            break  # no more results
+            if not titles:
+                break  # No more results
 
-        min_len = min(len(titles), len(companies), len(locations))
-        new_count = 0
-        for i in range(min_len):
+            min_len = min(len(titles), len(companies), len(locations))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
+                url = links[i] if i < len(links) else ""
+                # Try to fetch actual job description from the LinkedIn job page
+                full_desc = ""
+                if url:
+                    try:
+                        jd_resp = requests.get(url, headers=headers, timeout=10)
+                        if jd_resp.status_code == 200:
+                            jd_html = jd_resp.text
+                            desc_match = re.search(r'<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
+                            if desc_match:
+                                full_desc = strip_html(desc_match.group(1))[:2000]
+                            if not full_desc:
+                                desc_match2 = re.search(r'"description":\s*"([^"]+)"', jd_html)
+                                if desc_match2:
+                                    full_desc = desc_match2.group(1)[:2000]
+                    except Exception:
+                        pass
+                desc = full_desc or f"LinkedIn job: {titles[i]} at {companies[i]} in {locations[i]}"
+                jobs.append({
+                    "title": titles[i].strip(),
+                    "company": companies[i].strip(),
+                    "location": locations[i].strip(),
+                    "url": url,
+                    "description": desc,
+                })
+
             if len(jobs) >= max_results:
                 break
-            url = links[i] if i < len(links) else ""
-            if url and url in seen_urls:
-                continue
-            if url:
-                seen_urls.add(url)
-            # Try to fetch actual job description
-            full_desc = ""
-            if url:
-                try:
-                    jd_resp = requests.get(url, headers=headers, timeout=10)
-                    if jd_resp.status_code == 200:
-                        jd_html = jd_resp.text
-                        desc_match = re.search(r'<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
-                        if desc_match:
-                            full_desc = strip_html(desc_match.group(1))[:2000]
-                        if not full_desc:
-                            desc_match2 = re.search(r'"description":\s*"([^"]+)"', jd_html)
-                            if desc_match2:
-                                full_desc = desc_match2.group(1)[:2000]
-                except Exception:
-                    pass
-            desc = full_desc or f"LinkedIn job: {titles[i]} at {companies[i]} in {locations[i]}"
-            jobs.append({
-                "title": titles[i].strip(),
-                "company": companies[i].strip(),
-                "location": locations[i].strip(),
-                "url": url,
-                "description": desc,
-            })
-            new_count += 1
+            time.sleep(1)  # Polite delay between pages
 
-        if new_count == 0:
-            break  # no new jobs on this page
-        start += page_size
-
-    if jobs:
-        print(f"  [web] {len(jobs)} jobs for '{query}' in {location} (paginated)")
-    elif start == 0:
-        print(f"  [web] No jobs parsed for '{query}' in {location}")
+        if jobs:
+            print(f"  [web] {len(jobs)} jobs for '{query}' in {location}")
+        else:
+            print(f"  [web] No jobs parsed for '{query}' in {location}")
+    except Exception as e:
+        print(f"  [web] Error searching '{query}' in {location}: {e}")
     return jobs
 
 
-def search_indeed(query, location="India", max_results=25):
-    """Search Indeed for jobs matching a query."""
+def search_indeed(query, location="India", max_results=50):
+    """Search Indeed for jobs matching a query using Playwright (paginated)."""
     jobs = []
     loc_param = location.replace(" ", "+")
     query_param = query.replace(" ", "+")
+    page_size = 15  # Indeed shows ~15 results per page
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
     try:
-        for page in range(1, 4):
-            start_offset = (page - 1) * 10
-            url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}&start={start_offset}"
-            html = _playwright_html(url)
-            if not html:
-                if page == 1:
-                    print(f"  [indeed] No response for '{query}' in {location}")
-                break
+        for page_num in range(max_pages):
+            start = page_num * 10  # Indeed uses start=0, 10, 20...
+            page_url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}&start={start}"
+            html = _playwright_html(page_url)
             titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
             companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
             if not companies:
@@ -2018,35 +1954,26 @@ def search_indeed(query, location="India", max_results=25):
             if not links:
                 links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
 
-            page_len = min(len(titles), len(companies), len(locations))
-            if page_len == 0:
-                break
-            for i in range(page_len):
+            if not titles:
+                break  # No more results
+
+            min_len = min(len(titles), len(companies), len(locations))
+            for i in range(min_len):
                 if len(jobs) >= max_results:
                     break
-                raw_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-                jk_match = re.search(r'[?&]jk=([^&]+)', raw_url)
-                view_url = f"https://www.indeed.com/viewjob?jk={jk_match.group(1)}" if jk_match else raw_url
-                full_desc = ""
-                if jk_match and i < 10:
-                    try:
-                        jd_html = _playwright_html(view_url, timeout=15000)
-                        if jd_html:
-                            desc_match = re.search(r'<div[^>]*id="jobDescriptionText"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
-                            if desc_match:
-                                full_desc = strip_html(desc_match.group(1))[:2000]
-                    except Exception:
-                        pass
-                desc = full_desc or f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}"
+                job_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
                 jobs.append({
                     "title": titles[i].strip(),
                     "company": companies[i].strip() if i < len(companies) else "Unknown",
                     "location": locations[i].strip() if i < len(locations) else location,
-                    "url": view_url,
-                    "description": desc,
+                    "url": job_url,
+                    "description": f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}",
                 })
+
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)  # Polite delay between pages
+
         if jobs:
             print(f"  [indeed] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2056,8 +1983,8 @@ def search_indeed(query, location="India", max_results=25):
     return jobs
 
 
-def search_naukri(query, location="India", max_results=25):
-    """Search Naukri for jobs matching a query using their API."""
+def search_naukri(query, location="India", max_results=50):
+    """Search Naukri for jobs matching a query using their API (paginated)."""
     jobs = []
     session = requests.Session()
     session.headers.update({
@@ -2078,13 +2005,14 @@ def search_naukri(query, location="India", max_results=25):
         session.get("https://www.naukri.com", timeout=15)
         keyword = query.replace(" ", "+")
         session.headers["Referer"] = f"https://www.naukri.com/{keyword.replace('+', '-')}-jobs"
-        for page in range(1, 4):
-            api_url = f"https://www.naukri.com/jobapi/v2/search?keyword={keyword}&location={location}&page={page}"
+
+        max_pages = 3  # Fetch up to 3 pages
+        for page_num in range(1, max_pages + 1):
+            api_url = f"https://www.naukri.com/jobapi/v2/search?keyword={keyword}&location={location}&pageNo={page_num}"
             resp = session.get(api_url, timeout=15)
             if resp.status_code != 200:
-                if page == 1:
+                if page_num == 1:
                     print(f"  [naukri] Naukri HTTP {resp.status_code} for '{query}'")
-                    return jobs
                 break
             data = resp.json()
             listings = data.get("list", [])
@@ -2108,21 +2036,17 @@ def search_naukri(query, location="India", max_results=25):
                 loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
                 location_str = loc_clean if loc_clean else location
                 job_url = job.get("urlStr", "")
-                job_desc = job.get("jobDesc", "").strip()
-                if job_desc:
-                    company_profile = job.get("companyProfile", "")
-                    if company_profile:
-                        job_desc += " " + strip_html(company_profile)
-                desc = job_desc if job_desc else f"Naukri job: {title} at {company}"
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": location_str,
                     "url": job_url,
-                    "description": desc,
+                    "description": f"Naukri job: {title} at {company}",
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(1)  # Polite delay between pages
+
         if jobs:
             print(f"  [naukri] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2132,8 +2056,8 @@ def search_naukri(query, location="India", max_results=25):
     return jobs
 
 
-def search_instahyre(query, location="India", max_results=25):
-    """Search Instahyre for jobs matching a query using their API."""
+def search_instahyre(query, location="India", max_results=50):
+    """Search Instahyre for jobs matching a query using their API (paginated)."""
     jobs = []
     scraper = cloudscraper.create_scraper()
     scraper.headers.update({
@@ -2148,28 +2072,27 @@ def search_instahyre(query, location="India", max_results=25):
         "X-Requested-With": "XMLHttpRequest",
     })
     query_param = query.replace(" ", "+")
-    base_url = f"https://www.instahyre.com/api/v1/job_search?search={query_param}&location={location}"
+    query_lower = query.lower()
+    query_terms = query_lower.split()
+    max_pages = 3  # Fetch up to 3 pages
     try:
-        next_url = base_url
-        for page in range(1, 4):
-            resp = scraper.get(next_url, timeout=15)
+        for page_num in range(1, max_pages + 1):
+            api_url = f"https://www.instahyre.com/api/v1/job_search?search={query_param}&location={location}&page={page_num}"
+            resp = scraper.get(api_url, timeout=15)
             if resp.status_code != 200:
-                if page == 1:
+                if page_num == 1:
                     print(f"  [instahyre] Instahyre HTTP {resp.status_code} for '{query}'")
                 break
             data = resp.json()
             objects = data.get("objects", [])
             if not objects:
                 break
-            query_lower = query.lower()
-            query_terms = query_lower.split()
             for obj in objects:
-                if len(jobs) >= max_results:
-                    break
                 title = obj.get("candidate_title") or obj.get("title", "").strip()
                 company = obj.get("employer", {}).get("company_name", "Unknown").strip()
                 loc = obj.get("locations", location).strip()
                 keywords = " ".join(obj.get("keywords", []) or []).lower()
+                # Client-side filter since API doesn't filter for anonymous users
                 text = f"{title.lower()} {company.lower()} {keywords}"
                 if not all(term in text for term in query_terms):
                     continue
@@ -2181,12 +2104,15 @@ def search_instahyre(query, location="India", max_results=25):
                     "url": job_url,
                     "description": f"Instahyre job: {title} at {company}",
                 })
+                if len(jobs) >= max_results:
+                    break
             if len(jobs) >= max_results:
                 break
-            next_path = data.get("meta", {}).get("next", "")
-            if not next_path:
+            # Check if there are more pages
+            if not data.get("meta", {}).get("next"):
                 break
-            next_url = "https://www.instahyre.com" + next_path
+            time.sleep(1)  # Polite delay between pages
+
         if jobs:
             print(f"  [instahyre] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2196,17 +2122,20 @@ def search_instahyre(query, location="India", max_results=25):
     return jobs
 
 
-def search_womenintech(query, location="UK", max_results=25):
-    """Search WomenInTech UK job board using Playwright."""
+def search_womenintech(query, location="UK", max_results=50):
+    """Search WomenInTech UK job board using Playwright with Load More support."""
     jobs = []
     try:
-        html = _playwright_html("https://jobs.womenintech.co.uk/jobs")
+        # Use Load More / infinite scroll to get all listings
+        html = _playwright_load_more("https://jobs.womenintech.co.uk/jobs", max_clicks=5, wait_ms=2000)
         if not html:
             print(f"  [womenintech] No response for '{query}'")
             return jobs
         links = re.findall(r'href="(/jobs/\d+-[^"]+)"', html)
         seen = set()
         for link in links:
+            if len(jobs) >= max_results:
+                break
             parts = link.split("/")[-1]
             without_id = re.sub(r'^\d+-', '', parts)
             if "-at-" in without_id:
@@ -2227,8 +2156,6 @@ def search_womenintech(query, location="UK", max_results=25):
                 "url": full_url,
                 "description": f"WomenInTech UK job: {title} at {company_pretty}",
             })
-            if len(jobs) >= max_results:
-                break
         if jobs:
             print(f"  [womenintech] {len(jobs)} jobs for '{query}' in UK")
         else:
@@ -2271,58 +2198,43 @@ def search_weworkremotely(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_simplyhired(query, location="India", max_results=25):
-    """Search SimplyHired for jobs matching a query using Playwright."""
+def search_simplyhired(query, location="India", max_results=50):
+    """Search SimplyHired for jobs matching a query using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            url = f"https://www.simplyhired.com/search?q={q}&page={page}"
-            html = _playwright_html(url)
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.simplyhired.com/search?q={q}&pn={page_num}" if page_num > 1 else f"https://www.simplyhired.com/search?q={q}"
+            html = _playwright_html(page_url)
             if not html:
-                if page == 1:
+                if page_num == 1:
                     print(f"  [simplyhired] No response for '{query}'")
                 break
             titles = re.findall(r'<h2[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
             companies = re.findall(r'data-testid="companyName"[^>]*>\s*([^<]+)', html)
             locs = re.findall(r'data-testid="searchSerpJobLocation"[^>]*>\s*([^<]+)', html)
             links = re.findall(r'href="(/job/[^"]+)"', html)
-            if not titles or not companies:
-                break
-            page_len = min(len(titles), len(companies))
-            for i in range(page_len):
+
+            if not titles:
+                break  # No more results
+
+            min_len = min(len(titles), len(companies))
+            for i in range(min_len):
                 if len(jobs) >= max_results:
                     break
-                u = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
+                url = f"https://www.simplyhired.com{links[i]}" if i < len(links) else ""
                 l = locs[i].strip() if i < len(locs) else location
-                # Fetch actual description from job detail page (first 10 total)
-                full_desc = ""
-                if u and len(jobs) < 10:
-                    try:
-                        jd_html = _playwright_html(u, timeout=15000)
-                        if jd_html:
-                            body = re.search(r'<body[^>]*>(.*)</body>', jd_html, re.DOTALL)
-                            if body:
-                                content = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', body.group(1), flags=re.DOTALL)
-                                text = re.sub(r'<[^>]+>', '\n', content)
-                                lines = [l.strip() for l in text.split('\n') if l.strip()]
-                                text = '\n'.join(lines)
-                                desc_start = text.find('Job Details')
-                                desc_end = text.find('Report this job') if 'Report this job' in text else len(text)
-                                if desc_start >= 0:
-                                    full_desc = text[desc_start:desc_end][:3000]
-                                else:
-                                    full_desc = text[:3000]
-                    except Exception:
-                        pass
-                desc = full_desc or f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}"
                 jobs.append({
                     "title": titles[i].strip(), "company": companies[i].strip(),
-                    "location": l, "url": u,
-                    "description": desc,
+                    "location": l, "url": url,
+                    "description": f"SimplyHired: {titles[i].strip()} at {companies[i].strip()}",
                 })
+
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)  # Polite delay between pages
+
         if jobs:
             print(f"  [simplyhired] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2330,18 +2242,21 @@ def search_simplyhired(query, location="India", max_results=25):
     return jobs
 
 
-def search_glassdoor(query, location="India", max_results=25):
-    """Search Glassdoor for jobs matching a query using Playwright."""
+def search_glassdoor(query, location="India", max_results=50):
+    """Search Glassdoor for jobs matching a query using Playwright (paginated)."""
     jobs = []
-    loc_map = {"India": "113", "Remote": "0"}
+    loc_map = {"India": "113", "Remote": "0", "Germany": "96", "Netherlands": "178",
+               "UK": "243", "United Kingdom": "243", "USA": "1", "United States": "1",
+               "Canada": "3", "Australia": "16", "Switzerland": "215", "Singapore": "200"}
     loc_id = loc_map.get(location, "113")
     query_param = query.replace(" ", "+")
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}&pn={page}"
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}&p={page_num}"
             html = _playwright_html(url)
             if not html:
-                if page == 1:
+                if page_num == 1:
                     print(f"  [glassdoor] No response for '{query}' in {location}")
                 break
             titles = re.findall(r'class="[^"]*JobCard_jobTitle[^"]*"[^>]*>\s*([^<]+)', html)
@@ -2350,23 +2265,27 @@ def search_glassdoor(query, location="India", max_results=25):
                 companies = re.findall(r'class="[^"]*EmployerProfile_employerName[^"]*"[^>]*>\s*([^<]+)', html)
             locations = re.findall(r'class="[^"]*JobCard_location[^"]*"[^>]*>\s*([^<]+)', html)
             links = re.findall(r'href="(/partner/jobListing[^"]+)"', html)
-            page_len = min(len(titles), len(companies), len(locations))
-            if page_len == 0:
-                break
-            for i in range(page_len):
+
+            if not titles:
+                break  # No more results
+
+            min_len = min(len(titles), len(companies), len(locations))
+            for i in range(min_len):
                 if len(jobs) >= max_results:
                     break
                 link = "https://www.glassdoor.co.in" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-                desc = f"Glassdoor job: {titles[i]} at {companies[i]}"
                 jobs.append({
                     "title": titles[i].strip(),
                     "company": companies[i].strip() if i < len(companies) else "Unknown",
                     "location": locations[i].strip() if i < len(locations) else location,
                     "url": link,
-                    "description": desc,
+                    "description": f"Glassdoor job: {titles[i]} at {companies[i]}",
                 })
+
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)  # Polite delay between pages
+
         if jobs:
             print(f"  [glassdoor] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -2396,6 +2315,64 @@ def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
     except Exception as e:
         return []
 
+
+def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
+    """Load a page with Playwright and click 'Load More'/'Show More' buttons
+    or scroll for infinite scroll, returning the full HTML after expansion.
+
+    Supports:
+    - Buttons/links with text: Load More, Show More, More Results, View More, See More
+    - Infinite scroll: scrolls to bottom and waits for new content
+    """
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+        page.wait_for_timeout(3000)
+
+        for _ in range(max_clicks):
+            # Try clicking "Load More" / "Show More" style buttons
+            load_more_btn = page.query_selector(
+                'button:has-text("Load More"), button:has-text("load more"), '
+                'button:has-text("Show More"), button:has-text("show more"), '
+                'button:has-text("More Results"), button:has-text("View More"), '
+                'button:has-text("See More"), button:has-text("see more"), '
+                'a:has-text("Load More"), a:has-text("load more"), '
+                'a:has-text("Show More"), a:has-text("show more"), '
+                'a:has-text("More Results"), a:has-text("View More"), '
+                'a:has-text("See More"), a:has-text("see more"), '
+                '[class*="load-more"], [class*="loadMore"], '
+                '[class*="show-more"], [class*="showMore"], '
+                '[data-testid*="load-more"], [data-testid*="show-more"]'
+            )
+            if load_more_btn:
+                try:
+                    load_more_btn.scroll_into_view_if_needed()
+                    load_more_btn.click()
+                    page.wait_for_timeout(wait_ms)
+                    continue
+                except Exception:
+                    pass
+
+            # Fallback: infinite scroll - scroll to bottom
+            prev_height = page.evaluate("document.body.scrollHeight")
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(wait_ms)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height == prev_height:
+                break  # No new content loaded
+
+        html = page.content()
+        context.close()
+        return html
+    except Exception as e:
+        return ""
+
 def _playwright_html(url, timeout=30000):
     """Load a JS-rendered page with Playwright + stealth and return full HTML."""
     try:
@@ -2415,33 +2392,38 @@ def _playwright_html(url, timeout=30000):
         return ""
 
 
-def search_remoteok(query, location="Remote", max_results=25):
-    """Search RemoteOK using Playwright headless browser."""
+def search_remoteok(query, location="Remote", max_results=50):
+    """Search RemoteOK using Playwright with infinite scroll."""
     jobs = []
-    term = query.replace(" ", "+").lower()
+    term = query.replace(" ", "-").lower()
     url = f"https://remoteok.com/remote-{term}-jobs"
     try:
-        titles = _playwright_scrape(
-            url,
-            "a[href*='/remote-jobs/'] h2, a[href*='/remote-jobs/'] span[itemprop='title']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)"
-        )
-        companies = _playwright_scrape(
-            url,
-            "span[itemprop='name'], div.company",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        links = _playwright_scrape(
-            url,
-            "a[href*='/remote-jobs/']",
-            "els => els.map(e => e.href).filter(h => h.includes('/remote-jobs/'))"
-        )
-        min_len = min(len(titles), len(companies), len(links))
+        # Use infinite scroll to load more results
+        html = _playwright_load_more(url, max_clicks=5, wait_ms=2000)
+        if not html:
+            print(f"  [remoteok] No response for '{query}'")
+            return jobs
+        # Parse from expanded HTML
+        titles = re.findall(r'itemprop="title"[^>]*>\s*([^<]{4,}?)\s*<', html)
+        if not titles:
+            titles = re.findall(r'class="[^"]*position[^"]*"[^>]*>\s*<h2[^>]*>\s*([^<]+)', html)
+        companies = re.findall(r'itemprop="name"[^>]*>\s*([^<]{2,}?)\s*<', html)
+        links = re.findall(r'href="(/remote-jobs/[^"]+)"', html)
+        # Deduplicate links
+        seen_links = set()
+        unique_links = []
+        for link in links:
+            if link not in seen_links:
+                seen_links.add(link)
+                unique_links.append(link)
+        min_len = min(len(titles), len(unique_links))
         for i in range(min(min_len, max_results)):
             jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "Unknown",
-                "location": "Remote", "url": links[i],
-                "description": f"RemoteOK: {titles[i]}",
+                "title": titles[i].strip(),
+                "company": companies[i].strip() if i < len(companies) else "Unknown",
+                "location": "Remote",
+                "url": f"https://remoteok.com{unique_links[i]}",
+                "description": f"RemoteOK: {titles[i].strip()}",
             })
         if jobs:
             print(f"  [remoteok] {len(jobs)} jobs for '{query}'")
@@ -2450,25 +2432,26 @@ def search_remoteok(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_skipthedrive(query, location="Remote", max_results=25):
-    """Search SkipTheDrive for remote jobs using HTTP."""
+def search_skipthedrive(query, location="Remote", max_results=50):
+    """Search SkipTheDrive for remote jobs using HTTP (paginated)."""
     jobs = []
     scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            page_url = f"https://www.skipthedrive.com/page/{page}/?s={q}" if page > 1 else f"https://www.skipthedrive.com/?s={q}"
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.skipthedrive.com/page/{page_num}/?s={q}" if page_num > 1 else f"https://www.skipthedrive.com/?s={q}"
             resp = scraper.get(page_url, timeout=20)
             if resp.status_code != 200:
-                if page == 1:
-                    return jobs
                 break
             html = resp.text
             titles = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+)', html)
             links = re.findall(r'class="[^"]*entry-title[^"]*"[^>]*>\s*<a[^"]*href="([^"]+)"', html)
             if not titles:
                 break
-            for i in range(min(len(titles), max_results - len(jobs))):
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
                 t = titles[i].strip()
                 t = re.sub(r'&#8211;', '-', t)
                 t = re.sub(r'&#\d+;', '', t)
@@ -2479,6 +2462,7 @@ def search_skipthedrive(query, location="Remote", max_results=25):
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(1)
         if jobs:
             print(f"  [skipthedrive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2486,14 +2470,43 @@ def search_skipthedrive(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_workingnomads(query, location="Remote", max_results=25):
-    """Search WorkingNomads using Playwright headless browser."""
+def search_workingnomads(query, location="Remote", max_results=50):
+    """Search WorkingNomads using Playwright with Load More / infinite scroll."""
     jobs = []
     try:
         browser = _get_browser()
-        page = browser.new_page()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
         page.goto("https://www.workingnomads.com/jobs", timeout=30000, wait_until="networkidle")
         page.wait_for_timeout(3000)
+
+        # Click Load More / scroll for more results
+        for _ in range(5):
+            load_more = page.query_selector(
+                'button:has-text("Load More"), button:has-text("Show More"), '
+                'a:has-text("Load More"), a:has-text("Show More"), '
+                '[class*="load-more"], [class*="loadMore"]'
+            )
+            if load_more:
+                try:
+                    load_more.scroll_into_view_if_needed()
+                    load_more.click()
+                    page.wait_for_timeout(2000)
+                    continue
+                except Exception:
+                    pass
+            # Infinite scroll fallback
+            prev_height = page.evaluate("document.body.scrollHeight")
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(2000)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height == prev_height:
+                break
+
         links = page.eval_on_selector_all(
             'a[href*="/jobs/"]',
             '''els => els.map(e => ({
@@ -2501,10 +2514,12 @@ def search_workingnomads(query, location="Remote", max_results=25):
                 href: e.href
             })).filter(j => j.text.length > 3 && j.href.includes('/jobs/'))'''
         )
-        page.close()
+        context.close()
         q_lower = query.lower()
         q_terms = q_lower.split()
-        for l in links[:max_results * 2]:
+        for l in links:
+            if len(jobs) >= max_results:
+                break
             text_lower = l['text'].lower()
             if not all(term in text_lower for term in q_terms):
                 continue
@@ -2516,8 +2531,6 @@ def search_workingnomads(query, location="Remote", max_results=25):
                 "location": "Remote", "url": l['href'],
                 "description": f"WorkingNomads: {title}",
             })
-            if len(jobs) >= max_results:
-                break
         if jobs:
             print(f"  [workingnomads] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2525,14 +2538,44 @@ def search_workingnomads(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_jobspresso(query, location="Remote", max_results=25):
-    """Search Jobspresso using Playwright."""
+def search_jobspresso(query, location="Remote", max_results=50):
+    """Search Jobspresso using Playwright with Load More button clicking."""
     jobs = []
     try:
         browser = _get_browser()
-        page = browser.new_page()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
         page.goto("https://jobspresso.co/remote-work/", timeout=30000, wait_until="load")
         page.wait_for_timeout(3000)
+
+        # Click Load More buttons to expand listings
+        for _ in range(5):
+            load_more = page.query_selector(
+                'button:has-text("Load More"), a:has-text("Load More"), '
+                'button:has-text("Show More"), a:has-text("Show More"), '
+                '[class*="load_more"], [class*="load-more"], '
+                '.load_more_jobs, a.load_more_listings'
+            )
+            if load_more:
+                try:
+                    load_more.scroll_into_view_if_needed()
+                    load_more.click()
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    break
+            else:
+                # Try infinite scroll
+                prev_height = page.evaluate("document.body.scrollHeight")
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.wait_for_timeout(2000)
+                new_height = page.evaluate("document.body.scrollHeight")
+                if new_height == prev_height:
+                    break
+
         items = page.eval_on_selector_all(
             'li.job_listing',
             '''els => els.map(el => ({
@@ -2540,14 +2583,15 @@ def search_jobspresso(query, location="Remote", max_results=25):
                 href: el.getAttribute('data-href') || ''
             })).filter(j => j.title.length > 3)'''
         )
-        page.close()
+        context.close()
         q_lower = query.lower()
         q_terms = q_lower.split()
-        for item in items[:max_results * 2]:
+        for item in items:
+            if len(jobs) >= max_results:
+                break
             if not all(term in item['title'].lower() for term in q_terms):
                 continue
             t = item['title']
-            # Try to extract company name from "Title at Company" pattern
             company = "Jobspresso"
             if " at " in t:
                 parts = t.rsplit(" at ", 1)
@@ -2558,8 +2602,6 @@ def search_jobspresso(query, location="Remote", max_results=25):
                 "location": "Remote", "url": item['href'],
                 "description": f"Jobspresso: {t}",
             })
-            if len(jobs) >= max_results:
-                break
         if jobs:
             print(f"  [jobspresso] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2567,24 +2609,30 @@ def search_jobspresso(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_englishjobsearch(query, location="Remote", max_results=25):
-    """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU.
+def search_englishjobsearch(query, location="Remote", max_results=50):
+    """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU (paginated).
 
-    Uses cloudscraper to bypass Cloudflare protection, then regex to parse.
+    Uses plain HTTP + regex (the site is server-rendered, no JS needed).
     """
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        scraper = cloudscraper.create_scraper()
-        for page in range(1, 4):
-            page_url = f"https://englishjobsearch.ch/jobs/{q}?page={page}" if page > 1 else f"https://englishjobsearch.ch/jobs/{q}"
-            resp = scraper.get(page_url, timeout=15)
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://englishjobsearch.ch/jobs/{q}?page={page_num}" if page_num > 1 else f"https://englishjobsearch.ch/jobs/{q}"
+            resp = requests.get(
+                page_url,
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"},
+                timeout=15,
+            )
             if resp.status_code != 200:
-                if page == 1:
+                if page_num == 1:
                     print(f"  [englishjobsearch] HTTP {resp.status_code}")
                 break
 
             html = resp.text
+            # Each job is a div with class "job js-job"
             job_blocks = re.findall(
                 r'class="job js-job[^"]*"[^>]*>(.*?)(?=class="job js-job|$)',
                 html, re.DOTALL,
@@ -2594,17 +2642,24 @@ def search_englishjobsearch(query, location="Remote", max_results=25):
             for block in job_blocks:
                 if len(jobs) >= max_results:
                     break
+                # Title from <h3 itemprop="title">
                 h3 = re.search(r'<h3[^>]*>(.*?)</h3>', block, re.DOTALL)
                 title = re.sub(r'<[^>]+>', '', h3.group(1)).strip() if h3 else ""
                 if not title or len(title) < 4:
                     continue
+
+                # Clickout link
                 link_match = re.search(r'href="(/clickout/[^"]+)"', block)
                 url = f"https://englishjobsearch.ch{link_match.group(1)}" if link_match else ""
+                # Unescape &amp; in URL
                 url = url.replace("&amp;", "&")
+
+                # Company and location from <li> text nodes (1st = company, 2nd = location)
                 li_texts = re.findall(r'<li[^>]*>.*?</svg>\s*([^<]+)', block, re.DOTALL)
                 li_texts = [t.strip() for t in li_texts if t.strip()]
                 company = li_texts[0] if len(li_texts) >= 1 else "EnglishJobSearch"
                 loc = li_texts[1] if len(li_texts) >= 2 else "Switzerland"
+
                 jobs.append({
                     "title": title,
                     "company": company,
@@ -2614,6 +2669,7 @@ def search_englishjobsearch(query, location="Remote", max_results=25):
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(1)
         if jobs:
             print(f"  [englishjobsearch] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2621,23 +2677,53 @@ def search_englishjobsearch(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_bulldogjob(query, location="Remote", max_results=25):
-    """Search BulldogJob.pl for tech jobs in Poland/EU."""
+def search_bulldogjob(query, location="Remote", max_results=50):
+    """Search BulldogJob.pl for tech jobs in Poland/EU with Load More support."""
     jobs = []
     q = query.replace(" ", "+")
     try:
         browser = _get_browser()
-        page = browser.new_page()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
         page.goto(f"https://bulldogjob.pl/companies/jobs/s/skills,{q}", timeout=30000, wait_until="networkidle")
         page.wait_for_timeout(3000)
+
+        # Click Load More / scroll for more results
+        for _ in range(5):
+            load_more = page.query_selector(
+                'button:has-text("Load More"), button:has-text("Pokaż więcej"), '
+                'a:has-text("Load More"), a:has-text("Pokaż więcej"), '
+                '[class*="load-more"], [class*="loadMore"], '
+                'button:has-text("More"), a:has-text("More")'
+            )
+            if load_more:
+                try:
+                    load_more.scroll_into_view_if_needed()
+                    load_more.click()
+                    page.wait_for_timeout(2000)
+                    continue
+                except Exception:
+                    pass
+            # Infinite scroll fallback
+            prev_height = page.evaluate("document.body.scrollHeight")
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(2000)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height == prev_height:
+                break
+
         links = page.eval_on_selector_all(
             'a[href*="/companies/jobs/"]',
-            '''els => els.slice(0, 30).map(e => ({
+            '''els => els.map(e => ({
                 text: e.innerText.trim(),
                 href: e.href
             })).filter(j => j.text.length > 5 && !j.text.includes('Praca'))'''
         )
-        page.close()
+        context.close()
         for l in links[:max_results]:
             t_parts = l['text'].split('\n')
             title = t_parts[0].strip()
@@ -2654,8 +2740,8 @@ def search_bulldogjob(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_workatstartup(query, location="Remote", max_results=25):
-    """Search WorkAtAStartup (YC) using Playwright with profile-based filters."""
+def search_workatstartup(query, location="Remote", max_results=50):
+    """Search WorkAtAStartup (YC) using Playwright with infinite scroll."""
     jobs = []
     exp = PROFILE["years_experience"]
     min_exp = max(0, exp - 1)
@@ -2671,23 +2757,29 @@ def search_workatstartup(query, location="Remote", max_results=25):
         f"&tab=any&usVisaNotRequired=any&minExperience={min_exp}"
     )
     try:
-        titles = _playwright_scrape(
-            url,
-            "a[href*='/companies/'] div.font-bold, a[href*='/companies/'] h3",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)"
-        )
-        links = _playwright_scrape(
-            url,
-            "a[href*='/companies/']",
-            "els => els.map(e => e.href).filter(h => h.includes('/companies/'))"
-        )
-        for i in range(min(len(titles), max_results)):
+        # Use Load More / infinite scroll to get more results
+        html = _playwright_load_more(url, max_clicks=5, wait_ms=3000)
+        if not html:
+            print(f"  [workatstartup] No response")
+            return jobs
+        # Extract from expanded HTML
+        titles = re.findall(r'font-bold[^>]*>\s*([^<]{4,}?)\s*<', html)
+        links = re.findall(r'href="(/companies/[^"]+)"', html)
+        seen = set()
+        for i in range(len(titles)):
+            if len(jobs) >= max_results:
+                break
+            t = titles[i].strip()
+            if t in seen or len(t) < 5:
+                continue
+            seen.add(t)
+            link = f"https://www.workatastartup.com{links[i]}" if i < len(links) else url
             jobs.append({
-                "title": titles[i],
+                "title": t,
                 "company": "YC Startup",
                 "location": "Remote/US",
-                "url": links[i] if i < len(links) else url,
-                "description": f"WorkAtAStartup: {titles[i]}",
+                "url": link,
+                "description": f"WorkAtAStartup: {t}",
             })
         if jobs:
             print(f"  [workatstartup] {len(jobs)} jobs")
@@ -2696,21 +2788,23 @@ def search_workatstartup(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_stepstone(query, location="Germany", max_results=25):
-    """Search StepStone Germany for jobs using Playwright."""
+def search_stepstone(query, location="Germany", max_results=50):
+    """Search StepStone Germany for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "-").lower()
     loc = location.lower().replace(" ", "-")
-    base_url = f"https://www.stepstone.de/jobs/{q}/{loc}.html"
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            page_url = f"{base_url}?page={page}" if page > 1 else base_url
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.stepstone.de/jobs/{q}/{loc}.html?page={page_num}" if page_num > 1 else f"https://www.stepstone.de/jobs/{q}/{loc}.html"
             titles = _playwright_scrape(
                 page_url,
                 "[data-at='job-item-title']",
                 "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
                 wait_selector="[data-at='job-item-title']",
             )
+            if not titles:
+                break
             companies = _playwright_scrape(
                 page_url,
                 "[data-at='job-item-company']",
@@ -2726,14 +2820,10 @@ def search_stepstone(query, location="Germany", max_results=25):
                 "a[data-at='job-item-title']",
                 "els => els.map(e => e.href)",
             )
-            if not titles:
-                if page == 1:
-                    print(f"  [stepstone] No results for '{query}'")
-                break
-            remaining = max_results - len(jobs)
-            if remaining <= 0:
-                break
-            for i in range(min(len(titles), len(companies), len(links), remaining)):
+            min_len = min(len(titles), len(companies), len(links))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i],
                     "company": companies[i] if i < len(companies) else "Unknown",
@@ -2743,6 +2833,7 @@ def search_stepstone(query, location="Germany", max_results=25):
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)
         if jobs:
             print(f"  [stepstone] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -2750,21 +2841,23 @@ def search_stepstone(query, location="Germany", max_results=25):
     return jobs
 
 
-def search_monsterde(query, location="Germany", max_results=25):
-    """Search Monster Germany for jobs using Playwright."""
+def search_monsterde(query, location="Germany", max_results=50):
+    """Search Monster Germany for jobs using Playwright (paginated)."""
     jobs = []
-    q = query.replace(" ", "-").lower()
-    loc = location.lower().replace(" ", "-")
-    base_url = f"https://www.monster.de/jobs/suche/?q={q}&where={loc}"
+    q = query.replace(" ", "+").lower()
+    loc = location.lower().replace(" ", "+")
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            page_url = f"{base_url}&page={page}" if page > 1 else base_url
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.monster.de/jobs/suche/?q={q}&where={loc}&page={page_num}" if page_num > 1 else f"https://www.monster.de/jobs/suche/?q={q}&where={loc}"
             titles = _playwright_scrape(
                 page_url,
                 "[data-testid='jobTitle']",
                 "els => els.map(e => e.textContent.trim()).filter(t => t.length > 1)",
                 wait_selector="[data-testid='jobTitle']",
             )
+            if not titles:
+                break
             companies = _playwright_scrape(
                 page_url,
                 "[data-testid='company']",
@@ -2780,14 +2873,10 @@ def search_monsterde(query, location="Germany", max_results=25):
                 "a[data-testid='jobTitle']",
                 "els => els.map(e => e.href)",
             )
-            if not titles:
-                if page == 1:
-                    print(f"  [monsterde] No results for '{query}'")
-                break
-            remaining = max_results - len(jobs)
-            if remaining <= 0:
-                break
-            for i in range(min(len(titles), len(companies), len(links), remaining)):
+            min_len = min(len(titles), len(companies), len(links))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i],
                     "company": companies[i] if i < len(companies) else "Unknown",
@@ -2797,6 +2886,7 @@ def search_monsterde(query, location="Germany", max_results=25):
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)
         if jobs:
             print(f"  [monsterde] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -3022,35 +3112,25 @@ def parse_resume_pdf(path):
         profile["email"] = email_match.group(0)
 
     # --- Extract most recent role (first job title in experience section) ---
-    # First try the header area (first few lines after name, before any section)
     role_keywords = [
         "engineer", "developer", "architect", "manager", "lead", "intern",
         "consultant", "specialist", "analyst", "scientist", "director",
         "head", "principal", "staff", "sde", "swe",
     ]
-    for line in non_empty[:10]:
+    in_experience = False
+    for line in non_empty:
         stripped = line.strip().lower()
-        if any(kw in stripped for kw in ["experience", "education", "skills"]):
+        if any(kw in stripped for kw in ["experience", "work experience", "employment",
+                                           "professional experience", "work history"]):
+            in_experience = True
+            continue
+        if in_experience and not profile["current_role"]:
+            if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
+                profile["current_role"] = line.strip()
+        if in_experience and profile["current_role"] and any(
+            kw in stripped for kw in ["education", "skills", "projects", "certifications"]
+        ):
             break
-        if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
-            profile["current_role"] = line.strip()
-            break
-    # Fallback: search inside experience section using word boundaries
-    if not profile["current_role"]:
-        in_experience = False
-        for line in non_empty:
-            stripped = line.strip().lower()
-            if any(kw in stripped for kw in ["experience", "work experience", "employment",
-                                               "professional experience", "work history"]):
-                in_experience = True
-                continue
-            if in_experience and not profile["current_role"]:
-                if any(re.search(r'\b' + re.escape(kw) + r'\b', stripped) for kw in role_keywords) and len(stripped) > 5:
-                    profile["current_role"] = line.strip()
-            if in_experience and profile["current_role"] and any(
-                kw in stripped for kw in ["education", "skills", "projects", "certifications"]
-            ):
-                break
 
     # --- Extract skills ---
     skill_section_text = ""
@@ -3058,8 +3138,8 @@ def parse_resume_pdf(path):
     for line in lines:
         stripped = line.strip().lower()
         if any(kw in stripped for kw in ["technical skills", "technologies", "tech stack",
-                                           "skills &", "skills:", "skill set", "skill set:",
-                                           "core competencies", "programming languages", "tools &"]):
+                                           "skills &", "skills:", "core competencies",
+                                           "programming languages", "tools &"]):
             in_skills = True
             continue
         if in_skills:
@@ -3069,9 +3149,11 @@ def parse_resume_pdf(path):
                     break
             skill_section_text += line + " "
 
-    # Always use full resume text for keyword matching (skill section may be narrow)
+    if not skill_section_text:
+        skill_section_text = raw
+
     found_skills = set()
-    text_lower = raw.lower()
+    text_lower = skill_section_text.lower()
     for kw in COMMON_TECH_KEYWORDS:
         if kw in text_lower:
             found_skills.add(kw)
@@ -3320,207 +3402,253 @@ class JobTracker:
             return False
 
 
-def search_remotive(query, location="Remote", max_results=25):
-    """Search Remotive public API for remote jobs.
-
-    Note: the free API does not support search filtering server-side.
-    All jobs are fetched and filtered client-side by the query.
-    """
+def search_remotive(query, location="Remote", max_results=50):
+    """Search Remotive public API for remote jobs."""
     jobs = []
     try:
-        tag_words = set(query.lower().split()) if query else set()
-        for page in range(1, 4):
-            resp = requests.get("https://remotive.com/api/remote-jobs", params={"limit": 50, "page": page}, timeout=15)
-            if resp.status_code != 200:
-                if page == 1:
-                    print(f"  [remotive] HTTP {resp.status_code} for '{query}'")
-                break
-            page_jobs = resp.json().get("jobs", [])
-            if not page_jobs:
-                break
-            for job in page_jobs:
-                if len(jobs) >= max_results:
-                    break
-                title = job.get("title", "")
-                company = job.get("company_name", "")
-                desc = job.get("description", "")
-                desc_plain = re.sub(r'<[^>]+>', '', desc) if desc else ""
-                search_text = (title + " " + company + " " + desc_plain).lower()
-                if query and not any(w in search_text for w in tag_words):
-                    continue
+        resp = requests.get("https://remotive.com/api/remote-jobs", params={"search": query, "limit": max_results}, timeout=15)
+        if resp.status_code == 200:
+            for job in resp.json().get("jobs", []):
                 jobs.append({
-                    "title": title, "company": company,
+                    "title": job.get("title", ""), "company": job.get("company_name", ""),
                     "location": job.get("candidate_required_location", "Remote"),
                     "url": job.get("url", ""),
-                    "description": desc_plain[:2000] or f"Remotive: {title} @ {company}",
+                    "description": f"Remotive: {job.get('title', '')} @ {job.get('company_name', '')}",
                 })
-            if len(jobs) >= max_results:
-                break
-        if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
+            if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [remotive] Error: {e}")
     return jobs
 
 
-def search_remoteco(query, location="Remote", max_results=25):
-    """Search Remote.co for remote jobs."""
+def search_remoteco(query, location="Remote", max_results=50):
+    """Search Remote.co for remote jobs (paginated)."""
     jobs = []
     scraper = cloudscraper.create_scraper()
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        resp = scraper.get(f"https://remote.co/remote-jobs/search/?search_keywords={q}", timeout=30)
-        if resp.status_code == 200:
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://remote.co/remote-jobs/search/?search_keywords={q}&paged={page_num}" if page_num > 1 else f"https://remote.co/remote-jobs/search/?search_keywords={q}"
+            resp = scraper.get(page_url, timeout=20)
+            if resp.status_code != 200:
+                break
             titles = re.findall(r'class="m-0"[^>]*>\s*<a[^>]*>\s*([^<]+)', resp.text)
             companies = re.findall(r'class="team"[^>]*>\s*([^<]+)', resp.text)
             links = re.findall(r'class="m-0"[^>]*>\s*<a[^"]*href="([^"]+)"', resp.text)
-            for i in range(min(len(titles), max_results)):
+            if not titles:
+                break  # No more results
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i].strip(), "company": companies[i].strip() if i < len(companies) else "Remote.co",
                     "location": "Remote", "url": links[i] if i < len(links) else "",
                     "description": f"Remote.co: {titles[i].strip()}",
                 })
-            if jobs: print(f"  [remoteco] {len(jobs)} jobs for '{query}'")
+            if len(jobs) >= max_results:
+                break
+            time.sleep(1)
+        if jobs: print(f"  [remoteco] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [remoteco] Error: {e}")
     return jobs
 
 
-def search_foundit(query, location="India", max_results=25):
-    """Search Foundit (Monster India) for jobs."""
+def search_foundit(query, location="India", max_results=50):
+    """Search Foundit (Monster India) for jobs (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    page_size = 25
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
     try:
-        resp = requests.get(f"https://www.foundit.in/sapi/search?query={q}&locations={location}&limit={max_results}",
-                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
-        if resp.status_code == 200:
+        for page_num in range(max_pages):
+            start = page_num * page_size
+            resp = requests.get(f"https://www.foundit.in/sapi/search?query={q}&locations={location}&limit={page_size}&start={start}",
+                                headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+            if resp.status_code != 200:
+                break
             titles = re.findall(r'"title":"([^"]+)"', resp.text)
             companies = re.findall(r'"company":"([^"]+)"', resp.text)
             locs = re.findall(r'"location":"([^"]+)"', resp.text)
-            for i in range(min(len(titles), max_results)):
+            if not titles:
+                break  # No more results
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Unknown",
                     "location": locs[i] if i < len(locs) else location,
                     "url": "", "description": f"Foundit: {titles[i]}",
                 })
-            if jobs: print(f"  [foundit] {len(jobs)} jobs for '{query}'")
+            if len(jobs) >= max_results or len(titles) < page_size:
+                break
+            time.sleep(1)
+        if jobs: print(f"  [foundit] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [foundit] Error: {e}")
     return jobs
 
 
-def search_timesjobs(query, location="India", max_results=25):
-    """Search TimesJobs for jobs."""
+def search_timesjobs(query, location="India", max_results=50):
+    """Search TimesJobs for jobs (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        resp = requests.get(f"https://www.timesjobs.com/jobfunction/json/mjobs?q={q}&location={location}", verify=False,
-                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
-        if resp.status_code == 200:
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.timesjobs.com/jobfunction/json/mjobs?q={q}&location={location}&sequence={page_num}"
+            resp = requests.get(url, verify=False,
+                                headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+            if resp.status_code != 200:
+                break
             data = resp.json()
             items = data.get("jobList", data.get("jobs", data.get("data", [])))
             if isinstance(items, dict): items = list(items.values())
-            for item in items[:max_results] if isinstance(items, list) else []:
+            if not items:
+                break
+            for item in items if isinstance(items, list) else []:
+                if len(jobs) >= max_results:
+                    break
                 t = item.get("jobTitle", item.get("title", "")) if isinstance(item, dict) else str(item)
                 c = item.get("companyName", item.get("company", "")) if isinstance(item, dict) else ""
                 if t: jobs.append({"title": t, "company": c, "location": location, "url": "", "description": t})
-            if jobs: print(f"  [timesjobs] {len(jobs)} jobs for '{query}'")
+            if len(jobs) >= max_results:
+                break
+            time.sleep(1)
+        if jobs: print(f"  [timesjobs] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [timesjobs] Error: {e}")
     return jobs
 
 
-def search_arcdev(query, location="Remote", max_results=25):
-    """Search Arc.dev for remote developer jobs."""
+def search_arcdev(query, location="Remote", max_results=50):
+    """Search Arc.dev for remote developer jobs (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    page_size = 25
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
     try:
-        resp = requests.get(f"https://arc.dev/api/v1/jobs?q={q}&remote=true&limit={max_results}",
-                            headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
-        if resp.status_code == 200:
+        for page_num in range(1, max_pages + 1):
+            resp = requests.get(f"https://arc.dev/api/v1/jobs?q={q}&remote=true&limit={page_size}&page={page_num}",
+                                headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+            if resp.status_code != 200:
+                break
             data = resp.json()
-            for job in data.get("data", data.get("jobs", [])):
+            page_jobs = data.get("data", data.get("jobs", []))
+            if not page_jobs:
+                break
+            for job in page_jobs:
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": job.get("name", job.get("title", "")),
                     "company": job.get("company", {}).get("name", "") if isinstance(job.get("company"), dict) else job.get("company", "Arc.dev"),
                     "location": "Remote", "url": job.get("url", job.get("apply_url", "")),
                     "description": f"Arc.dev: {job.get('name', job.get('title', ''))}",
                 })
-            if jobs: print(f"  [arcdev] {len(jobs)} jobs for '{query}'")
+            if len(jobs) >= max_results or len(page_jobs) < page_size:
+                break
+            time.sleep(1)
+        if jobs: print(f"  [arcdev] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [arcdev] Error: {e}")
     return jobs
 
 
-def search_seek(query, location="Australia", max_results=25):
-    """Search Seek (AU/NZ) for jobs using Playwright."""
+def search_seek(query, location="Australia", max_results=50):
+    """Search Seek (AU/NZ) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        titles = _playwright_scrape(
-            f"https://www.seek.com.au/{q}-jobs",
-            "a[data-automation='jobTitle'], article h3, [data-testid='job-card-title']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3).slice(0, 25)"
-        )
-        companies = _playwright_scrape(
-            f"https://www.seek.com.au/{q}-jobs",
-            "[data-automation='jobCompany'], [data-testid='job-card-company']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        links = _playwright_scrape(
-            f"https://www.seek.com.au/{q}-jobs",
-            "a[data-automation='jobTitle']",
-            "els => els.map(e => e.href).filter(h => h.includes('/job/'))"
-        )
-        for i in range(min(len(titles), max_results)):
-            jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "Seek",
-                "location": location, "url": links[i] if i < len(links) else "",
-                "description": f"Seek AU: {titles[i]}",
-            })
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.seek.com.au/{q}-jobs?page={page_num}" if page_num > 1 else f"https://www.seek.com.au/{q}-jobs"
+            titles = _playwright_scrape(
+                page_url,
+                "a[data-automation='jobTitle'], article h3, [data-testid='job-card-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3).slice(0, 25)"
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                page_url,
+                "[data-automation='jobCompany'], [data-testid='job-card-company']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+            )
+            links = _playwright_scrape(
+                page_url,
+                "a[data-automation='jobTitle']",
+                "els => els.map(e => e.href).filter(h => h.includes('/job/'))"
+            )
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "Seek",
+                    "location": location, "url": links[i] if i < len(links) else "",
+                    "description": f"Seek AU: {titles[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
         if jobs: print(f"  [seek] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [seek] Error: {e}")
     return jobs
 
 
-def search_jora(query, location="Australia", max_results=25):
-    """Search Jora (AU/NZ) for jobs using Playwright."""
+def search_jora(query, location="Australia", max_results=50):
+    """Search Jora (AU/NZ) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        titles = _playwright_scrape(
-            f"https://au.jora.com/j?q={q}&l=Australia",
-            "a[class*='title'], [data-test='job-title'], h2 a, a[class*='job-link']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
-        )
-        companies = _playwright_scrape(
-            f"https://au.jora.com/j?q={q}&l=Australia",
-            "[data-test='company-name'], .company-name, span[class*='company']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        for i in range(min(len(titles), max_results)):
-            jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "Jora",
-                "location": location, "url": "", "description": f"Jora AU: {titles[i]}",
-            })
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://au.jora.com/j?q={q}&l=Australia&page={page_num}" if page_num > 1 else f"https://au.jora.com/j?q={q}&l=Australia"
+            titles = _playwright_scrape(
+                page_url,
+                "a[class*='title'], [data-test='job-title'], h2 a, a[class*='job-link']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                page_url,
+                "[data-test='company-name'], .company-name, span[class*='company']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+            )
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "Jora",
+                    "location": location, "url": "", "description": f"Jora AU: {titles[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
         if jobs: print(f"  [jora] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [jora] Error: {e}")
     return jobs
 
 
-def search_xing(query, location="Germany", max_results=25):
-    """Search Xing (Europe) for jobs using Playwright."""
+def search_xing(query, location="Germany", max_results=50):
+    """Search Xing (Europe) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        for page in range(1, 4):
-            page_url = f"https://www.xing.com/jobs/search?keywords={q}&page={page}"
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.xing.com/jobs/search?keywords={q}&page={page_num}" if page_num > 1 else f"https://www.xing.com/jobs/search?keywords={q}"
             titles = _playwright_scrape(
                 page_url,
                 "a[href*='/jobs/'] > span, a[class*='job-title'], [data-qa='jobTitle']",
                 "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
             )
+            if not titles:
+                break
             companies = _playwright_scrape(
                 page_url,
                 "span[class*='company'], [data-qa='companyName']",
@@ -3531,11 +3659,9 @@ def search_xing(query, location="Germany", max_results=25):
                 "a[href*='/jobs/']",
                 "els => els.map(e => e.href).filter(h => h.includes('/jobs/'))"
             )
-            if not titles:
-                if page == 1:
-                    print(f"  [xing] No results for '{query}'")
-                break
-            for i in range(min(len(titles), len(companies), len(links), max_results - len(jobs))):
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Xing",
                     "location": location, "url": links[i] if i < len(links) else "",
@@ -3543,58 +3669,79 @@ def search_xing(query, location="Germany", max_results=25):
                 })
             if len(jobs) >= max_results:
                 break
+            time.sleep(2)
         if jobs: print(f"  [xing] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [xing] Error: {e}")
     return jobs
 
 
-def search_jobsch(query, location="Switzerland", max_results=25):
-    """Search Jobs.ch (Switzerland) for jobs using Playwright."""
+def search_jobsch(query, location="Switzerland", max_results=50):
+    """Search Jobs.ch (Switzerland) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        titles = _playwright_scrape(
-            f"https://www.jobs.ch/en/search/?q={q}",
-            "a[class*='title'], h2 a, [data-test='job-title']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
-        )
-        companies = _playwright_scrape(
-            f"https://www.jobs.ch/en/search/?q={q}",
-            "span[class*='company'], [data-test='company']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        for i in range(min(len(titles), max_results)):
-            jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "Jobs.ch",
-                "location": location, "url": "", "description": f"Jobs.ch: {titles[i]}",
-            })
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.jobs.ch/en/search/?q={q}&page={page_num}" if page_num > 1 else f"https://www.jobs.ch/en/search/?q={q}"
+            titles = _playwright_scrape(
+                page_url,
+                "a[class*='title'], h2 a, [data-test='job-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                page_url,
+                "span[class*='company'], [data-test='company']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+            )
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "Jobs.ch",
+                    "location": location, "url": "", "description": f"Jobs.ch: {titles[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
         if jobs: print(f"  [jobsch] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [jobsch] Error: {e}")
     return jobs
 
 
-def search_jobsingermany(query, location="Germany", max_results=25):
-    """Search JobsinGermany for jobs using Playwright."""
+def search_jobsingermany(query, location="Germany", max_results=50):
+    """Search JobsinGermany for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
+    max_pages = 3
     try:
-        titles = _playwright_scrape(
-            f"https://www.jobsinGermany.com/jobs?q={q}",
-            "h2 a, h3 a, a[class*='job'], [data-test='job-title']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
-        )
-        companies = _playwright_scrape(
-            f"https://www.jobsinGermany.com/jobs?q={q}",
-            "span[class*='company'], [data-test='company']",
-            "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
-        )
-        for i in range(min(len(titles), max_results)):
-            jobs.append({
-                "title": titles[i], "company": companies[i] if i < len(companies) else "JobsinGermany",
-                "location": location, "url": "", "description": f"JobsinGermany: {titles[i]}",
-            })
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.jobsinGermany.com/jobs?q={q}&page={page_num}" if page_num > 1 else f"https://www.jobsinGermany.com/jobs?q={q}"
+            titles = _playwright_scrape(
+                page_url,
+                "h2 a, h3 a, a[class*='job'], [data-test='job-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 5).slice(0, 25)"
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                page_url,
+                "span[class*='company'], [data-test='company']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
+            )
+            for i in range(len(titles)):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i], "company": companies[i] if i < len(companies) else "JobsinGermany",
+                    "location": location, "url": "", "description": f"JobsinGermany: {titles[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
         if jobs: print(f"  [jobsingermany] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [jobsingermany] Error: {e}")
@@ -3650,13 +3797,14 @@ def search_arbeitnow(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_visasponsor(query, location="Remote", max_results=25):
-    """Search VisaSponsor.Jobs for visa-sponsored jobs using Playwright."""
+def search_visasponsor(query, location="Remote", max_results=50):
+    """Search VisaSponsor.Jobs for visa-sponsored jobs using Playwright with Load More / scroll."""
     jobs = []
     classifications = "Engineering&classification=Financial-Services&classification=Information-Technology&classification=Management-and-Strategy&classification=Manufacturing-and-Logistics"
     url = f"https://visasponsor.jobs/api/jobs?classification={classifications}&showMoreOptions=false"
     try:
-        html = _playwright_html(url)
+        # Use Load More / infinite scroll to get more results
+        html = _playwright_load_more(url, max_clicks=5, wait_ms=2000)
         if not html:
             print(f"  [visasponsor] No response for '{query}'")
             return jobs
@@ -3684,24 +3832,33 @@ def search_visasponsor(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_incluso(query, location="Remote", max_results=25):
-    """Search Incluso (Teamtailor) jobs via JSON Feed."""
+def search_incluso(query, location="Remote", max_results=50):
+    """Search Incluso (Teamtailor) jobs via JSON Feed (paginated)."""
     jobs = []
+    query_lower = query.lower()
+    query_terms = query_lower.split()
+    max_pages = 5
     try:
-        resp = requests.get(
-            "https://openings.incluso.se/jobs.json",
-            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
-            timeout=15,
-        )
-        if resp.status_code == 200:
+        for page_num in range(1, max_pages + 1):
+            api_url = f"https://openings.incluso.se/jobs.json?page={page_num}" if page_num > 1 else "https://openings.incluso.se/jobs.json"
+            resp = requests.get(
+                api_url,
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                break
             items = resp.json().get("items", [])
-            query_lower = query.lower()
-            for item in items[:max_results]:
+            if not items:
+                break
+            for item in items:
+                if len(jobs) >= max_results:
+                    break
                 title = item.get("title", "").strip()
                 if not title:
                     continue
                 # Client-side keyword filter
-                if not all(term in title.lower() for term in query_lower.split()):
+                if not all(term in title.lower() for term in query_terms):
                     continue
                 jp = item.get("_jobposting", {})
                 company = "Incluso"
@@ -3723,10 +3880,11 @@ def search_incluso(query, location="Remote", max_results=25):
                     "url": item.get("url", ""),
                     "description": f"Incluso: {title}",
                 })
-            if jobs:
-                print(f"  [incluso] {len(jobs)} jobs for '{query}'")
-        else:
-            print(f"  [incluso] HTTP {resp.status_code}")
+            if len(jobs) >= max_results or len(items) < 20:
+                break
+            time.sleep(1)
+        if jobs:
+            print(f"  [incluso] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [incluso] Error: {e}")
     return jobs
@@ -3760,47 +3918,11 @@ def main():
 
     # --- If --resume is provided, auto-build profile from PDF ---
     if args.resume:
-        resume_path = args.resume
-        # Handle Google Drive URLs
-        if "drive.google.com" in resume_path:
-            import re as _re
-            file_id_match = _re.search(r'/file/d/([^/]+)', resume_path)
-            if not file_id_match:
-                file_id_match = _re.search(r'id=([^&]+)', resume_path)
-            if file_id_match:
-                file_id = file_id_match.group(1)
-                dl_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-                print(f"Downloading resume from Google Drive (file ID: {file_id})...")
-                try:
-                    import requests as _requests
-                    resp = _requests.get(dl_url, timeout=30)
-                    if "downloadWarning" in resp.text or "Google Drive" in resp.text[:500]:
-                        # Try with confirm token
-                        import re as _re2
-                        confirm = _re2.search(r'confirm=([^&\"]+)', resp.text)
-                        if confirm:
-                            dl_url += f"&confirm={confirm.group(1)}"
-                            resp = _requests.get(dl_url, timeout=30)
-                    ct = resp.headers.get("Content-Type", "")
-                    if "pdf" not in ct.lower() and "octet" not in ct.lower():
-                        print(f"  Unexpected content type: {ct}, trying alternate download...")
-                        dl_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-                        resp = _requests.get(dl_url, timeout=30)
-                    resume_path = f"/tmp/resume_{file_id}.pdf"
-                    with open(resume_path, "wb") as f:
-                        f.write(resp.content)
-                    print(f"  Downloaded ({len(resp.content)} bytes) to {resume_path}")
-                except Exception as e:
-                    print(f"Error downloading from Google Drive: {e}")
-                    sys.exit(1)
-            else:
-                print(f"Error: could not extract file ID from Google Drive URL: {resume_path}")
-                sys.exit(1)
-        if not os.path.exists(resume_path):
-            print(f"Error: resume not found at {resume_path}")
+        if not os.path.exists(args.resume):
+            print(f"Error: resume not found at {args.resume}")
             sys.exit(1)
-        print(f"Loading resume: {resume_path}")
-        parsed, _missing = parse_resume_pdf(resume_path)
+        print(f"Loading resume: {args.resume}")
+        parsed, _missing = parse_resume_pdf(args.resume)
         PROFILE["name"] = parsed["name"] or args.name or PROFILE["name"]
         if parsed["core_skills"]:
             PROFILE["core_skills"] = parsed["core_skills"]
@@ -3810,7 +3932,7 @@ def main():
             PROFILE["current_role"] = parsed["current_role"]
         # Auto-configure title filters based on detected role domain
         PROFILE["title_red_flags"] = auto_detect_title_red_flags(PROFILE["core_skills"])
-        os.environ["RESUME_PATH"] = resume_path
+        os.environ["RESUME_PATH"] = args.resume
         # Auto-set recipient email from resume (sender stays as .env GMAIL_ADDRESS)
         if parsed["email"] and not args.email_to:
             os.environ["EMAIL_TO"] = parsed["email"]
@@ -3910,6 +4032,7 @@ def main():
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
         ("Remotive", search_remotive),
+        ("RemoteCo", search_remoteco),
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
         ("ArcDev", search_arcdev),
@@ -4182,40 +4305,24 @@ def main():
             json.dump(all_matches, f, indent=2, default=str)
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
-        if args.batch != "eu":
+        if args.batch != "middle-east":
             batch_sequence = {
                 "ats": "boards-major",
                 "boards-major": "boards-niche",
                 "boards-niche": "playwright",
-                "playwright": "global",
+                "playwright": "eu",
+                "eu": "global",
                 "global": "apac",
                 "apac": "us-canada",
                 "us-canada": "middle-east",
-                "middle-east": "eu",
             }
             batch_next = batch_sequence.get(args.batch)
             if batch_next:
                 print(f"Batch '{args.batch}' done. Run --batch {batch_next} next for remaining sources.")
-                # Send per-batch email with current batch's matches
-                if all_matches:
-                    person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
-                    batch_labels = {
-                        "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
-                        "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
-                        "eu": "EU Companies", "global": "Global Companies",
-                        "apac": "APAC Companies", "us-canada": "US-Canada Companies",
-                        "middle-east": "Middle East Companies",
-                    }
-                    label = batch_labels.get(args.batch, args.batch)
-                    subject = f"{person_name}-Job matches-{label}"
-                    html = build_email_html(all_matches)
-                    send_email(html, subject=subject)
-                else:
-                    print(f"  [email] No matches found for resume - skipping email")
                 return
 
-        # Terminal batch (eu): load all previous batch results and merge
-        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "global", "apac", "us-canada", "middle-east", "eu"]
+        # Terminal batch (middle-east): load all previous batch results and merge
+        all_batch_ids = ["ats", "boards-major", "boards-niche", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
         for b in all_batch_ids:
             if b == args.batch:
                 continue  # current batch is already in all_matches
@@ -4248,20 +4355,8 @@ def main():
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
 
-    if all_matches:
-        html = build_email_html(all_matches)
-        person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
-        batch_labels = {
-            "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
-            "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
-            "eu": "EU Companies", "global": "Global Companies",
-            "apac": "APAC Companies", "us-canada": "US-Canada Companies",
-            "middle-east": "Middle East Companies",
-        }
-        label = batch_labels.get(args.batch, "All Sources") if args.batch else "All Sources"
-        send_email(html, subject=f"{person_name}-Job matches-{label}")
-    else:
-        print(f"  [email] No matches found for resume - skipping email")
+    html = build_email_html(all_matches)
+    send_email(html, subject=f"Daily Job Matches - {len(all_matches)} new roles")
 
     # WhatsApp disabled per user request - all results go via email only
     # if all_matches:
