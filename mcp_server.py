@@ -56,6 +56,7 @@ from daily_scan import (
     search_womenintech,
     search_remoteok,
     search_remotive,
+
     search_foundit,
     search_timesjobs,
     search_arcdev,
