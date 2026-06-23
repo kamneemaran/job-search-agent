@@ -721,8 +721,9 @@ def score_job(title, description, company, location=""):
                     return 0, f"Filtered: too senior ({pat}) for {exp_years}yr profile"
 
     # --- Experience range filter: match JD's explicit experience requirements ---
+    # If resume says X years, consider jobs requiring X-4 to X+3 years
     max_allowed = exp_years + 3
-    min_allowed = max(0, exp_years - 1)
+    min_allowed = max(0, exp_years - 4)
     exp_patterns = [
         (r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'min'),
         (r'(?:min|minimum|at least|≥)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'min'),
@@ -3492,33 +3493,39 @@ def search_timesjobs(query, location="India", max_results=50):
 
 
 def search_arcdev(query, location="Remote", max_results=50):
-    """Search Arc.dev for remote developer jobs (paginated)."""
+    """Search Arc.dev for remote developer jobs using Playwright (JS-rendered)."""
     jobs = []
-    q = query.replace(" ", "+")
-    page_size = 25
-    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    q = query.replace(" ", "-")
+    url = f"https://arc.dev/remote-jobs/{q}"
     try:
-        for page_num in range(1, max_pages + 1):
-            resp = requests.get(f"https://arc.dev/api/v1/jobs?q={q}&remote=true&limit={page_size}&page={page_num}",
-                                headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
-            if resp.status_code != 200:
+        html = _playwright_load_more(url, max_clicks=3, wait_ms=2500)
+        if not html:
+            print(f"  [arcdev] No response from Playwright")
+            return jobs
+        # Extract job titles and links from rendered HTML
+        titles = re.findall(r'class="[^"]*job[^"]*title[^"]*"[^>]*>\s*([^<]+)', html)
+        if not titles:
+            titles = re.findall(r'<h[234][^>]*>\s*<a[^>]*>\s*([^<]{10,80})', html)
+        links = re.findall(r'href="(https?://[^"]*(?:arc\.dev|weworkremotely|remoteok)[^"]*job[^"]*)"', html)
+        if not links:
+            links = re.findall(r'href="([^"]+)"[^>]*>[^<]*(?:engineer|developer|architect|manager)[^<]*<', html, re.IGNORECASE)
+        # Also try generic job card extraction
+        if not titles:
+            titles = re.findall(r'>([^<]*(?:Engineer|Developer|Architect|Manager|Designer|Lead|Senior|Staff|Principal)[^<]*)<', html)
+        seen = set()
+        for i in range(len(titles)):
+            if len(jobs) >= max_results:
                 break
-            data = resp.json()
-            page_jobs = data.get("data", data.get("jobs", []))
-            if not page_jobs:
-                break
-            for job in page_jobs:
-                if len(jobs) >= max_results:
-                    break
-                jobs.append({
-                    "title": job.get("name", job.get("title", "")),
-                    "company": job.get("company", {}).get("name", "") if isinstance(job.get("company"), dict) else job.get("company", "Arc.dev"),
-                    "location": "Remote", "url": job.get("url", job.get("apply_url", "")),
-                    "description": f"Arc.dev: {job.get('name', job.get('title', ''))}",
-                })
-            if len(jobs) >= max_results or len(page_jobs) < page_size:
-                break
-            time.sleep(1)
+            t = titles[i].strip()
+            if t in seen or len(t) < 5:
+                continue
+            seen.add(t)
+            link = links[i] if i < len(links) else url
+            jobs.append({
+                "title": t, "company": "Arc.dev",
+                "location": "Remote", "url": link,
+                "description": f"Arc.dev: {t}",
+            })
         if jobs: print(f"  [arcdev] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [arcdev] Error: {e}")
