@@ -408,7 +408,7 @@ RemoteOK, WorkingNomads, Jobspresso, EnglishJobSearch, BulldogJob, WorkAtAStartu
 
 **Specialized boards**: VisaSponsor.Jobs (visa-sponsored roles), Incluso (diversity-focused)
 
-**Manual check reminders** — Companies without public APIs (like Booking.com, Mollie, Personio) print reminders to check manually.""",
+**Manual check reminders** — Companies without public APIs (like Booking.com, Picnic) print reminders to check manually.""",
         "scoring": """### How scoring works (0-100)
 
 1. **Red flag check** (immediate reject) — junior roles, non-relevant titles (mobile/frontend/QA/etc.), roles requiring travel
