@@ -581,7 +581,7 @@ JOB_SOURCES = [
     {"name": "E.ON", "url": "https://jobs.eon.com/en?jobField=Engineering", "region": "DE", "type": "company", "playwright": True},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Emma - The Sleep Co", "url": "https://jobs.lever.co/emma-sleep", "region": "DE", "type": "company"},
+    {"name": "Emma - The Sleep Co", "url": "https://jobs.lever.co/emma-sleep", "region": "DE", "type": "company", "ats": "lever", "ats_slug": "emma-sleep"},
     {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "intermategroupgmbh"},
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
