@@ -378,14 +378,20 @@ def auto_detect_title_red_flags(skills):
 
 
 # Keywords that indicate visa / relocation support in a job description
-VISA_RELOCATION_KEYWORDS = [
+VISA_SPONSORSHIP_KEYWORDS = [
     "visa sponsorship", "work visa", "sponsorship available", "employment visa",
-    "relocation support", "relocation assistance", "relocation package",
-    "relocation provided", "immigration support", "visa provided",
-    "we sponsor", "will sponsor", "work authorization",
-    "relocation assistance available", "global mobility",
-    "visa", "relocation",
+    "immigration support", "visa provided", "we sponsor", "will sponsor",
+    "work authorization", "visa", "sponsor",
 ]
+
+RELOCATION_SUPPORT_KEYWORDS = [
+    "relocation support", "relocation assistance", "relocation package",
+    "relocation provided", "relocation assistance available", "global mobility",
+    "relocation",
+]
+
+# Combined list kept for backward-compat (informational note + mcp_server)
+VISA_RELOCATION_KEYWORDS = VISA_SPONSORSHIP_KEYWORDS + RELOCATION_SUPPORT_KEYWORDS
 
 # Explicit "no sponsorship" phrases — hard reject for non-India roles
 NO_SPONSORSHIP_KEYWORDS = [
@@ -543,13 +549,13 @@ JOB_SOURCES = [
     {"name": "Amazon", "url": "https://www.amazon.jobs/content/en/job-categories", "region": "DE", "type": "company", "playwright": True},
     {"name": "Applike", "url": "https://applike-group.com/jobs/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Arup Deutschland", "url": "https://jobs.arup.com/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Awin", "url": "https://www.awin.com/gb/careers/vacancies", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Awin", "url": "https://www.awin.com/gb/careers/vacancies", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "awin"},
     {"name": "BIT Capital", "url": "https://bitcap.com/en/karriere", "region": "DE", "type": "company", "playwright": True},
     {"name": "BMW", "url": "https://www.bmwgroup.jobs/en.html", "region": "DE", "type": "company", "playwright": True},
     {"name": "Babbel", "url": "https://jobs.babbel.com/en?size=n_3_n", "region": "DE", "type": "company", "playwright": True},
     {"name": "Bigpoint", "url": "https://bigpoint.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
     {"name": "Billie", "url": "https://www.billie.io/en/jobs", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Black Forest Labs", "url": "https://bfl.ai/careers", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Black Forest Labs", "url": "https://bfl.ai/careers", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "blackforestlabs"},
     {"name": "Bolt", "url": "https://bolt.eu/en/careers/positions/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Bonial", "url": "https://bonial.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "bonial"},
     {"name": "Bosch", "url": "https://www.bosch.de/karriere/", "region": "DE", "type": "company", "playwright": True},
@@ -562,12 +568,12 @@ JOB_SOURCES = [
     {"name": "Constellr", "url": "https://constellr.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "constellr"},
     {"name": "Crytek", "url": "https://www.crytek.com/career", "region": "DE", "type": "company", "playwright": True},
     {"name": "Danske Commodities", "url": "https://danskecommodities.com/careers/vacancies", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Data Guard", "url": "https://www.dataguard.com/careers/jobs/", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Data Guard", "url": "https://www.dataguard.com/careers/jobs/", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "dataguard"},
     {"name": "DeepL", "url": "https://jobs.ashbyhq.com/DeepL", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "DeepL"},
     {"name": "Delivery Hero", "url": "https://careers.deliveryhero.com/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Deutsche Telekom", "url": "https://careers.telekom.com/en/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Dexter Health", "url": "https://join.com/companies/dexter-health", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Distribusion", "url": "https://careers.distribusion.com/", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Distribusion", "url": "https://distribusion.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee"},
     {"name": "Doctrine", "url": "https://jobs.lever.co/doctrine", "region": "DE", "type": "company", "ats": "lever", "ats_slug": "doctrine"},
     {"name": "Dr. Oetker", "url": "https://www.oetker.de/karriere", "region": "DE", "type": "company", "playwright": True},
     {"name": "Dynatrace", "url": "https://www.dynatrace.com/careers/jobs/", "region": "DE", "type": "company", "playwright": True},
@@ -575,13 +581,13 @@ JOB_SOURCES = [
     {"name": "E.ON", "url": "https://jobs.eon.com/en?jobField=Engineering", "region": "DE", "type": "company", "playwright": True},
     {"name": "Ecosia", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "DE", "type": "company", "ats": "ashby", "ats_slug": "ecosia"},
     {"name": "Elunic", "url": "https://jobs.elunic.com/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Emma - The Sleep Co", "url": "https://team.emma-sleep.com/career-openings", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Emma - The Sleep Co", "url": "https://jobs.lever.co/emma-sleep", "region": "DE", "type": "company"},
     {"name": "InnoGames", "url": "https://www.innogames.com/career/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Intermate Group", "url": "https://intermategroupgmbh.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee", "ats_slug": "intermategroupgmbh"},
     {"name": "JOIN", "url": "https://join.com/companies/join", "region": "DE", "type": "company", "playwright": True},
     {"name": "JetBrains", "url": "https://job-boards.eu.greenhouse.io/jetbrains", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "jetbrains"},
     {"name": "Keller Executive Search", "url": "https://kellerexecutivesearch.com/careers/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Limehome", "url": "https://career.limehome.de", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Limehome", "url": "https://limehome.recruitee.com/", "region": "DE", "type": "company", "ats": "recruitee"},
     {"name": "MOIA", "url": "https://www.moia.io/en/career", "region": "DE", "type": "company", "ats": "greenhouse", "ats_slug": "moia"},
     {"name": "Nexthink", "url": "https://nexthink.com/company/careers/jobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "OneFootball", "url": "https://onefootball.applytojob.com/", "region": "DE", "type": "company", "playwright": True},
@@ -793,6 +799,8 @@ def score_job(title, description, company, location=""):
     is_remote = "remote" in loc_lower or "remote" in text
     visa_note = ""
     has_visa_relo = False
+    has_visa_sponsor = False
+    has_relo_support = False
     in_friendly_list = False
 
     if is_outside_india or is_remote:
@@ -813,11 +821,18 @@ def score_job(title, description, company, location=""):
             if "english" not in text:
                 return 0, "Filtered: non-English language requirement detected"
 
-        # Informational note: does the JD mention visa/relocation?
-        has_visa_relo = any(kw in text for kw in VISA_RELOCATION_KEYWORDS)
+        # Detect visa sponsorship and relocation support independently
+        has_visa_sponsor = any(kw in text for kw in VISA_SPONSORSHIP_KEYWORDS)
+        has_relo_support = any(kw in text for kw in RELOCATION_SUPPORT_KEYWORDS)
+        has_visa_relo = has_visa_sponsor or has_relo_support
         in_friendly_list = any(co in company_lower for co in RELOCATION_FRIENDLY)
         if has_visa_relo or in_friendly_list:
-            visa_note = "Visa sponsorship mentioned"
+            parts = []
+            if has_visa_sponsor or in_friendly_list:
+                parts.append("Visa sponsorship")
+            if has_relo_support or in_friendly_list:
+                parts.append("Relocation support")
+            visa_note = " + ".join(parts) + " mentioned"
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
@@ -864,25 +879,28 @@ def score_job(title, description, company, location=""):
         # Experienced profiles: many roles don't explicitly say "senior" but target 5-10yr candidates
         seniority_score = 10 if exp_years >= 5 else 5
 
-    # --- Relocation bonus ---
-    relocation_bonus = 0
+    # --- International opportunity bonuses (visa & relocation scored independently) ---
+    # For jobs outside India with a title match, visa sponsorship and relocation
+    # support each contribute points independently. This relaxes skill requirements
+    # for international opportunities worth pursuing.
+    # Relocation-friendly companies count as both visa + relocation signals.
+    visa_bonus = 0
+    relo_bonus = 0
     relocation_note = ""
     company_lower = company.lower()
     for friendly_co, note in RELOCATION_FRIENDLY.items():
         if friendly_co in company_lower:
-            relocation_bonus = 5
             relocation_note = note
             break
+    if is_outside_india and title_relevance >= 10:
+        # +5 if JD mentions visa sponsorship or company is known to sponsor
+        if has_visa_sponsor or relocation_note:
+            visa_bonus = 5
+        # +5 if JD mentions relocation support or company is known to relocate
+        if has_relo_support or relocation_note:
+            relo_bonus = 5
 
-    # --- International opportunity bonus ---
-    # For jobs outside India with visa/relocation support and a title match,
-    # relax skill requirements by adding a bonus. This compensates for JDs
-    # that use different terminology but are still relevant opportunities.
-    intl_bonus = 0
-    if is_outside_india and title_relevance >= 10 and (has_visa_relo or in_friendly_list):
-        intl_bonus = 10
-
-    score = round(skill_score + title_relevance + seniority_score + relocation_bonus + intl_bonus)
+    score = round(skill_score + title_relevance + seniority_score + visa_bonus + relo_bonus)
     score = max(0, min(100, score))
     # Combine relocation note and visa note
     notes = " | ".join(n for n in [relocation_note, visa_note] if n)
