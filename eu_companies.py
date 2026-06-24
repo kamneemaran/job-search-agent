@@ -9,7 +9,7 @@ EU_JOB_SOURCES = [
     {"name": "Boards", "url": "https://boards.eu.greenhouse.io/wunderflats", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "wunderflats"},
     {"name": "Voila (Dine In Taste)", "url": "https://join.com/companies/getvoila", "region": "EU", "type": "company", "ats": "join"},
 
-    {"name": "Evmos Blockchain", "url": "https://cryptocurrencyjobs.co/startups/evmos", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Evmos Blockchain", "url": "https://cryptocurrencyjobs.co/engineering/", "region": "EU", "type": "company", "playwright": True},
     {"name": "gamigo AG", "url": "https://apply.workable.com/gamigo", "region": "EU", "type": "company", "ats": "workable"},
     {"name": "Geton", "url": "https://geton.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "Gymondo GmbH", "url": "https://www.linkedin.com/jobs/gymondo-jobs-berlin/", "region": "EU", "type": "company", "playwright": True},
@@ -35,9 +35,9 @@ EU_JOB_SOURCES = [
     {"name": "XOUXOU - Keep Moving GmbH", "url": "https://xouxou.jobs.personio.de", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "Zivid", "url": "https://zivid.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
 
-    {"name": "4.screen GmbH", "url": "https://www.4screen.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "ABB Deutschland Automation", "url": "https://careers.abb/dach/de/home", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Abbott GmbH & Co. KG", "url": "https://www.de.abbott/careers.html", "region": "EU", "type": "company", "playwright": True},
+    {"name": "4.screen GmbH", "url": "https://4screen.com/careers/?department=software-development-architecture", "region": "EU", "type": "company", "playwright": True},
+    {"name": "ABB Deutschland Automation", "url": "https://careers.abb/dach/de/c/engineering-jobs", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Abbott GmbH & Co. KG", "url": "https://www.jobs.abbott/global/de/search-results?qcountry=Germany", "region": "EU", "type": "company", "playwright": True},
     {"name": "ABOUT YOU Technology", "url": "https://corporate.aboutyou.de/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "accountable", "url": "https://join.com/companies/accountable", "region": "EU", "type": "company", "ats": "join"},
     {"name": "Ada Health", "url": "https://ada.com/careers", "region": "EU", "type": "company", "playwright": True},
