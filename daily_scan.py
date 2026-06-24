@@ -750,8 +750,9 @@ def score_job(title, description, company, location=""):
     for patterns, min_exp in senior_patterns:
         if exp_years < min_exp:
             for pat in patterns:
-                if pat in title_lower:
-                    return 0, f"Filtered: too senior ({pat}) for {exp_years}yr profile"
+                # Use word-boundary check to avoid substring false positives (e.g. "cto" in "vector")
+                if re.search(r'(?<![a-z])' + re.escape(pat.strip()) + r'(?![a-z])', title_lower):
+                    return 0, f"Filtered: too senior ({pat.strip()}) for {exp_years}yr profile"
 
     # --- Experience range filter: match JD's explicit experience requirements ---
     # If resume says X years, consider jobs requiring X-4 to X+3 years
@@ -791,6 +792,8 @@ def score_job(title, description, company, location=""):
     is_outside_india = "india" not in loc_lower and "india" not in text
     is_remote = "remote" in loc_lower or "remote" in text
     visa_note = ""
+    has_visa_relo = False
+    in_friendly_list = False
 
     if is_outside_india or is_remote:
         company_lower = company.lower()
@@ -871,7 +874,15 @@ def score_job(title, description, company, location=""):
             relocation_note = note
             break
 
-    score = round(skill_score + title_relevance + seniority_score + relocation_bonus)
+    # --- International opportunity bonus ---
+    # For jobs outside India with visa/relocation support and a title match,
+    # relax skill requirements by adding a bonus. This compensates for JDs
+    # that use different terminology but are still relevant opportunities.
+    intl_bonus = 0
+    if is_outside_india and title_relevance >= 10 and (has_visa_relo or in_friendly_list):
+        intl_bonus = 10
+
+    score = round(skill_score + title_relevance + seniority_score + relocation_bonus + intl_bonus)
     score = max(0, min(100, score))
     # Combine relocation note and visa note
     notes = " | ".join(n for n in [relocation_note, visa_note] if n)
@@ -1572,12 +1583,22 @@ def fetch_jobs_from_source(source):
             resp = requests.get(api_url, timeout=10)
             if resp.status_code == 200:
                 for posting in resp.json():
+                    # Combine descriptionPlain + lists content + additionalPlain for full JD
+                    desc_parts = [posting.get("descriptionPlain", "")]
+                    for lst in posting.get("lists", []):
+                        if isinstance(lst, dict):
+                            desc_parts.append(lst.get("text", ""))  # section title
+                            content = lst.get("content", "")
+                            if content:
+                                desc_parts.append(strip_html(content))
+                    desc_parts.append(posting.get("additionalPlain", ""))
+                    description = " ".join(p for p in desc_parts if p)[:8000]
                     jobs.append({
                         "title": posting.get("text", ""),
                         "company": source["name"],
                         "location": posting.get("categories", {}).get("location", "Unknown"),
                         "url": posting.get("hostedUrl", source["url"]),
-                        "description": posting.get("descriptionPlain", "")[:2000],
+                        "description": description,
                         "posted_at": _parse_date(posting.get("createdAt")),
                     })
             else:
@@ -1596,7 +1617,7 @@ def fetch_jobs_from_source(source):
                         "company": source["name"],
                         "location": posting.get("location", {}).get("name", "Unknown"),
                         "url": posting.get("absolute_url", source["url"]),
-                        "description": strip_html(raw_content)[:2000],
+                        "description": strip_html(raw_content)[:8000],
                         "posted_at": posted,
                     })
             else:
@@ -1613,7 +1634,7 @@ def fetch_jobs_from_source(source):
                         "company": source["name"],
                         "location": posting.get("location", "Unknown"),
                         "url": posting.get("jobUrl", source["url"]),
-                        "description": posting.get("descriptionPlain", "")[:2000],
+                        "description": posting.get("descriptionPlain", "")[:8000],
                         "posted_at": _parse_date(posting.get("publishedAt")),
                     })
             else:
@@ -1652,12 +1673,33 @@ def fetch_jobs_from_source(source):
                             continue
                         offices = posting.get("offices", [])
                         location = posting.get("office") or (offices[0] if offices and isinstance(offices[0], str) else "Germany")
+                        # Fetch full description from individual job page (JSON-LD)
+                        description = posting.get("description", "")
+                        job_id = posting.get("id", "")
+                        job_url = source["url"]
+                        if not description and job_id:
+                            try:
+                                detail_url = f"{base_url}/job/{job_id}"
+                                det = requests.get(detail_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                                if det.status_code == 200:
+                                    ld_match = re.search(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', det.text, re.DOTALL)
+                                    if ld_match:
+                                        ld_data = json.loads(ld_match.group(1))
+                                        if isinstance(ld_data, dict) and ld_data.get("description"):
+                                            description = strip_html(ld_data["description"])[:8000]
+                                        if isinstance(ld_data, dict) and ld_data.get("url"):
+                                            job_url = ld_data["url"]
+                                time.sleep(0.5)  # rate limit (Personio is strict)
+                            except Exception:
+                                pass
+                        if not description:
+                            description = posting.get("name", "")
                         jobs.append({
                             "title": posting.get("name", ""),
                             "company": source["name"],
                             "location": location,
-                            "url": source["url"],
-                            "description": posting.get("description", "") or posting.get("name", ""),
+                            "url": job_url,
+                            "description": description,
                             "posted_at": None,
                         })
                 except (ValueError, KeyError) as e:
@@ -1672,12 +1714,14 @@ def fetch_jobs_from_source(source):
             resp = requests.get(api_url, timeout=10)
             if resp.status_code == 200:
                 for offer in resp.json().get("offers", []):
+                    desc_parts = [offer.get("description", ""), offer.get("requirements", "")]
+                    description = strip_html(" ".join(p for p in desc_parts if p))[:8000] or offer.get("title", "")
                     jobs.append({
                         "title": offer.get("title", ""),
                         "company": source["name"],
                         "location": offer.get("office", offer.get("location", source.get("region", ""))),
                         "url": offer.get("careers_url", offer.get("url", source["url"])),
-                        "description": offer.get("description", "") or offer.get("title", ""),
+                        "description": description,
                         "posted_at": None,
                     })
             else:
@@ -1700,12 +1744,34 @@ def fetch_jobs_from_source(source):
                         city = loc.get("city", "")
                         country = loc.get("country", "")
                         location = f"{city}, {country}".strip(", ")
+                        posting_id = posting.get("id", "")
+                        # Fetch full description from detail API
+                        description = ""
+                        if posting_id:
+                            try:
+                                detail_url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings/{posting_id}"
+                                det = requests.get(detail_url, timeout=10)
+                                if det.status_code == 200:
+                                    dj = det.json()
+                                    sections = dj.get("jobAd", {}).get("sections", {})
+                                    desc_parts = []
+                                    for key in ["companyDescription", "jobDescription", "qualifications", "additionalInformation"]:
+                                        sec = sections.get(key, {})
+                                        if isinstance(sec, dict) and sec.get("text"):
+                                            desc_parts.append(sec["text"])
+                                    if desc_parts:
+                                        description = strip_html(" ".join(desc_parts))[:8000]
+                                time.sleep(0.3)  # rate limit
+                            except Exception:
+                                pass
+                        if not description:
+                            description = posting.get("name", "")
                         jobs.append({
                             "title": posting.get("name", ""),
                             "company": source["name"],
                             "location": location or source.get("region", ""),
                             "url": posting.get("applyUrl", posting.get("postingUrl", source["url"])),
-                            "description": posting.get("name", ""),
+                            "description": description,
                             "posted_at": _parse_date(posting.get("releasedDate")),
                         })
                     # Check if there are more pages
@@ -1747,7 +1813,7 @@ def fetch_jobs_from_source(source):
                             "company": company,
                             "location": loc,
                             "url": item.get("url", source["url"]),
-                            "description": item.get("content_text", "")[:2000] or title,
+                            "description": item.get("content_text", "")[:8000] or title,
                             "posted_at": _parse_date(item.get("date_published")),
                         })
                     # If fewer items than expected, no more pages
@@ -1759,28 +1825,44 @@ def fetch_jobs_from_source(source):
                     break
 
         elif source.get("ats") == "workable" or ("workable.com" in source["url"] and not source.get("playwright")):
-            # Workable: https://apply.workable.com/{company} → API at /api/v1/widget/accounts/{company}
+            # Workable: list at /api/v1/widget/accounts/{company}, detail at /api/v2/accounts/{company}/jobs/{shortcode}
             slug = source.get("ats_slug") or source["url"].rstrip("/").split("#")[0].rstrip("/").split("/")[-1]
             api_url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}"
             resp = requests.get(api_url, timeout=10)
             if resp.status_code == 200:
                 for posting in resp.json().get("jobs", []):
+                    shortcode = posting.get("shortcode", "")
+                    # Fetch full description from detail API
+                    description = ""
+                    if shortcode:
+                        try:
+                            detail_url = f"https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}"
+                            det = requests.get(detail_url, timeout=10)
+                            if det.status_code == 200:
+                                dj = det.json()
+                                desc_parts = [dj.get("description", ""), dj.get("requirements", ""), dj.get("benefits", "")]
+                                description = strip_html(" ".join(p for p in desc_parts if p))[:8000]
+                            time.sleep(0.3)  # rate limit
+                        except Exception:
+                            pass
+                    if not description:
+                        description = posting.get("title", "")
                     jobs.append({
                         "title": posting.get("title", ""),
                         "company": source["name"],
                         "location": posting.get("location", source.get("region", "")),
                         "url": posting.get("url", f"https://apply.workable.com/{slug}"),
-                        "description": posting.get("title", ""),
+                        "description": description,
                         "posted_at": _parse_date(posting.get("published_on")),
                     })
             else:
                 print(f"  [warn] Workable API returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "bamboohr" or ("bamboohr.com" in source["url"] and not source.get("playwright")):
-            # BambooHR: https://{company}.bamboohr.com/careers → JSON at /api/gateway.php/{company}/v1/applicant_tracking/jobs
+            # BambooHR: use /careers/list JSON endpoint (old gateway API returns 401)
             slug = source.get("ats_slug") or source["url"].split(".bamboohr.com")[0].split("//")[-1]
-            api_url = f"https://{slug}.bamboohr.com/api/gateway.php/{slug}/v1/applicant_tracking/jobs"
-            resp = requests.get(api_url, headers={"Accept": "application/json"}, timeout=10)
+            api_url = f"https://{slug}.bamboohr.com/careers/list"
+            resp = requests.get(api_url, headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"}, timeout=10)
             if resp.status_code == 200:
                 try:
                     data = resp.json()
@@ -1789,8 +1871,13 @@ def fetch_jobs_from_source(source):
                         for posting in job_list:
                             if not isinstance(posting, dict):
                                 continue
-                            loc = posting.get("location", {})
-                            location = loc.get("city", "") if isinstance(loc, dict) else str(loc)
+                            loc = posting.get("location", posting.get("atsLocation", {}))
+                            if isinstance(loc, dict):
+                                city = loc.get("city", "")
+                                state = loc.get("state", loc.get("province", ""))
+                                location = f"{city}, {state}".strip(", ") if city else ""
+                            else:
+                                location = str(loc)
                             jobs.append({
                                 "title": posting.get("jobOpeningName", posting.get("title", "")),
                                 "company": source["name"],
@@ -1887,12 +1974,39 @@ def fetch_jobs_from_source(source):
                         for posting in postings:
                             locs = posting.get("locations", [])
                             loc = locs[0].get("location", "Remote") if locs else "Remote"
+                            job_id = posting.get("id", "")
+                            job_url = f"https://www.lifeatspotify.com/jobs/{job_id}"
+                            # Fetch full description from job page (__NEXT_DATA__)
+                            description = ""
+                            try:
+                                detail = requests.get(job_url, timeout=10,
+                                                      headers={"User-Agent": "Mozilla/5.0"})
+                                if detail.status_code == 200:
+                                    nd = re.search(r'__NEXT_DATA__[^>]*>(.*?)</script>', detail.text, re.DOTALL)
+                                    if nd:
+                                        jdata = json.loads(nd.group(1))
+                                        jcontent = jdata.get("props", {}).get("pageProps", {}).get("job", {}).get("content", {})
+                                        if isinstance(jcontent, dict):
+                                            desc_parts = [jcontent.get("description", ""), jcontent.get("closing", "")]
+                                            for lst in jcontent.get("lists", []):
+                                                if isinstance(lst, dict):
+                                                    desc_parts.append(lst.get("text", ""))
+                                                    # Content is HTML with the actual requirements
+                                                    html_content = lst.get("content", "")
+                                                    if html_content:
+                                                        desc_parts.append(re.sub(r'<[^>]+>', ' ', html_content))
+                                            description = " ".join(p for p in desc_parts if p)
+                                time.sleep(0.5)  # rate limit
+                            except Exception:
+                                pass
+                            if not description:
+                                description = posting.get("text", "")
                             jobs.append({
                                 "title": posting.get("text", ""),
                                 "company": source["name"],
                                 "location": loc,
-                                "url": f"https://www.lifeatspotify.com/jobs/{posting.get('id', '')}",
-                                "description": posting.get("text", ""),
+                                "url": job_url,
+                                "description": description,
                                 "posted_at": None,
                             })
                         if len(postings) < per_page:
