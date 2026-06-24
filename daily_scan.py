@@ -4326,6 +4326,7 @@ def main():
                         _score_debug["top_score"] = score
                         _score_debug["top_title"] = f"{job['title']} @ {job['company']}"
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4397,6 +4398,7 @@ def main():
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
                         score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
+                            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                             salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4440,6 +4442,7 @@ def main():
                     score, relocation_note = score_job(job["title"], job["description"], job["company"])
                     score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                     if score >= args.threshold:
+                        print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                         resume = pick_resume(job["company"])
                         suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                         salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4463,6 +4466,7 @@ def main():
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
                         score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
+                            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                             salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4485,6 +4489,7 @@ def main():
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4511,6 +4516,7 @@ def main():
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4537,6 +4543,7 @@ def main():
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4563,6 +4570,7 @@ def main():
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
@@ -4589,6 +4597,7 @@ def main():
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
                 if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                     salary_info = get_salary_info(job["company"], job["title"], job["description"])
