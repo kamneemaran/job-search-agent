@@ -120,12 +120,12 @@ EU_JOB_SOURCES = [
     {"name": "Biotechnology", "url": "https://careers.agilent.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "BIT Capital GmbH", "url": "https://bitcap.com/en/karriere", "region": "EU", "type": "company", "playwright": True},
 
-    {"name": "Bitbond GmbH", "url": "https://bitbond-gmbh.jobs.personio.de/?language=en", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Bitbond GmbH", "url": "https://bitbond-gmbh.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "BlaBlaCar", "url": "https://jobs.blablacar.com/vacancies#jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Black Forest Games GmbH", "url": "https://black-forest-games.com/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Blinkist - Blinks Labs GmbH E-Learning Providers", "url": "https://www.blinkist.com/de/jobs", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Bliq GmbH Technology", "url": "https://bliq.jobs.personio.de/?language=en", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Bliq GmbH Technology", "url": "https://bliq.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Boehringer Ingelheim AG", "url": "https://careers.boehringer-ingelheim.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "Bolt", "url": "https://www.engineering.bolt.eu", "region": "EU", "type": "company", "playwright": True},
@@ -150,15 +150,15 @@ EU_JOB_SOURCES = [
     {"name": "Careers", "url": "https://careers.grunenthal.com/?locale=de_D", "region": "EU", "type": "company", "playwright": True},
     {"name": "Careers", "url": "https://careers.cargill.com/location/germany-", "region": "EU", "type": "company", "playwright": True},
     {"name": "Careers", "url": "https://www.careers.philips.com/professiona", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Caresyntax GmbH", "url": "https://apply.workable.com/caresyntax-2/?lng=en", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Caresyntax GmbH", "url": "https://apply.workable.com/caresyntax-2/?lng=en", "region": "EU", "type": "company", "ats": "workable", "ats_slug": "caresyntax-2"},
 
     {"name": "casavi GmbH", "url": "https://casavi.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "casLabs GmbH", "url": "https://castlabs.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Celonis GmbH", "url": "https://www.celonis.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "CELUS GmbH", "url": "https://celus.jobs.personio.de/?hsCtaAttrib=202660476092", "region": "EU", "type": "company", "playwright": True},
+    {"name": "CELUS GmbH", "url": "https://celus.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Cepres", "url": "https://cepres.zohorecruit.com/jobs/Careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Checkmk", "url": "https://checkmk-gmbh.jobs.personio.de/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Checkmk", "url": "https://checkmk-gmbh.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "CheMondis GmbH Technology", "url": "https://join.com/companies/chemondisgmbh", "region": "EU", "type": "company", "playwright": True},
 
@@ -190,7 +190,7 @@ EU_JOB_SOURCES = [
     {"name": "Cozero GmbH", "url": "https://cozero.io/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Crealytics GmbH", "url": "https://crealytics.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Credit Suisse", "url": "https://www.credit-suisse.com/careers/en.htm", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Crewmeister - ATOSS Aloud GmbHSoftware Development", "url": "https://job-boards.eu.greenhouse.io/crewmeister", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Crewmeister - ATOSS Aloud GmbHSoftware Development", "url": "https://job-boards.eu.greenhouse.io/crewmeister", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "crewmeister"},
 
     {"name": "CureVac GmbH", "url": "https://career.curevac.com/eng", "region": "EU", "type": "company", "playwright": True},
     {"name": "Cybervize Operations GmbH", "url": "https://join.com/companies/cybervize", "region": "EU", "type": "company", "playwright": True},
@@ -200,11 +200,11 @@ EU_JOB_SOURCES = [
     {"name": "Daimler Truck AG", "url": "https://www.daimlertruck.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Dance GmbH", "url": "https://dance.co/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "DataGuard - DataCo GmbH", "url": "https://www.dataguard.com/career", "region": "EU", "type": "company", "playwright": True},
-    {"name": "De", "url": "https://jobs.lever.co/vestiairecollective", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Vestiaire Collective", "url": "https://jobs.lever.co/vestiairecollective", "region": "EU", "type": "company"},
 
     {"name": "Deep Neuron Lab GmbH", "url": "https://en.dnl.ai/karriere", "region": "EU", "type": "company", "playwright": True},
     {"name": "DeepScenario GmbH", "url": "https://www.deepscenario.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "DeepSpin GmbH", "url": "https://deepspin-gmbh.jobs.personio.com/?language=en", "region": "EU", "type": "company", "playwright": True},
+    {"name": "DeepSpin GmbH", "url": "https://deepspin-gmbh.jobs.personio.com/?language=en", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Deere", "url": "https://www.deere.de/de/unser-unternehmen", "region": "EU", "type": "company", "playwright": True},
     {"name": "Deliveroo", "url": "https://careers.deliveroo.co.uk/join-the-team/?search=London,", "region": "EU", "type": "company", "playwright": True},
@@ -231,7 +231,7 @@ EU_JOB_SOURCES = [
     {"name": "E.ON SE", "url": "https://jobs.eon.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "e.pilot GmbH", "url": "https://epilot.cloud/en/career-jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "ebuero AG", "url": "https://join.com/companies/egroup", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Ecosia GmbH Technology", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Ecosia GmbH Technology", "url": "https://jobs.ashbyhq.com/ecosia.org", "region": "EU", "type": "company", "ats": "ashby", "ats_slug": "ecosia.org"},
 
     {"name": "elbwire GmbH", "url": "https://elbwire.com/join-us", "region": "EU", "type": "company", "playwright": True},
     {"name": "Elektrobit", "url": "https://www.elektrobit.com/careers", "region": "EU", "type": "company", "playwright": True},
@@ -245,7 +245,7 @@ EU_JOB_SOURCES = [
     {"name": "enerhym GmbH", "url": "https://www.enerhym.com/en-jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "enmacc GmbH", "url": "https://enmacc.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Entertainment Providers", "url": "https://careers.soundcloud.com", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Entity X GmbH", "url": "https://entityx.jobs.personio.de/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Entity X GmbH", "url": "https://entityx.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Eotlabs", "url": "https://www.eotlabs.io/about-us#Vacancy-Se", "region": "EU", "type": "company", "playwright": True},
     {"name": "ePages GmbH", "url": "https://epages.com/de/karriere", "region": "EU", "type": "company", "playwright": True},
@@ -332,7 +332,7 @@ EU_JOB_SOURCES = [
 
     {"name": "GotPhoto", "url": "https://www.gotphoto.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Greenbone AG", "url": "https://www.greenbone.net/en/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "gridX GmbH Renewables & Environment", "url": "https://gridx.jobs.personio.de/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "gridX GmbH Renewables & Environment", "url": "https://gridx.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Gritworld GmbH", "url": "https://linkedin.com/company/gritworldgmbh", "region": "EU", "type": "company", "playwright": True},
 
@@ -429,11 +429,11 @@ EU_JOB_SOURCES = [
     {"name": "KPMG AG", "url": "https://jobs.kpmg.de", "region": "EU", "type": "company", "playwright": True},
     {"name": "Krones", "url": "https://career.krones.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_facility=&optionsFacetsDD_customfield1=&optionsFacetsDD_department=", "region": "EU", "type": "company", "playwright": True},
 
-    {"name": "Kubermatic", "url": "https://kubermatic.bamboohr.com/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Kubermatic", "url": "https://kubermatic.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
 
     {"name": "Kuehne + Nagel", "url": "https://jobs.kuehne-nagel.com/global/en", "region": "EU", "type": "company", "playwright": True},
     {"name": "Körber AG", "url": "https://www.koerber.com/karriere", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Labforward GmbH", "url": "https://careers.smartrecruiters.com/Labforward", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Labforward GmbH", "url": "https://careers.smartrecruiters.com/Labforward", "region": "EU", "type": "company", "ats": "smartrecruiters", "ats_slug": "Labforward"},
 
     {"name": "Lanes & Planes GmbH", "url": "https://www.lanes-planes.com/en/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Lanxess", "url": "https://career.lanxess.com", "region": "EU", "type": "company", "playwright": True},
@@ -473,7 +473,7 @@ EU_JOB_SOURCES = [
     {"name": "Medability GmbH", "url": "https://join.com/companies/medability", "region": "EU", "type": "company", "playwright": True},
     {"name": "meetergo GmbH", "url": "https://meetergo.com/en/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Meinjob", "url": "https://www.meinjob.at", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Merantix AG", "url": "https://merantix.jobs.personio.de/?language=en", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Merantix AG", "url": "https://merantix.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Mercedes-Benz Group AG", "url": "https://group.mercedes-benz.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Merck", "url": "https://careers.merckgroup.com/global/en/search-results?m=3", "region": "EU", "type": "company", "playwright": True},
@@ -722,7 +722,7 @@ EU_JOB_SOURCES = [
     {"name": "Sunlab GmbH", "url": "https://jobs.sunlab.de/#jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "SupplyOn AG", "url": "https://www.supplyon.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Sviper GmbH", "url": "https://sviper.com/jobs", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Synapticon GmbH Automation", "url": "https://synapticon.jobs.personio.com/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Synapticon GmbH Automation", "url": "https://synapticon.jobs.personio.com/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Synesos Health", "url": "https://www.syneoshealth.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Südzucker", "url": "https://www.suedzuckergroup.com/en/career", "region": "EU", "type": "company", "playwright": True},
@@ -747,7 +747,7 @@ EU_JOB_SOURCES = [
     {"name": "Thera Bytes GmbH", "url": "https://join.com/companies/therabytes", "region": "EU", "type": "company", "playwright": True},
 
     {"name": "Thermo Fisher Scientific", "url": "https://jobs.thermofisher.com/global/en", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Think Cell", "url": "https://job-boards.eu.greenhouse.io/think-cell", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Think Cell", "url": "https://job-boards.eu.greenhouse.io/think-cell", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "think-cell"},
 
     {"name": "Thinkproject Holding GmbH", "url": "https://careers.thinkproject.com/eng", "region": "EU", "type": "company", "playwright": True},
     {"name": "ThyssenKrupp", "url": "https://karriere.thyssenkrupp.com", "region": "EU", "type": "company", "playwright": True},
@@ -781,7 +781,7 @@ EU_JOB_SOURCES = [
     {"name": "Uniper SE", "url": "https://jobs.uniper.energy", "region": "EU", "type": "company", "playwright": True},
     {"name": "United", "url": "https://careers.united.com/us/en/search-results", "region": "EU", "type": "company", "playwright": True},
 
-    {"name": "upday GmbH & Co. KG Online Audio and Video", "url": "https://careers.smartrecruiters.com/updayGmbHCoKG", "region": "EU", "type": "company", "playwright": True},
+    {"name": "upday GmbH & Co. KG Online Audio and Video", "url": "https://careers.smartrecruiters.com/updayGmbHCoKG", "region": "EU", "type": "company", "ats": "smartrecruiters", "ats_slug": "updayGmbHCoKG"},
 
     {"name": "Upvest GmbH", "url": "https://careers.upvest.co", "region": "EU", "type": "company", "playwright": True},
     {"name": "Vaayu Tech GmbH", "url": "https://www.vaayu.tech/careers", "region": "EU", "type": "company", "playwright": True},
@@ -804,7 +804,7 @@ EU_JOB_SOURCES = [
     {"name": "Virtual Identity AG Technology", "url": "https://www.virtual-identity.com/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Virtual Minds GmbH", "url": "https://virtualminds.de/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "vivenu GmbH", "url": "https://vivenu.com/de/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "VMware", "url": "https://careers.smartrecruiters.com/Vmware2", "region": "EU", "type": "company", "playwright": True},
+    {"name": "VMware", "url": "https://careers.smartrecruiters.com/Vmware2", "region": "EU", "type": "company", "ats": "smartrecruiters", "ats_slug": "Vmware2"},
 
     {"name": "Vodafone", "url": "https://careers.vodafone.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "Voith GmbH & Co. KGaA", "url": "https://voith.com/corp-en/index.html", "region": "EU", "type": "company", "playwright": True},
@@ -815,7 +815,7 @@ EU_JOB_SOURCES = [
 
     {"name": "WAGNER Group GmbH Fire Protection", "url": "https://careers.wagner-group.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "wayfair", "url": "https://www.aboutwayfair.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "We Love X GmbH", "url": "https://we-love-x.jobs.personio.de/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "We Love X GmbH", "url": "https://we-love-x.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "Wemolo GmbH", "url": "https://www.wemolo.com/en-de/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Westwing GmbH", "url": "https://www.westwing.com/careers", "region": "EU", "type": "company", "playwright": True},
@@ -826,7 +826,7 @@ EU_JOB_SOURCES = [
     {"name": "Wuerth It", "url": "https://www.wuerth-it.com/en/it/karriere/karri", "region": "EU", "type": "company", "playwright": True},
     {"name": "Wunder Mobility", "url": "https://www.wundermobility.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "xolo GmbH", "url": "https://join.com/companies/xolo", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Yaak Technologies GmbH", "url": "https://yaak-ai-gmbh.jobs.personio.com/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Yaak Technologies GmbH", "url": "https://yaak-ai-gmbh.jobs.personio.com/", "region": "EU", "type": "company", "ats": "personio"},
 
     {"name": "YAGER Development GmbH", "url": "https://www.yager.de/#careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "yfood Labs GmbH", "url": "https://www.yfood.eu/pages/career", "region": "EU", "type": "company", "playwright": True},
