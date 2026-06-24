@@ -493,6 +493,8 @@ RELOCATION_FRIENDLY = {
     "vivenu": "Germany visa sponsorship + English-friendly",
     "yenlo": "Germany visa sponsorship + English-friendly",
     "zalando": "Germany visa sponsorship + English-friendly",
+    "monzo": "UK visa sponsorship available",
+    "adyen": "Netherlands visa sponsorship + relocation support",
 }
 
 # Job sources to scan. Each entry: name, url, region, type (board/company/agency)
@@ -511,6 +513,7 @@ JOB_SOURCES = [
     {"name": "Reddit", "url": "https://www.redditinc.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "reddit"},
     {"name": "Lyft", "url": "https://www.lyft.com/careers#openings", "region": "US", "type": "company", "playwright": True},
     {"name": "Monzo", "url": "https://monzo.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "monzo"},
+    {"name": "Adyen", "url": "https://careers.adyen.com/vacancies", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "adyen"},
     {"name": "OpenSRE", "url": "https://jobs.ashbyhq.com/tracer", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "tracer"},
     {"name": "Pinterest", "url": "https://www.pinterestcareers.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "pinterest"},
     {"name": "Preply", "url": "https://jobs.ashbyhq.com/preply", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "preply"},
@@ -657,6 +660,14 @@ def _derive_title_keywords(current_role, years_experience):
 
     keywords = [base_role]  # always match base role
 
+    # Add "developer" ↔ "engineer" equivalents for base role
+    if "engineer" in base_role:
+        dev_variant = base_role.replace("engineer", "developer")
+        keywords.append(dev_variant)
+    elif "developer" in base_role:
+        eng_variant = base_role.replace("developer", "engineer")
+        keywords.append(eng_variant)
+
     # Add seniority variants based on experience level
     if years_experience >= 10:
         keywords.extend([f"senior {base_role}", f"staff {base_role}", f"lead {base_role}",
@@ -666,6 +677,26 @@ def _derive_title_keywords(current_role, years_experience):
     elif years_experience >= 3:
         keywords.append(f"senior {base_role}")
     # For <3 years, only base role matches
+
+    # Add related role variants derived from core_skills
+    # Maps skill keywords → additional title variants to match
+    _skill_role_map = {
+        "backend": ["backend engineer", "backend developer", "back end engineer", "back-end engineer"],
+        "platform": ["platform engineer"],
+        "cloud infrastructure": ["cloud engineer", "infrastructure engineer"],
+        "distributed systems": ["systems engineer", "distributed systems engineer"],
+        "microservices": ["backend engineer", "backend developer"],
+        "api development": ["api engineer", "api developer"],
+        "data pipelines": ["data platform engineer"],
+        "devops": ["platform engineer", "infrastructure engineer"],
+        "system design": ["systems architect"],
+    }
+    core_skills = PROFILE.get("core_skills", [])
+    for skill, role_variants in _skill_role_map.items():
+        if skill in core_skills:
+            for variant in role_variants:
+                if variant not in keywords:
+                    keywords.append(variant)
 
     # Add individual meaningful words from base role (for partial title matches)
     # e.g., "sap consultant" → also match titles containing "consultant"
@@ -731,7 +762,7 @@ def score_job(title, description, company, location=""):
         (r'(?:min|minimum|at least|≥)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'min'),
         (r'(?:max|maximum|up to|≤)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'max'),
         (r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'range'),
-        (r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)', 'range'),
+        (r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:exp|experience|professional|relevant|work)', 'range'),
     ]
     for pattern, ptype in exp_patterns:
         matches = re.findall(pattern, text)
@@ -806,12 +837,16 @@ def score_job(title, description, company, location=""):
     title_relevance = 0
     exp_years = PROFILE["years_experience"]
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
-    # Full phrase match (e.g., "sap mm consultant") = 30, partial word match = 10
+    # Full role match = 30 (base role or skill-derived variant), partial word match = 10
     if title_keywords:
         base_role = title_keywords[0]  # first entry is always the base role
-        if base_role in title_lower:
+        # Full role variants include base_role + skill-derived roles (multi-word entries)
+        full_role_variants = [kw for kw in title_keywords if " " in kw]
+        # Single words are partial matches only
+        partial_words = [kw for kw in title_keywords if " " not in kw]
+        if any(variant in title_lower for variant in full_role_variants):
             title_relevance = 30
-        elif any(kw in title_lower for kw in title_keywords):
+        elif any(kw in title_lower for kw in partial_words):
             title_relevance = 10
 
     # --- Seniority scoring (experience-appropriate) ---
@@ -823,7 +858,8 @@ def score_job(title, description, company, location=""):
         senior_in_text = any(k in text for k in ["senior", "staff", "lead", "principal"])
         seniority_score = 10 if not senior_in_text else 0
     else:
-        seniority_score = 5
+        # Experienced profiles: many roles don't explicitly say "senior" but target 5-10yr candidates
+        seniority_score = 10 if exp_years >= 5 else 5
 
     # --- Relocation bonus ---
     relocation_bonus = 0
@@ -840,6 +876,20 @@ def score_job(title, description, company, location=""):
     # Combine relocation note and visa note
     notes = " | ".join(n for n in [relocation_note, visa_note] if n)
     return score, notes
+
+
+def _title_only_bypass(job, score, relocation_note, threshold):
+    """If description is too short to score skills but title matches well, auto-pass."""
+    if score >= threshold or len(job.get("description", "")) >= 100:
+        return score, relocation_note
+    title_lower = job["title"].lower().replace("-", " ")
+    title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), PROFILE["years_experience"])
+    if title_keywords:
+        base_role = title_keywords[0]
+        if base_role in title_lower:
+            score = max(score, 72)
+            relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
+    return score, relocation_note
 
 
 def pick_resume(company):
@@ -4127,6 +4177,7 @@ def main():
         return True
 
     if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "ats"):
+        _score_debug = {"filtered": 0, "low_score": 0, "top_score": 0, "top_title": ""}
         for source in _interleave_sources(JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
             t0 = datetime.now()
@@ -4135,6 +4186,13 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                if score == 0:
+                    _score_debug["filtered"] += 1
+                elif score < args.threshold:
+                    _score_debug["low_score"] += 1
+                    if score > _score_debug["top_score"]:
+                        _score_debug["top_score"] = score
+                        _score_debug["top_title"] = f"{job['title']} @ {job['company']}"
                 if score >= args.threshold:
                     resume = pick_resume(job["company"])
                     suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
@@ -4150,6 +4208,8 @@ def main():
                     })
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        print(f"  [scoring-debug] Filtered: {_score_debug['filtered']}, Below threshold: {_score_debug['low_score']}, "
+              f"Best non-match: {_score_debug['top_score']} ({_score_debug['top_title'][:60]})")
 
     # --- Web search: LinkedIn, Indeed, Naukri, Instahyre ---
     board_scrapers = [
@@ -4203,6 +4263,7 @@ def main():
                         if not should_include(job):
                             continue
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                        score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
@@ -4245,6 +4306,7 @@ def main():
                     if not should_include(job):
                         continue
                     score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                    score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                     if score >= args.threshold:
                         resume = pick_resume(job["company"])
                         suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
@@ -4267,6 +4329,7 @@ def main():
                         if not should_include(job):
                             continue
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                        score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
