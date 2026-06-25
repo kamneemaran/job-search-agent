@@ -189,6 +189,13 @@ PROFILE = {
         # Finance / accounting (non-SAP specific)
         "accountant", "accounts payable", "accounts receivable",
         "financial analyst", "finance manager", "controller",
+        # Non-software engineering disciplines (aerospace, hardware, mechanical, etc.)
+        "systems engineer", "it systems engineer", "ground segment",
+        "space systems", "satellite", "aerospace", "avionics", "propulsion",
+        "mechanical engineer", "electrical engineer", "hardware engineer",
+        "rf engineer", "pcb engineer", "civil engineer", "chemical engineer",
+        "biomedical", "embedded engineer", "firmware engineer",
+        "systems administrator", "sysadmin",
     ],
 }
 
@@ -916,11 +923,13 @@ def _title_only_bypass(job, score, relocation_note, threshold):
     title_lower = job["title"].lower().replace("-", " ")
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), PROFILE["years_experience"])
     if title_keywords:
-        # Check all multi-word role variants (e.g. "software engineer", "platform engineer",
-        # "infrastructure engineer", "systems engineer"), not just the base_role.
+        # Check multi-word role variants (e.g. "software engineer", "platform engineer",
+        # "infrastructure engineer"), not just the base_role.
         # This ensures Playwright-scraped titles like "Staff Platform Engineer" or
         # "Senior Infrastructure Engineer" also get the bypass.
-        full_role_variants = [kw for kw in title_keywords if " " in kw]
+        # Exclude ambiguous variants that match non-software roles (aerospace, IT, etc.)
+        _BYPASS_AMBIGUOUS = {"systems engineer", "systems architect", "distributed systems engineer"}
+        full_role_variants = [kw for kw in title_keywords if " " in kw and kw not in _BYPASS_AMBIGUOUS]
         if any(variant in title_lower for variant in full_role_variants):
             score = max(score, 72)
             relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
