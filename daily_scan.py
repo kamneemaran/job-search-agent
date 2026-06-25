@@ -96,6 +96,8 @@ PROFILE = {
         "spring boot", "backend", "cloud infrastructure", "devops",
         "fintech", "payments", "compliance", "incident management",
         "ci/cd", "terraform", "architecture", "soa", "data pipelines",
+        # AI-infra / modern platform skills (helps match AI infrastructure companies)
+        "fastapi", "grpc", "helm", "prometheus", "grafana", "gpu",
     ],
     "current_role": "Senior Software Engineer",
     "seniority_keywords": ["senior", "staff", "lead", "principal", "sde-3", "sde 3"],
@@ -914,8 +916,12 @@ def _title_only_bypass(job, score, relocation_note, threshold):
     title_lower = job["title"].lower().replace("-", " ")
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), PROFILE["years_experience"])
     if title_keywords:
-        base_role = title_keywords[0]
-        if base_role in title_lower:
+        # Check all multi-word role variants (e.g. "software engineer", "platform engineer",
+        # "infrastructure engineer", "systems engineer"), not just the base_role.
+        # This ensures Playwright-scraped titles like "Staff Platform Engineer" or
+        # "Senior Infrastructure Engineer" also get the bypass.
+        full_role_variants = [kw for kw in title_keywords if " " in kw]
+        if any(variant in title_lower for variant in full_role_variants):
             score = max(score, 72)
             relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
     return score, relocation_note
