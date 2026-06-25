@@ -4345,6 +4345,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
         print(f"  [scoring-debug] Filtered: {_score_debug['filtered']}, Below threshold: {_score_debug['low_score']}, "
@@ -4411,6 +4413,8 @@ def main():
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
                                                 "salary_info": salary_info})
+                        elif score >= 50:
+                            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
                 elapsed = (datetime.now() - t0).total_seconds()
                 print(f"    [{board_name.lower()}] Done ({elapsed:.1f}s)")
 
@@ -4455,6 +4459,8 @@ def main():
                         all_matches.append({**job, "score": score, "resume": resume,
                                             "relocation_note": relocation_note, "suggestions": suggestions,
                                             "salary_info": salary_info})
+                    elif score >= 50:
+                        print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             except Exception as e:
                 print(f"  [{pw_name.lower()}] Error: {e}")
             elapsed = (datetime.now() - t0).total_seconds()
@@ -4479,6 +4485,8 @@ def main():
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
                                                 "salary_info": salary_info})
+                        elif score >= 50:
+                            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
                 except Exception as e:
                     print(f"  [{pw_name.lower()}] Error: {e}")
             elapsed = (datetime.now() - t0).total_seconds()
@@ -4509,6 +4517,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
@@ -4537,6 +4547,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
@@ -4565,6 +4577,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
@@ -4593,6 +4607,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
@@ -4621,6 +4637,8 @@ def main():
                         "suggestions": suggestions,
                         "salary_info": salary_info,
                     })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
