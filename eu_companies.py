@@ -9,11 +9,9 @@ EU_JOB_SOURCES = [
     {"name": "Boards", "url": "https://boards.eu.greenhouse.io/wunderflats", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "wunderflats"},
     {"name": "Voila (Dine In Taste)", "url": "https://join.com/companies/getvoila", "region": "EU", "type": "company", "ats": "join"},
 
-    {"name": "Evmos Blockchain", "url": "https://cryptocurrencyjobs.co/engineering/", "region": "EU", "type": "company", "playwright": True},
     {"name": "gamigo AG", "url": "https://apply.workable.com/gamigo", "region": "EU", "type": "company", "ats": "workable"},
     {"name": "Geton", "url": "https://geton.jobs.personio.de/?language=en", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "Gymondo GmbH", "url": "https://www.linkedin.com/jobs/gymondo-jobs-berlin/", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Hamburg", "url": "https://xchange.recruitee.com", "region": "EU", "type": "company", "ats": "recruitee"},
     {"name": "HOLOPLOT GmbH", "url": "https://holoplot.jobs.personio.de", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "HousingAnywhere", "url": "https://job-boards.greenhouse.io/housinganywhere", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "housinganywhere"},
     {"name": "Juit GmbH", "url": "https://juit.jobs.personio.com", "region": "EU", "type": "company", "ats": "personio"},
@@ -354,7 +352,6 @@ EU_JOB_SOURCES = [
     {"name": "Heyflow GmbH", "url": "https://heyflow.app/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Higher", "url": "https://www.kit.edu/career/index.php", "region": "EU", "type": "company", "playwright": True},
     {"name": "Hilti Deutschland AG", "url": "https://careers.hilti.com/de", "region": "EU", "type": "company", "playwright": True},
-    {"name": "hiphoptune", "url": "https://hiphoptune.org/category/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Hochtief", "url": "https://www.hochtief.com/careers/job-search", "region": "EU", "type": "company", "playwright": True},
 
     {"name": "Holidaypirates GmbH Online", "url": "https://en.holidaypirates.group/careers", "region": "EU", "type": "company", "playwright": True},

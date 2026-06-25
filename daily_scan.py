@@ -4488,6 +4488,7 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                 if score >= args.threshold:
                     print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
@@ -4515,6 +4516,7 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                 if score >= args.threshold:
                     print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
@@ -4542,6 +4544,7 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                 if score >= args.threshold:
                     print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
@@ -4569,6 +4572,7 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                 if score >= args.threshold:
                     print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
@@ -4596,6 +4600,7 @@ def main():
                 if not should_include(job):
                     continue
                 score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                 if score >= args.threshold:
                     print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                     resume = pick_resume(job["company"])
