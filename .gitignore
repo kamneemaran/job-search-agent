@@ -13,3 +13,5 @@ last_scan_results_batch_*.json
 job_tracker.json
 *.pdf
 *.log
+last_email_scan.json
+session-*.md

@@ -1407,7 +1407,8 @@ def _scrape_company_career_page(source):
         browser = _get_browser()
         page = browser.new_page()
         _with_stealth(page)
-        page.goto(source["url"], timeout=15000, wait_until="domcontentloaded")
+        pw_timeout = source.get("timeout", 15000)
+        page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
 
         seen_urls = set()
@@ -1455,7 +1456,7 @@ def _scrape_company_career_page(source):
                         sep = '&' if '?' in base else '?'
                         next_url = f"{base}{sep}{param}={_pg}"
                         try:
-                            page.goto(next_url, timeout=15000, wait_until="domcontentloaded")
+                            page.goto(next_url, timeout=pw_timeout, wait_until="domcontentloaded")
                             page.wait_for_timeout(2000)
                         except Exception:
                             break
@@ -1486,7 +1487,8 @@ def _scrape_company_career_page(source):
         headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
         try:
             import requests as req
-            resp = req.get(source["url"], headers=headers, timeout=8)
+            http_timeout = max(8, source.get("timeout", 8) // 2)
+            resp = req.get(source["url"], headers=headers, timeout=http_timeout)
             if resp.status_code == 200:
                 import re
                 html = resp.text
@@ -2050,6 +2052,46 @@ def fetch_jobs_from_source(source):
                         break
             except Exception as e:
                 print(f"  [warn] Spotify API error: {e}")
+
+        elif source.get("ats") == "join" or "join.com/companies/" in source["url"]:
+            # JOIN.com: Next.js page with job data in __NEXT_DATA__ → props.pageProps.initialState.jobs.items
+            try:
+                resp = requests.get(source["url"], headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    import re as _re
+                    nd_match = _re.search(r'<script id="__NEXT_DATA__"[^>]*type="application/json"[^>]*>(.*?)</script>', resp.text, _re.DOTALL)
+                    if nd_match:
+                        nd = json.loads(nd_match.group(1))
+                        items = nd.get("props", {}).get("pageProps", {}).get("initialState", {}).get("jobs", {}).get("items", [])
+                        for posting in items:
+                            if not isinstance(posting, dict):
+                                continue
+                            title = posting.get("title", "")
+                            if not title:
+                                continue
+                            city = posting.get("city", {}) or {}
+                            loc_parts = [city.get("cityName", ""), city.get("countryName", "")]
+                            location = ", ".join(p for p in loc_parts if p) or source.get("region", "")
+                            slug = posting.get("idParam", "")
+                            job_url = f"{source['url'].rstrip('/')}/{slug}" if slug else source["url"]
+                            jobs.append({
+                                "title": title,
+                                "company": source["name"],
+                                "location": location,
+                                "url": job_url,
+                                "description": title,
+                                "posted_at": None,
+                            })
+                        if items:
+                            print(f"  [join] {len(items)} jobs from {source['name']}")
+                        else:
+                            print(f"  [join] No jobs found for {source['name']}")
+                    else:
+                        print(f"  [join] Could not find __NEXT_DATA__ for {source['name']}")
+                else:
+                    print(f"  [join] HTTP {resp.status_code} for {source['name']}")
+            except Exception as e:
+                print(f"  [join] Error fetching {source['name']}: {e}")
 
         elif source.get("playwright"):
             # For LinkedIn URLs, skip Playwright and use LinkedIn job search API directly
