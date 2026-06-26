@@ -1407,8 +1407,8 @@ def _scrape_company_career_page(source):
         browser = _get_browser()
         page = browser.new_page()
         _with_stealth(page)
-        page.goto(source["url"], timeout=30000, wait_until="domcontentloaded")
-        page.wait_for_timeout(4000)
+        page.goto(source["url"], timeout=15000, wait_until="domcontentloaded")
+        page.wait_for_timeout(2000)
 
         seen_urls = set()
         page_jobs = _extract_links(page)
@@ -1439,7 +1439,7 @@ def _scrape_company_career_page(source):
                     if disabled:
                         break
                     next_btn.click()
-                    page.wait_for_timeout(3000)
+                    page.wait_for_timeout(2000)
                     page.wait_for_selector("a", timeout=5000)
                 except Exception:
                     break
@@ -1455,8 +1455,8 @@ def _scrape_company_career_page(source):
                         sep = '&' if '?' in base else '?'
                         next_url = f"{base}{sep}{param}={_pg}"
                         try:
-                            page.goto(next_url, timeout=30000, wait_until="domcontentloaded")
-                            page.wait_for_timeout(3000)
+                            page.goto(next_url, timeout=15000, wait_until="domcontentloaded")
+                            page.wait_for_timeout(2000)
                         except Exception:
                             break
                         break
@@ -1486,7 +1486,7 @@ def _scrape_company_career_page(source):
         headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
         try:
             import requests as req
-            resp = req.get(source["url"], headers=headers, timeout=15)
+            resp = req.get(source["url"], headers=headers, timeout=8)
             if resp.status_code == 200:
                 import re
                 html = resp.text
@@ -4678,7 +4678,8 @@ def main():
         print(f"  [batch {args.batch}] Saved {len(all_matches)} matches to {batch_path}")
 
         # Send email after every batch run with that batch's results
-        if all_matches:
+        # (skip for terminal batch 'eu' — it sends a merged email below)
+        if all_matches and args.batch != "eu":
             person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
             batch_labels = {
                 "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
