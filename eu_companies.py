@@ -17,8 +17,8 @@ EU_JOB_SOURCES = [
     {"name": "Aklamio GmbH", "url": "https://aklamio.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
     {"name": "Akur8", "url": "https://apply.workable.com/akur8", "region": "EU", "type": "company", "ats": "workable"},
     {"name": "Astroscale", "url": "https://astroscale.bamboohr.com/careers/513", "region": "EU", "type": "company", "ats": "bamboohr"},
-    {"name": "Atheneum Partners GmbH", "url": "https://atheneum.recruitee.com", "region": "EU", "type": "company", "ats": "recruitee"},
-    {"name": "Autobahn Security GmbH", "url": "https://autobahn-security.breezy.hr", "region": "EU", "type": "company", "ats": "breezy"},
+
+
     {"name": "Wunderflats", "url": "https://boards.eu.greenhouse.io/wunderflats", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "wunderflats"},
     {"name": "Voila (Dine In Taste)", "url": "https://join.com/companies/getvoila", "region": "EU", "type": "company", "ats": "join"},
     {"name": "gamigo AG", "url": "https://apply.workable.com/gamigo", "region": "EU", "type": "company", "ats": "workable"},
