@@ -51,7 +51,7 @@ def _get_browser():
         _playwright_pw = sync_playwright().start()
         _playwright_browser = _playwright_pw.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
+            args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
         )
     return _playwright_browser
 
