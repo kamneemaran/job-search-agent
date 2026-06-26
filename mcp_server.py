@@ -294,6 +294,45 @@ async def handle_list_tools() -> list[types.Tool]:
                 "properties": {},
             },
         ),
+        types.Tool(
+            name="search_board_jobs",
+            description="Search for jobs across job boards (LinkedIn, Indeed, Glassdoor, Google Jobs, ZipRecruiter) using JobSpy. Finds jobs from companies not in your personal database.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "search_term": {
+                        "type": "string",
+                        "description": "Job search query e.g. 'software engineer', 'backend developer'",
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "Location filter (default: 'Remote')",
+                        "default": "Remote",
+                    },
+                    "site_names": {
+                        "type": "string",
+                        "description": "Comma-separated job sites (linkedin, indeed, glassdoor, google, zip_recruiter). Default: linkedin,indeed,glassdoor",
+                        "default": "linkedin,indeed,glassdoor",
+                    },
+                    "results_wanted": {
+                        "type": "number",
+                        "description": "Number of results wanted per site (default: 15)",
+                        "default": 15,
+                    },
+                    "hours_old": {
+                        "type": "number",
+                        "description": "Only jobs posted within this many hours (default: 168 = 1 week)",
+                        "default": 168,
+                    },
+                    "is_remote": {
+                        "type": "boolean",
+                        "description": "Remote jobs only (default: true)",
+                        "default": True,
+                    },
+                },
+                "required": ["search_term"],
+            },
+        ),
     ]
 
 
@@ -324,6 +363,9 @@ async def handle_call_tool(
 
     if name == "get_profile":
         return [types.TextContent(type="text", text=_get_profile())]
+
+    if name == "search_board_jobs":
+        return [types.TextContent(type="text", text=_search_board_jobs(**arguments))]
 
     raise ValueError(f"Unknown tool: {name}")
 
@@ -814,9 +856,69 @@ def _get_profile() -> str:
     return "\n".join(parts)
 
 
-# ---------------------------------------------------------------------------
-# Main entry point
-# ---------------------------------------------------------------------------
+def _search_board_jobs(
+    search_term: str,
+    location: str = "Remote",
+    site_names: str = "linkedin,indeed,glassdoor",
+    results_wanted: int = 15,
+    hours_old: int = 168,
+    is_remote: bool = True,
+) -> str:
+    try:
+        from jobspy import scrape_jobs
+
+        sites = [s.strip() for s in site_names.split(",")]
+        results_wanted = min(results_wanted, 50)
+        hours_old = min(hours_old, 720) if hours_old else None
+
+        df = scrape_jobs(
+            site_name=sites,
+            search_term=search_term,
+            location=location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            is_remote=is_remote,
+            country_indeed="USA",
+            description_format="markdown",
+        )
+
+        if df is None or df.empty:
+            return f"# No jobs found\nSearched {site_names} for '{search_term}' in {location}"
+
+        imported = 0
+        lines = [f"# Board Search: {search_term} ({len(df)} results)"]
+        lines.append(f"Sites: {site_names} | Location: {location}\n")
+
+        for _, row in df.iterrows():
+            title = row.get("title", "")
+            company = row.get("company", "")
+            loc = row.get("location", "") or location
+            url = row.get("job_url", "") or ""
+            site = row.get("site", "")
+            date = row.get("date_posted", "")
+            desc = str(row.get("description", "") or "")
+            desc_short = desc[:200].replace("\n", " ") + "..." if len(desc) > 200 else desc.replace("\n", " ")
+
+            lines.append(f"**{title}** @ {company}")
+            lines.append(f"   Location: {loc} | Source: {site}")
+            if date:
+                lines.append(f"   Posted: {str(date)[:10]}")
+            lines.append(f"   {desc_short}")
+            lines.append(f"   URL: {url}")
+            lines.append("")
+            imported += 1
+            if imported >= results_wanted:
+                break
+
+        lines.append(f"\nFound {imported} jobs from {site_names}")
+        lines.append("Use `search_jobs` with threshold scoring for your profile, or `update_tracker` to track a match.")
+
+        return "\n".join(lines)
+
+    except ImportError:
+        return "Error: JobSpy not installed. Run: pip install python-jobspy"
+    except Exception as e:
+        return f"Error searching boards: {e}"
 
 async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
