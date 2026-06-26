@@ -1,6 +1,7 @@
 """EU-based company career pages (batch 4)."""
 
 EU_JOB_SOURCES = [
+    {"name": "Bain & Company", "url": "https://www.bain.com/careers/find-a-role/?filters=workareas(1831447)", "region": "EU", "type": "company", "playwright": True},
     {"name": "Breitling", "url": "https://careers.breitling.com/search/?q=&locationsearch=&locale=en_GB&facetFilters=%7B%22custrcmDeparments%22%3A%5B%22Digital+%26+Tech%22%5D%7D&pageNumber=0", "region": "EU", "type": "company", "playwright": True},
     {"name": "Caplena", "url": "https://caplena.bamboohr.com/careers", "region": "EU", "type": "company", "ats": "bamboohr"},
     {"name": "Confluent", "url": "https://careers.confluent.io/jobs/engineering?engineering=engineering", "region": "EU", "type": "company", "playwright": True},
@@ -97,7 +98,9 @@ EU_JOB_SOURCES = [
     {"name": "Aurubis", "url": "https://www.aurubis.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "AUTO1 Group GmbH", "url": "https://www.auto1-group.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Avi", "url": "https://en.avimedical.com/jobs", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Aviva", "url": "https://www.aviva.co.uk/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Aviva UK", "url": "https://careers.aviva.co.uk/apply/?jobFamily=technology&perPage=20&page=1", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Aviva Ireland", "url": "https://aviva.talent-community.com/projects?pools=1173,1171,1172,1174&page=1", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Aviva Workday", "url": "https://aviva.wd1.myworkdayjobs.com/External?Location_Country=a30a87ed25634629aa6c3958aa2b91ea&Location_Country=131d5ac7e3ee4d7b962bdc96e498e412&Location_Country=29247e57dbaf46fb855b224e03170bc7&jobFamilyGroup=ebd5f88987d24fb19b1d3f866956b409", "region": "EU", "type": "company", "playwright": True},
     {"name": "Avocargo - AVO Mobility GmbH", "url": "https://en.avocargo.one/karriere", "region": "EU", "type": "company", "playwright": True},
     {"name": "Awake Mobility GmbH", "url": "https://www.awakemobility.de/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Axel Springer", "url": "https://career.axelspringer.com/en/vacancies?tx_kesearch_pi1%5Bsword%5D=&id=65&tx_kesearch_pi1%5Bpage%5D=1&tx_kesearch_pi1%5BresetFilters%5D=0&tx_kesearch_pi1%5BsortByField%5D=&tx_kesearch_pi1%5BsortByDir%5D=&tx_kesearch_pi1%5Bfilter_5_5214%5D=department_2619044&tx_kesearch_pi1%5Bfilter_5_4826%5D=department_2619163&tx_kesearch_pi1%5Bfilter_5_668489%5D=department_professional&tx_kesearch_pi1%5Bfilter_5_4112%5D=department_2619231&Field+of+activity=Corporate-Development%2CIT%2CProfessional%2CProject-Management", "region": "EU", "type": "company", "playwright": True},
@@ -225,7 +228,7 @@ EU_JOB_SOURCES = [
     {"name": "Deutsche Börse AG", "url": "https://career.deutsche-boerse.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "Deutsche Telekom AG", "url": "https://www.telekom.com/en/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "DKB Code Factory GmbH", "url": "https://www.dkbcodefactory.com/#", "region": "EU", "type": "company", "playwright": True},
-    {"name": "DocuSign", "url": "https://www.docusign.com/company/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "DocuSign", "url": "https://careers.docusign.com/careers-home/jobs?categories=Engineering&page=1", "region": "EU", "type": "company", "playwright": True},
     {"name": "DONE!Berlin", "url": "https://www.doneberlin.com/team", "region": "EU", "type": "company", "playwright": True},
     {"name": "DSJ Global", "url": "https://www.dsjglobal.com", "region": "EU", "type": "company", "playwright": True},
     {"name": "DUDECHEM GmbH", "url": "https://join.com/companies/dudechem", "region": "EU", "type": "company", "ats": "join"},
@@ -865,7 +868,6 @@ EU_JOB_SOURCES = [
     {"name": "Endress+Hauser", "url": "https://www.endress.com/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "Unilever", "url": "https://careers.unilever.com/en", "region": "EU", "type": "company", "playwright": True},
     {"name": "Lindt & Sprungli", "url": "https://www.lindt-spruengli.com/careers", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Barry Callebaut", "url": "https://jobs.barry-callebaut.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_country=&optionsFacetsDD_department=&optionsFacetsDD_dept=", "region": "EU", "type": "company"},
     {"name": "Emmi", "url": "https://group.emmi.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "On Running", "url": "https://culture.on.com/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Emirates Group", "url": "https://www.emiratesgroupcareers.com", "region": "EU", "type": "company", "playwright": True},
