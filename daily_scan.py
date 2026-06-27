@@ -26,6 +26,7 @@ import time
 import imaplib
 import email
 import argparse
+import threading
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -44,15 +45,19 @@ from email.mime.text import MIMEText
 # Lazy import for Playwright (headless browser for JS-rendered sites)
 _playwright_browser = None
 _playwright_pw = None
+_browser_lock = threading.Lock()
+_personio_lock = threading.Lock()
 def _get_browser():
     global _playwright_browser, _playwright_pw
     if _playwright_browser is None:
-        from playwright.sync_api import sync_playwright
-        _playwright_pw = sync_playwright().start()
-        _playwright_browser = _playwright_pw.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
-        )
+        with _browser_lock:
+            if _playwright_browser is None:
+                from playwright.sync_api import sync_playwright
+                _playwright_pw = sync_playwright().start()
+                _playwright_browser = _playwright_pw.chromium.launch(
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
+                )
     return _playwright_browser
 
 def _with_stealth(page):
@@ -1407,7 +1412,7 @@ def _scrape_company_career_page(source):
         browser = _get_browser()
         page = browser.new_page()
         _with_stealth(page)
-        pw_timeout = source.get("timeout", 15000)
+        pw_timeout = source.get("timeout", 10000)
         page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
 
@@ -1475,6 +1480,7 @@ def _scrape_company_career_page(source):
                 break
     except Exception as e:
         pw_failed = True
+        pw_error = str(e)
         print(f"  [pw] Playwright failed for {source['name']}: {e}")
     finally:
         if page:
@@ -1484,66 +1490,71 @@ def _scrape_company_career_page(source):
                 pass
 
     if pw_failed or not jobs:
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
-        try:
-            import requests as req
-            http_timeout = max(8, source.get("timeout", 8) // 2)
-            resp = req.get(source["url"], headers=headers, timeout=http_timeout)
-            if resp.status_code == 200:
-                import re
-                html = resp.text
-                for p in ['window.__INITIAL_STATE__', 'window.__DATA__', 'window.__NEXT_DATA__']:
-                    idx = html.find(p + '=')
-                    if idx >= 0:
-                        end = html.find(';\n', idx) if html.find(';\n', idx) > 0 else html.find('\n', idx)
-                        chunk = html[idx + len(p) + 1:end]
-                        import json as _j
-                        try:
-                            data = _j.loads(chunk)
-                            items = data.get('jobs', data.get('vacancies', data.get('data', [])))
-                            if isinstance(items, dict):
-                                items = list(items.values())
-                            if isinstance(items, list):
-                                for item in items[:30]:
-                                    if isinstance(item, dict):
-                                        t = item.get('title', item.get('name', item.get('jobTitle', '')))
-                                        if t and _is_relevant(t):
-                                            jobs.append({'title': t, 'company': source['name'],
-                                                         'location': item.get('location', source.get('region', '')),
-                                                         'url': item.get('url', item.get('applyUrl', source['url'])),
-                                                         'description': t, 'posted_at': None})
-                        except Exception:
-                            pass
-                if not jobs:
-                    job_links = re.findall(r'href=[\"\']([^\"\']*/(?:job|vacancy|position|opening)/[^\"\']+)[\"\']', html, re.IGNORECASE)
-                    seen = set()
-                    for href in job_links:
-                        full = href if href.startswith('http') else source['url'].rstrip('/') + '/' + href.lstrip('/')
-                        clean = full.split('?')[0]
-                        if clean in seen:
-                            continue
-                        seen.add(clean)
-                        segs = clean.rstrip('/').split('/')
-                        title = ''
-                        for seg in segs:
-                            if seg.replace('-', '').replace('.', '').isdigit():
+        # Skip HTTP fallback if Playwright failed due to Cloudflare, download trigger, or connection reset
+        if pw_failed and any(kw in pw_error.lower() for kw in ["cloudflare", "cf-ray", "download is starting", "connection aborted", "remote end closed"]):
+            if not jobs:
+                print(f"  [http] Skipped fallback for {source['name']} (blocked: {pw_error[:60]})")
+        else:
+            headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
+            try:
+                import requests as req
+                http_timeout = max(5, source.get("timeout", 10) // 3)
+                resp = req.get(source["url"], headers=headers, timeout=http_timeout)
+                if resp.status_code == 200:
+                    import re
+                    html = resp.text
+                    for p in ['window.__INITIAL_STATE__', 'window.__DATA__', 'window.__NEXT_DATA__']:
+                        idx = html.find(p + '=')
+                        if idx >= 0:
+                            end = html.find(';\n', idx) if html.find(';\n', idx) > 0 else html.find('\n', idx)
+                            chunk = html[idx + len(p) + 1:end]
+                            import json as _j
+                            try:
+                                data = _j.loads(chunk)
+                                items = data.get('jobs', data.get('vacancies', data.get('data', [])))
+                                if isinstance(items, dict):
+                                    items = list(items.values())
+                                if isinstance(items, list):
+                                    for item in items[:30]:
+                                        if isinstance(item, dict):
+                                            t = item.get('title', item.get('name', item.get('jobTitle', '')))
+                                            if t and _is_relevant(t):
+                                                jobs.append({'title': t, 'company': source['name'],
+                                                             'location': item.get('location', source.get('region', '')),
+                                                             'url': item.get('url', item.get('applyUrl', source['url'])),
+                                                             'description': t, 'posted_at': None})
+                            except Exception:
+                                pass
+                    if not jobs:
+                        job_links = re.findall(r'href=[\"\']([^\"\']*/(?:job|vacancy|position|opening)/[^\"\']+)[\"\']', html, re.IGNORECASE)
+                        seen = set()
+                        for href in job_links:
+                            full = href if href.startswith('http') else source['url'].rstrip('/') + '/' + href.lstrip('/')
+                            clean = full.split('?')[0]
+                            if clean in seen:
                                 continue
-                            if any(kw in seg.lower() for kw in ['job', 'vacancy', 'position', 'opening']):
-                                continue
-                            title = seg
-                        title = title.replace('-', ' ').replace('+', ' ').replace('&amp;', '&')
-                        from urllib.parse import unquote
-                        title = unquote(title)
-                        title = re.sub(r'\s+', ' ', title).strip()
-                        title = ' '.join(w.capitalize() if w.lower() not in ('and', 'or', 'the', 'of', 'in', 'for', '&') else w for w in title.split())
-                        if len(title) > 5 and _is_relevant(title):
-                            jobs.append({'title': title[:100], 'company': source['name'],
-                                         'location': source.get('region', ''), 'url': full.split('?')[0],
-                                         'description': title[:100], 'posted_at': None})
-            if jobs:
-                print(f"  [http] {len(jobs)} jobs from {source['name']}")
-        except Exception as e2:
-            print(f"  [http] Fallback failed for {source['name']}: {e2}")
+                            seen.add(clean)
+                            segs = clean.rstrip('/').split('/')
+                            title = ''
+                            for seg in segs:
+                                if seg.replace('-', '').replace('.', '').isdigit():
+                                    continue
+                                if any(kw in seg.lower() for kw in ['job', 'vacancy', 'position', 'opening']):
+                                    continue
+                                title = seg
+                            title = title.replace('-', ' ').replace('+', ' ').replace('&amp;', '&')
+                            from urllib.parse import unquote
+                            title = unquote(title)
+                            title = re.sub(r'\s+', ' ', title).strip()
+                            title = ' '.join(w.capitalize() if w.lower() not in ('and', 'or', 'the', 'of', 'in', 'for', '&') else w for w in title.split())
+                            if len(title) > 5 and _is_relevant(title):
+                                jobs.append({'title': title[:100], 'company': source['name'],
+                                             'location': source.get('region', ''), 'url': full.split('?')[0],
+                                             'description': title[:100], 'posted_at': None})
+                if jobs:
+                    print(f"  [http] {len(jobs)} jobs from {source['name']}")
+            except Exception as e2:
+                print(f"  [http] Fallback failed for {source['name']}: {e2}")
 
     if jobs and not pw_failed:
         print(f"  [pw] {len(jobs)} jobs from {source['name']}")
@@ -1679,71 +1690,73 @@ def fetch_jobs_from_source(source):
         elif source.get("ats") == "personio" or "personio.de" in source["url"] or "personio.com" in source["url"]:
             # Personio: https://company.jobs.personio.de/search.json
             # Throttle to avoid 429 rate limits
-            global _personio_last_call
-            import time as _time
-            elapsed_since_last = _time.time() - _personio_last_call
-            delay = _PERSONIO_MIN_DELAY * _personio_backoff
-            if elapsed_since_last < delay:
-                _time.sleep(delay - elapsed_since_last)
+            with _personio_lock:
+                global _personio_last_call
+                import time as _time
+                elapsed_since_last = _time.time() - _personio_last_call
+                delay = _PERSONIO_MIN_DELAY * _personio_backoff
+                if elapsed_since_last < delay:
+                    _time.sleep(delay - elapsed_since_last)
 
-            base_url = source["url"].rstrip("/").split("?")[0].rstrip("/")
-            api_url = f"{base_url}/search.json"
-            resp = None
-            for _attempt in range(4):
-                try:
-                    _personio_last_call = _time.time()
-                    resp = requests.get(api_url, timeout=15)
-                    if resp.status_code == 429:
-                        _personio_backoff = min(_personio_backoff * 2, 10.0)
-                        wait = 2 ** (_attempt + 1) * _personio_backoff
-                        print(f"  [warn] Personio API returned 429 for {source['name']}, retrying in {wait:.0f}s...")
-                        _time.sleep(wait)
-                        continue
-                    break
-                except Exception:
-                    break
-            if resp and resp.status_code == 200:
-                try:
-                    data = resp.json()
-                    postings = data if isinstance(data, list) else data.get("jobs", data.get("data", []))
-                    for posting in postings:
-                        if not isinstance(posting, dict):
+                base_url = source["url"].rstrip("/").split("?")[0].rstrip("/")
+                api_url = f"{base_url}/search.json"
+                resp = None
+                for _attempt in range(4):
+                    try:
+                        _personio_last_call = _time.time()
+                        resp = requests.get(api_url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+                        if resp.status_code == 429:
+                            _personio_backoff = min(_personio_backoff * 2, 10.0)
+                            wait = 2 ** (_attempt + 1) * _personio_backoff
+                            print(f"  [warn] Personio API returned 429 for {source['name']}, retrying in {wait:.0f}s...")
+                            _time.sleep(wait)
                             continue
-                        offices = posting.get("offices", [])
-                        location = posting.get("office") or (offices[0] if offices and isinstance(offices[0], str) else "Germany")
-                        # Fetch full description from individual job page (JSON-LD)
-                        description = posting.get("description", "")
-                        job_id = posting.get("id", "")
-                        job_url = source["url"]
-                        if not description and job_id:
-                            try:
-                                detail_url = f"{base_url}/job/{job_id}"
-                                det = requests.get(detail_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-                                if det.status_code == 200:
-                                    ld_match = re.search(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', det.text, re.DOTALL)
-                                    if ld_match:
-                                        ld_data = json.loads(ld_match.group(1))
-                                        if isinstance(ld_data, dict) and ld_data.get("description"):
-                                            description = strip_html(ld_data["description"])[:8000]
-                                        if isinstance(ld_data, dict) and ld_data.get("url"):
-                                            job_url = ld_data["url"]
-                                time.sleep(0.5)  # rate limit (Personio is strict)
-                            except Exception:
-                                pass
-                        if not description:
-                            description = posting.get("name", "")
-                        jobs.append({
-                            "title": posting.get("name", ""),
-                            "company": source["name"],
-                            "location": location,
-                            "url": job_url,
-                            "description": description,
-                            "posted_at": None,
-                        })
-                except (ValueError, KeyError) as e:
-                    print(f"  [warn] Personio JSON parse error for {source['name']}: {e}")
-            elif resp:
-                print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
+                        break
+                    except Exception:
+                        break
+                if resp and resp.status_code == 200:
+                    _personio_backoff = max(1.0, _personio_backoff / 2)  # reset backoff on success
+                    try:
+                        data = resp.json()
+                        postings = data if isinstance(data, list) else data.get("jobs", data.get("data", []))
+                        for posting in postings:
+                            if not isinstance(posting, dict):
+                                continue
+                            offices = posting.get("offices", [])
+                            location = posting.get("office") or (offices[0] if offices and isinstance(offices[0], str) else "Germany")
+                            # Fetch full description from individual job page (JSON-LD)
+                            description = posting.get("description", "")
+                            job_id = posting.get("id", "")
+                            job_url = source["url"]
+                            if not description and job_id:
+                                try:
+                                    detail_url = f"{base_url}/job/{job_id}"
+                                    det = requests.get(detail_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                                    if det.status_code == 200:
+                                        ld_match = re.search(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', det.text, re.DOTALL)
+                                        if ld_match:
+                                            ld_data = json.loads(ld_match.group(1))
+                                            if isinstance(ld_data, dict) and ld_data.get("description"):
+                                                description = strip_html(ld_data["description"])[:8000]
+                                            if isinstance(ld_data, dict) and ld_data.get("url"):
+                                                job_url = ld_data["url"]
+                                    time.sleep(0.5)  # rate limit (Personio is strict)
+                                except Exception:
+                                    pass
+                            if not description:
+                                description = posting.get("name", "")
+                            jobs.append({
+                                "title": posting.get("name", ""),
+                                "company": source["name"],
+                                "location": location,
+                                "url": job_url,
+                                "description": description,
+                                "posted_at": None,
+                            })
+                    except (ValueError, KeyError) as e:
+                        print(f"  [warn] Personio JSON parse error for {source['name']}: {e}")
+                elif resp:
+                    print(f"  [warn] Personio API returned {resp.status_code} for {source['name']}")
 
         elif source.get("ats") == "recruitee":
             # Recruitee: https://{company}.recruitee.com/api/offers/
@@ -2144,7 +2157,7 @@ def fetch_jobs_from_source(source):
                 locations_to_try.insert(0, region)
             queries = build_domain_queries()
             for loc in locations_to_try:
-                for q in queries[:6]:
+                for q in queries[:2]:
                     try:
                         li_jobs = search_linkedin(q, location=loc, max_results=25)
                         for j in li_jobs:
@@ -3282,23 +3295,23 @@ def _format_salary(s):
         return f"{sym}{fmt_min}"
     return ""
 
-def build_email_html(matches):
+def build_email_html(matches, failed_parse=None):
     if not matches:
-        return "<p>No new matches above threshold today. Sources checked, all clear.</p>"
+        body = "<p>No new matches above threshold today.</p>"
+    else:
+        # Group matches by location
+        from collections import OrderedDict
+        grouped = OrderedDict()
+        for m in matches:
+            loc = m.get("location", "Unknown").strip() or "Unknown"
+            grouped.setdefault(loc, []).append(m)
 
-    # Group matches by location
-    from collections import OrderedDict
-    grouped = OrderedDict()
-    for m in matches:
-        loc = m.get("location", "Unknown").strip() or "Unknown"
-        grouped.setdefault(loc, []).append(m)
-
-    sections = ""
-    for loc, loc_matches in grouped.items():
-        rows = ""
-        for m in loc_matches:
-            salary_line = _salary_html(m.get("salary_info"))
-            rows += f"""
+        sections = ""
+        for loc, loc_matches in grouped.items():
+            rows = ""
+            for m in loc_matches:
+                salary_line = _salary_html(m.get("salary_info"))
+                rows += f"""
         <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
           <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
@@ -3313,7 +3326,7 @@ def build_email_html(matches):
           <a href="{m['url']}" style="font-size:13px;">Open job posting &rarr;</a>
         </div>
         """
-        sections += f"""
+            sections += f"""
     <div style="margin-bottom:24px;">
       <h3 style="background:#f0f4f8;padding:8px 12px;border-radius:6px;font-size:15px;">
         {loc} ({len(loc_matches)})
@@ -3321,11 +3334,33 @@ def build_email_html(matches):
       {rows}
     </div>
     """
-    return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:600px;">
+        body = f"""
       <h2>Daily job matches - {datetime.now().strftime('%d %b %Y')}</h2>
       <p>{len(matches)} role(s) scored above threshold.</p>
       {sections}
+    """
+
+    # Failed-to-parse section
+    failed_html = ""
+    if failed_parse:
+        rows = ""
+        for s in failed_parse:
+            rows += f"""
+        <div style="border:1px solid #eee;border-radius:6px;padding:10px;margin-bottom:6px;">
+          <a href="{s['url']}" style="font-size:13px;color:#d32f2f;">{s['name']}</a>
+        </div>
+        """
+        failed_html = f"""
+    <hr style="margin:24px 0;">
+    <h3 style="color:#d32f2f;">Failed to parse ({len(failed_parse)} companies)</h3>
+    <p style="font-size:13px;color:#666;">These company career pages could not be scanned. Check manually for relevant roles.</p>
+    {rows}
+    """
+
+    return f"""
+    <html><body style="font-family:Arial,sans-serif;max-width:600px;">
+      {body}
+      {failed_html}
     </body></html>
     """
 
@@ -4333,6 +4368,7 @@ def main():
     print(f"=== Daily job scan started: {datetime.now().isoformat()} ===")
     print(f"Profile: {PROFILE['name']}, {PROFILE['years_experience']}yr, {len(PROFILE['core_skills'])} skills")
     all_matches = []
+    failed_parse = []  # companies where no jobs could be parsed (for email report)
 
     # --- Load job tracker ---
     tracker = JobTracker()
@@ -4548,33 +4584,56 @@ def main():
 
     # --- EU companies (batch: eu) ---
     if args.batch == "eu":
-        for source in _interleave_sources(EU_JOB_SOURCES):
-            print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
-            t0 = datetime.now()
-            jobs = fetch_jobs_from_source(source)
-            for job in jobs:
-                if not should_include(job):
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        _print_lock = threading.Lock()
+        sources = list(_interleave_sources(EU_JOB_SOURCES))
+
+        def _process_eu_source(src):
+            try:
+                t0 = datetime.now()
+                with _print_lock:
+                    print(f"Scanning: {src['name']} ({src.get('region','EU')}) - {src['url']}")
+                jobs = fetch_jobs_from_source(src)
+                return src, jobs, t0, None
+            except Exception as e:
+                return src, [], datetime.now(), str(e)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(_process_eu_source, s): s for s in sources}
+            for future in as_completed(futures):
+                source, jobs, t0, error = future.result()
+                elapsed = (datetime.now() - t0).total_seconds()
+                if error:
+                    with _print_lock:
+                        print(f"  [error] {source['name']}: {error}")
                     continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
-            elapsed = (datetime.now() - t0).total_seconds()
-            print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+                if not jobs:
+                    failed_parse.append(source)
+                with _print_lock:
+                    print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+                for job in jobs:
+                    if not should_include(job):
+                        continue
+                    score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                    score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
+                    if score >= args.threshold:
+                        with _print_lock:
+                            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
+                        resume = pick_resume(job["company"])
+                        suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                        all_matches.append({
+                            **job,
+                            "score": score,
+                            "resume": resume,
+                            "company_url": company_url(job["company"], source.get("url")),
+                            "relocation_note": relocation_note,
+                            "suggestions": suggestions,
+                            "salary_info": salary_info,
+                        })
+                    elif score >= 50:
+                        with _print_lock:
+                            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
 
     # --- Global companies / recruiters (batch: global) ---
     if args.batch == "global":
@@ -4724,7 +4783,7 @@ def main():
 
         # Send email after every batch run with that batch's results
         # (skip for terminal batch 'eu' — it sends a merged email below)
-        if all_matches and args.batch != "eu":
+        if all_matches or failed_parse:
             person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
             batch_labels = {
                 "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
@@ -4735,7 +4794,7 @@ def main():
             }
             label = batch_labels.get(args.batch, args.batch)
             subject = f"{person_name}-Job matches-{label}"
-            html = build_email_html(all_matches)
+            html = build_email_html(all_matches, failed_parse)
             send_email(html, subject=subject)
         else:
             print(f"  [email] No matches found for resume - skipping email")
@@ -4790,8 +4849,8 @@ def main():
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")
 
-    if all_matches:
-        html = build_email_html(all_matches)
+    if all_matches or failed_parse:
+        html = build_email_html(all_matches, failed_parse)
         person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
         batch_labels = {
             "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",

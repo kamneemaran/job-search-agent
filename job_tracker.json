@@ -56,10 +56,12 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7982102&gh_jid=7982102",
       "score": 92,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.880615",
-      "date_updated": "2026-06-20T00:54:12.880625",
-      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|principal software engineer i - distributed systems - elasticsearch": {
       "title": "Principal Software Engineer I - Distributed Systems - Elasticsearch",
@@ -76,20 +78,24 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7734579&gh_jid=7734579",
       "score": 92,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.881670",
-      "date_updated": "2026-06-20T00:54:12.881677",
-      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|senior java engineer - distributed systems - elasticsearch": {
       "title": "Senior Java Engineer - Distributed Systems - Elasticsearch",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=8001192&gh_jid=8001192",
       "score": 92,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.882045",
-      "date_updated": "2026-06-20T00:54:12.882052",
-      "resume": "Kamnee_Maran_Resume_FAANG.pdf"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "resume": "Kamnee_Maran_Resume_FAANG.pdf",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "airbnb|staff software engineer, infrastructure": {
       "title": "Staff Software Engineer, Infrastructure",
@@ -183,9 +189,11 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7190130&gh_jid=7190130",
       "score": 78,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.887303",
-      "date_updated": "2026-06-20T00:54:12.887310"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "airbnb|fraud intelligence lead": {
       "title": "Fraud Intelligence Lead",
@@ -507,36 +515,44 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7190138&gh_jid=7190138",
       "score": 70,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.921649",
-      "date_updated": "2026-06-20T00:54:12.921655"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|senior solution architect": {
       "title": "Senior Solution Architect",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7817941&gh_jid=7817941",
       "score": 70,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.922799",
-      "date_updated": "2026-06-20T00:54:12.922806"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|senior solution architect, mumbai": {
       "title": "Senior Solution Architect, Mumbai",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7817945&gh_jid=7817945",
       "score": 70,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.923872",
-      "date_updated": "2026-06-20T00:54:12.923879"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|senior solution architect, thailand": {
       "title": "Senior Solution Architect, Thailand",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7817931&gh_jid=7817931",
       "score": 70,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.925073",
-      "date_updated": "2026-06-20T00:54:12.925080"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "airbnb|principal software engineer, performance": {
       "title": "Principal Software Engineer, Performance",
@@ -876,45 +892,55 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=8001092&gh_jid=8001092",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.975721",
-      "date_updated": "2026-06-20T00:54:12.975729"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|customer architect": {
       "title": "Customer Architect",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7725620&gh_jid=7725620",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.977445",
-      "date_updated": "2026-06-20T00:54:12.977457"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|customer architect - emea central ": {
       "title": "Customer Architect - EMEA Central ",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7798319&gh_jid=7798319",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.979064",
-      "date_updated": "2026-06-20T00:54:12.979073"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|elastic ai engineer": {
       "title": "Elastic AI Engineer",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7607148&gh_jid=7607148",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.980752",
-      "date_updated": "2026-06-20T00:54:12.980774"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "elastic|software engineer ii, frontend - brazil": {
       "title": "Software Engineer II, Frontend - Brazil",
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7989431&gh_jid=7989431",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "date_found": "2026-06-20T00:54:12.982464",
-      "date_updated": "2026-06-20T00:54:12.982471"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "stripe|frontend engineer, privy": {
       "title": "Frontend Engineer, Privy",
@@ -1514,10 +1540,12 @@
       "company": "Elastic",
       "url": "https://jobs.elastic.co/jobs?gh_jid=7988387&gh_jid=7988387",
       "score": 62,
-      "status": "new",
+      "status": "rejected",
       "resume": "Kamnee_Maran_Resume_FAANG.pdf",
       "date_found": "2026-06-20T19:50:59.140622",
-      "date_updated": "2026-06-20T19:50:59.140632"
+      "date_updated": "2026-06-27T00:55:15.593671",
+      "date_rejected": "2026-06-27T00:55:15.593671",
+      "notes": "Email scan: rejected"
     },
     "stripe|backend engineer, core tech, canada": {
       "title": "Backend Engineer, Core Tech, Canada",
@@ -1698,6 +1726,78 @@
       "resume": "Kamnee_Maran_Resume_FAANG.pdf",
       "date_found": "2026-06-20T19:50:59.198645",
       "date_updated": "2026-06-20T19:50:59.198650"
+    },
+    "microsoft|unknown role": {
+      "title": "Unknown Role",
+      "company": "Microsoft",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593955",
+      "date_updated": "2026-06-27T00:55:15.593955",
+      "date_applied": "2026-06-27T00:55:15.593955",
+      "notes": "Email scan: applied"
+    },
+    "linkedin|unknown role": {
+      "title": "Unknown Role",
+      "company": "Linkedin",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593968",
+      "date_updated": "2026-06-27T00:55:15.593968",
+      "date_applied": "2026-06-27T00:55:15.593968",
+      "notes": "Email scan: applied"
+    },
+    "agoda|unknown role": {
+      "title": "Unknown Role",
+      "company": "Agoda",
+      "url": "",
+      "score": "",
+      "status": "rejected",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593974",
+      "date_updated": "2026-06-27T00:55:15.593974",
+      "date_rejected": "2026-06-27T00:55:15.593974",
+      "notes": "Email scan: rejected"
+    },
+    "zscaler|unknown role": {
+      "title": "Unknown Role",
+      "company": "Zscaler",
+      "url": "",
+      "score": "",
+      "status": "rejected",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593980",
+      "date_updated": "2026-06-27T00:55:15.593980",
+      "date_rejected": "2026-06-27T00:55:15.593980",
+      "notes": "Email scan: rejected"
+    },
+    "about you|unknown role": {
+      "title": "Unknown Role",
+      "company": "About You",
+      "url": "",
+      "score": "",
+      "status": "rejected",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593985",
+      "date_updated": "2026-06-27T00:55:15.593985",
+      "date_rejected": "2026-06-27T00:55:15.593985",
+      "notes": "Email scan: rejected"
+    },
+    "spotify|unknown role": {
+      "title": "Unknown Role",
+      "company": "Spotify",
+      "url": "",
+      "score": "",
+      "status": "rejected",
+      "resume": "",
+      "date_found": "2026-06-27T00:55:15.593991",
+      "date_updated": "2026-06-27T00:55:15.593991",
+      "date_rejected": "2026-06-27T00:55:15.593991",
+      "notes": "Email scan: rejected"
     }
   }
 }
