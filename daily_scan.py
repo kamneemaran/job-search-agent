@@ -1555,6 +1555,7 @@ def _scrape_company_career_page(source):
 # ---------------------------------------------------------------------------
 _personio_last_call = 0.0  # timestamp of last Personio API call
 _PERSONIO_MIN_DELAY = 3.0  # minimum seconds between Personio requests
+_personio_backoff = 1.0  # multiplier that increases when 429s are hit
 
 
 def _is_personio_source(source):
@@ -1681,19 +1682,21 @@ def fetch_jobs_from_source(source):
             global _personio_last_call
             import time as _time
             elapsed_since_last = _time.time() - _personio_last_call
-            if elapsed_since_last < _PERSONIO_MIN_DELAY:
-                _time.sleep(_PERSONIO_MIN_DELAY - elapsed_since_last)
+            delay = _PERSONIO_MIN_DELAY * _personio_backoff
+            if elapsed_since_last < delay:
+                _time.sleep(delay - elapsed_since_last)
 
             base_url = source["url"].rstrip("/").split("?")[0].rstrip("/")
             api_url = f"{base_url}/search.json"
             resp = None
-            for _attempt in range(3):
+            for _attempt in range(4):
                 try:
                     _personio_last_call = _time.time()
-                    resp = requests.get(api_url, timeout=10)
+                    resp = requests.get(api_url, timeout=15)
                     if resp.status_code == 429:
-                        wait = 2 ** (_attempt + 1)
-                        print(f"  [warn] Personio API returned 429 for {source['name']}, retrying in {wait}s...")
+                        _personio_backoff = min(_personio_backoff * 2, 10.0)
+                        wait = 2 ** (_attempt + 1) * _personio_backoff
+                        print(f"  [warn] Personio API returned 429 for {source['name']}, retrying in {wait:.0f}s...")
                         _time.sleep(wait)
                         continue
                     break
