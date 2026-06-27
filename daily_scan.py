@@ -2056,7 +2056,7 @@ def fetch_jobs_from_source(source):
         elif source.get("ats") == "join" or "join.com/companies/" in source["url"]:
             # JOIN.com: Next.js page with job data in __NEXT_DATA__ → props.pageProps.initialState.jobs.items
             try:
-                resp = requests.get(source["url"], headers=headers, timeout=15)
+                resp = requests.get(source["url"], headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
                 if resp.status_code == 200:
                     import re as _re
                     nd_match = _re.search(r'<script id="__NEXT_DATA__"[^>]*type="application/json"[^>]*>(.*?)</script>', resp.text, _re.DOTALL)

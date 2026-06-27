@@ -10,7 +10,7 @@ EU_JOB_SOURCES = [
     {"name": "Ricola", "url": "https://www.ricola.com/en/about/career/open-positions/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Rivero", "url": "https://join.com/companies/rivero", "region": "EU", "type": "company", "ats": "join"},
     {"name": "Mondelez International", "url": "https://www.mondelezinternational.com/careers/jobs/?term=&jobFamily=JF00064|JF00065|JF00066|JF00068|JF00069|JF00070|JF00071|JF00072|JF00073|JF00074|JF00075&timeType=Full_time", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Swatch Group", "url": "https://www.swatchgroup.com/en/job-finder?jf_country=All&domain=61&position=All&contract=All&time=All", "region": "EU", "type": "company", "playwright": True, "timeout": 30000},
+
     {"name": "UBS", "url": "https://jobs.ubs.com/TGNewUI/Search/Home/Home?partnerid=25008&siteid=5155#keyWordSearch=engineer&locationSearch=&Job%20Type=Full%20Time&Function%20Category=Information%20Technology%20(IT)", "region": "EU", "type": "company", "playwright": True},
     {"name": "SwissBorg", "url": "https://jobs.lever.co/swissborg", "region": "EU", "type": "company", "ats": "lever", "ats_slug": "swissborg"},
     {"name": "VAT Group", "url": "https://careers.vatvalve.com/go/Open-Positions/8941855/", "region": "EU", "type": "company", "playwright": True},
