@@ -792,4 +792,20 @@ EU_JOB_SOURCES = [
     {"name": "Poolia Sweden", "url": "https://karriar.poolia.se/jobs", "region": "SE", "type": "company"},
     {"name": "DIS AG Germany", "url": "https://www.dis-ag.de/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Antal Poland", "url": "https://en.antal.pl/candidates", "region": "PL", "type": "company", "playwright": True},
+
+    # EU scaleups & banks/telecom (added Jun 2026)
+    {"name": "BNP Paribas", "url": "https://group.bnpparibas/en/careers/all-job-offers?page=2&domain=168%7C6&country=8%7C10%7C810%7C43%7C44%7C45%7C46%7C47%7C48%7C49%7C50%7C51%7C52%7C53%7C54%7C55%7C56%7C57%7C58%7C59%7C60%7C61%7C62%7C63%7C64%7C65%7C66%7C67%7C68%7C858%7C859%7C883%7C1402%7C908%7C934%7C1475%7C1995%7C210%7C211%7C212%7C213%7C214%7C215%7C217%7C218%7C219%7C220%7C221%7C222%7C224%7C225%7C226%7C227%7C228", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Societe Generale", "url": "https://careers.societegenerale.com/en/search?refinementList[jobFunction][0]=BJ725", "region": "EU", "type": "company", "playwright": True},
+    {"name": "AXA", "url": "https://careers.axa.com/careers-home/jobs?lang=en-US&page=1&view=search&categories=DATA%20ET%20IA%7CINFORMATION%20TECHNOLOGY", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Checkout.com", "url": "https://www.checkout.com/jobs/?department=Engineering&department=Product&department=Technology", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Back Market", "url": "https://jobs.ashbyhq.com/backmarket?departmentId=b74c11bf-c76c-48c6-a712-431280431377", "region": "EU", "type": "company", "ats": "ashby", "ats_slug": "backmarket"},
+    {"name": "Telefonica", "url": "https://jobs.telefonica.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_dept=&optionsFacetsDD_customfield1=", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Nokia", "url": "https://jobs.nokia.com/en/sites/CX_1/jobs?lastSelectedFacet=CATEGORIES&mode=location&selectedCategoriesFacet=300000009357755", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Vinted", "url": "https://careers.vinted.com/jobs?departments%5B0%5D=Engineering&page=1&q=", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Ericsson", "url": "https://jobs.ericsson.com/careers?start=0&pid=563121776487543&sort_by=hot&filter_function=product+development%2Cit%2Ctechnology+%26+research", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Skyscanner", "url": "https://www.skyscanner.net/jobs/current-jobs", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Bunq", "url": "https://careers.bunq.com/positions", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Sopra Steria", "url": "https://careers.soprasteria.com/jobs?options=211%2C477%2C215%2C510&page=1", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Santander", "url": "https://www.santandercareers.com/Technology-jobs", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Generali", "url": "https://www.generali.com/people-and-careers/work-with-us", "region": "EU", "type": "company", "playwright": True},
 ]

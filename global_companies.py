@@ -29,4 +29,19 @@ GLOBAL_JOB_SOURCES = [
     {"name": "xad-technologies", "url": "https://www.careers-page.com/xad-technologies#openings", "region": "Global", "type": "company", "playwright": True},
     {"name": "Veriff", "url": "https://www.veriff.com/careers/open-positions", "region": "Global", "type": "company", "playwright": True},
     {"name": "Multiverse Computing", "url": "https://multiversecomputing.teamtailor.com/jobs", "region": "Global", "type": "company", "ats": "teamtailor"},
+
+    # US tech companies with EU engineering hubs
+    {"name": "Google", "url": "https://www.google.com/about/careers/applications/jobs/results/?q=(%22Software%20Engineer%22%20OR%20%22Software%20Developer%22%20OR%20%22Full%20Stack%20Engineer%22)%20AND%20(%22Distributed%20Systems%22%20OR%20%22Microservices%22%20OR%20%22API%20Design%22%20OR%20%22Cloud%20Architecture%22%20OR%20%22Frontend%22%20OR%20%22Backend%22%20OR%20%22DevOps%22%20OR%20%22CI%2FCD%22%20OR%20%22Scalability%22%20OR%20%22System%20Design%22)&employment_type=FULL_TIME&e=72477625&company=DeepMind&company=YouTube&company=Google&location=United%20States&location=India&location=Poland&location=Singapore&target_level=ADVANCED&target_level=MID", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Databricks", "url": "https://www.databricks.com/company/careers/open-positions?department=Engineering&location=all", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "databricks"},
+    {"name": "Cloudflare", "url": "https://www.cloudflare.com/careers/jobs/", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "cloudflare"},
+    {"name": "MongoDB", "url": "https://www.mongodb.com/company/careers/see-jobs", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "mongodb"},
+    {"name": "HashiCorp (via IBM)", "url": "https://www.ibm.com/careers/search?field_keyword_08[0]=Software%20Engineering&field_keyword_08[1]=Consulting&q=hashicorp", "region": "Global", "type": "company", "playwright": True},
+    {"name": "OpenAI", "url": "https://openai.com/careers/search/", "region": "Global", "type": "company", "ats": "ashby", "ats_slug": "openai"},
+    {"name": "GitHub", "url": "https://www.github.careers/careers-home/jobs?categories=Engineering&page=1", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Red Hat", "url": "https://redhat.wd5.myworkdayjobs.com/jobs/?d=c18026e77576010f6ef6126f4e43ec4a", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Docker", "url": "https://www.docker.com/career-openings/", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "docker"},
+    {"name": "Grafana Labs", "url": "https://job-boards.greenhouse.io/grafanalabs?departments%5B%5D=4044009004", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "grafanalabs"},
+    {"name": "Twilio", "url": "https://jobs.twilio.com/careers?start=0&pid=1099554183267&sort_by=timestamp&filter_custom_department=it%2Cproduct+%26+engineering", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "twilio"},
+    {"name": "Okta", "url": "https://www.okta.com/company/careers/job-listing/?department=4183&location=All", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "okta"},
+    {"name": "Palantir", "url": "https://www.palantir.com/careers/open-positions/?business-area=Product+Development", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "palantir"},
 ]

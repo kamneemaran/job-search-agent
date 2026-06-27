@@ -16,4 +16,27 @@ APAC_JOB_SOURCES = [
     {"name": "Sciente International", "url": "https://www.scienteinternational.com/candidates/it-technology-jobs", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Aryan Solutions", "url": "https://aryan-solutions.com/permanent-recruitment", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Workforce Australia via Recruiter", "url": "https://www.workforceaustralia.gov.au/individuals/jobs/details/2338683139#contentA", "region": "APAC", "type": "company", "playwright": True},
+
+    # Indian product companies
+    {"name": "Swiggy", "url": "https://careers.swiggy.com/#!/jobs", "region": "India", "type": "company", "playwright": True},
+    {"name": "Razorpay", "url": "https://job-boards.greenhouse.io/razorpaysoftwareprivatelimited", "region": "India", "type": "company", "ats": "greenhouse", "ats_slug": "razorpaysoftwareprivatelimited"},
+    {"name": "CRED", "url": "https://jobs.lever.co/cred", "region": "India", "type": "company", "ats": "lever", "ats_slug": "cred"},
+    {"name": "Nykaa", "url": "https://careers.nykaa.com/", "region": "India", "type": "company", "playwright": True},
+    {"name": "MakeMyTrip", "url": "https://careers.makemytrip.com/", "region": "India", "type": "company", "playwright": True},
+    {"name": "OYO", "url": "https://www.oyorooms.com/careers/", "region": "India", "type": "company", "playwright": True},
+    {"name": "Zerodha", "url": "https://zerodha.com/careers", "region": "India", "type": "company", "playwright": True},
+    {"name": "Groww", "url": "https://job-boards.greenhouse.io/groww", "region": "India", "type": "company", "ats": "greenhouse", "ats_slug": "groww"},
+    {"name": "Pine Labs", "url": "https://www.pinelabs.com/careers/open-jobs", "region": "India", "type": "company", "playwright": True},
+    {"name": "InMobi", "url": "https://www.inmobi.com/company/careers", "region": "India", "type": "company", "playwright": True},
+    {"name": "Urban Company", "url": "https://careers.urbancompany.com/", "region": "India", "type": "company", "playwright": True},
+    {"name": "Meesho", "url": "https://jobs.lever.co/meesho", "region": "India", "type": "company", "ats": "lever", "ats_slug": "meesho"},
+
+    # APAC tech companies
+    {"name": "Tencent", "url": "https://careers.tencent.com/en-us/search.html?query=ot_40001002,ot_40001001,ot_40001003,ot_40001004,ot_40001005,ot_40001006,at_1", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Sea Limited", "url": "https://career.sea.com/jobs?&keyword=&job_categories=6&teams=107458", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Alibaba (AIDC)", "url": "https://aidc-jobs.alibaba.com/home?lang=en", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Rakuten", "url": "https://japan-job-en.rakuten.careers/engineering-en", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Samsung", "url": "https://www.samsungcareers.com/?lang=en", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Wipro", "url": "https://careers.wipro.com/go/Engineering/9369255/", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Flipkart", "url": "https://www.flipkartcareers.com/jobslist", "region": "India", "type": "company", "playwright": True},
 ]
