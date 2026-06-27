@@ -1691,7 +1691,7 @@ def fetch_jobs_from_source(source):
             # Personio: https://company.jobs.personio.de/search.json
             # Throttle to avoid 429 rate limits
             with _personio_lock:
-                global _personio_last_call
+                global _personio_last_call, _personio_backoff
                 import time as _time
                 elapsed_since_last = _time.time() - _personio_last_call
                 delay = _PERSONIO_MIN_DELAY * _personio_backoff
