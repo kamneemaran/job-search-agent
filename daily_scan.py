@@ -2793,6 +2793,23 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
                 except Exception:
                     pass
 
+            # Fallback: try "Next" pagination link
+            next_btn = page.query_selector(
+                'a:has-text("Next"), a:has-text("next"), a:has-text("›"), a:has-text("»"), '
+                'button:has-text("Next"), button:has-text("next"), button:has-text("›"), button:has-text("»"), '
+                'a[rel="next"], link[rel="next"], '
+                '[aria-label="Next"], [aria-label="next"], '
+                '[class*="next"]'
+            )
+            if next_btn:
+                try:
+                    next_btn.scroll_into_view_if_needed()
+                    next_btn.click()
+                    page.wait_for_timeout(wait_ms)
+                    continue
+                except Exception:
+                    pass
+
             # Fallback: infinite scroll - scroll to bottom
             prev_height = page.evaluate("document.body.scrollHeight")
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")

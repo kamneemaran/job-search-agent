@@ -34,8 +34,8 @@ APAC_JOB_SOURCES = [
     # Indian SAP consultancies / system integrators
     {"name": "HCL Technologies", "url": "https://careers.hcltech.com/go/NonTPDemand/9558355/", "region": "India", "type": "company", "playwright": True},
     {"name": "Tech Mahindra", "url": "https://careers.techmahindra.com/currentopportunity.aspx", "region": "India", "type": "company", "playwright": True},
-    {"name": "LTIMindtree", "url": "https://www.ltimindtree.com/careers/", "region": "India", "type": "company", "playwright": True},
-    {"name": "Mphasis", "url": "https://www.mphasis.com/careers.html", "region": "India", "type": "company", "playwright": True},
+    {"name": "LTIMindtree", "url": "https://careers.ltimindtree.com/search/?q=&sortColumn=referencedate&sortDirection=desc", "region": "India", "type": "company", "playwright": True},
+    {"name": "Mphasis", "url": "https://mphasis.ripplehire.com/candidate/?token=ty4DfyWddnOrtpclQeia&source=CAREERSITE#list", "region": "India", "type": "company", "playwright": True},
     {"name": "Hexaware", "url": "https://jobs.hexaware.com/#en/sites/CX_1/jobs", "region": "India", "type": "company", "playwright": True},
     {"name": "Birlasoft", "url": "https://jobs.birlasoft.com/search/?createNewAlert=false&q=&optionsFacetsDD_country=&optionsFacetsDD_department=", "region": "India", "type": "company", "playwright": True},
     {"name": "Zensar (EU)", "url": "https://fa-etvl-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?lastSelectedFacet=LOCATIONS&selectedLocationsFacet=300000000435067%3B300000000435373%3B100000025362613%3B100000025362627%3B100000025364817", "region": "EU", "type": "company", "playwright": True},
