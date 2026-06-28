@@ -827,5 +827,6 @@ EU_JOB_SOURCES = [
     {"name": "SNP Group (Central Europe)", "url": "https://www.snpgroup.com/en/career/central-europe/", "region": "EU", "type": "company", "playwright": True},
     {"name": "SNP Group (Asia)", "url": "https://www.snpgroup.com/en/career/asia/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "SNP Group (Slovakia)", "url": "https://www.snpgroup.com/en/career/slovakia/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "SNP Group (America)", "url": "https://snpgroup.clayhr.com/jobboard/#/positions", "region": "US", "type": "company", "playwright": True},
     {"name": "Seidor", "url": "https://www.seidor.com/careers", "region": "EU", "type": "company", "playwright": True},
 ]
