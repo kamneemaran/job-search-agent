@@ -33,7 +33,7 @@ APAC_JOB_SOURCES = [
 
     # Indian SAP consultancies / system integrators
     {"name": "HCL Technologies", "url": "https://careers.hcltech.com/go/NonTPDemand/9558355/", "region": "India", "type": "company", "playwright": True},
-    {"name": "Tech Mahindra", "url": "https://careers.techmahindra.com/currentopportunity.aspx", "region": "India", "type": "company", "playwright": True},
+    {"name": "Tech Mahindra", "url": "https://careers.techmahindra.com/CurrentOpportunity.aspx#Advance", "region": "India", "type": "company", "playwright": True},
     {"name": "LTIMindtree", "url": "https://careers.ltimindtree.com/search/?q=&sortColumn=referencedate&sortDirection=desc", "region": "India", "type": "company", "playwright": True},
     {"name": "Mphasis", "url": "https://mphasis.ripplehire.com/candidate/?token=ty4DfyWddnOrtpclQeia&source=CAREERSITE#list", "region": "India", "type": "company", "playwright": True},
     {"name": "Hexaware", "url": "https://jobs.hexaware.com/#en/sites/CX_1/jobs", "region": "India", "type": "company", "playwright": True},
