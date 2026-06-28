@@ -1428,15 +1428,32 @@ def _scrape_company_career_page(source):
                 seen_urls.add(j["url"])
                 jobs.append(j)
 
-        # Try "Show More" / "Load More" buttons up to 5 times
+        # Try "Show More" / "Load More" / "Show more results" buttons up to 5 times
         for _sm in range(5):
             show_more = page.query_selector(
                 'button:has-text("Show More"), button:has-text("show more"), '
                 'button:has-text("Load More"), button:has-text("load more"), '
+                'button:has-text("Show more results"), button:has-text("show more results"), '
+                'button:has-text("More Results"), button:has-text("more results"), '
+                'button:has-text("View More"), button:has-text("view more"), '
+                'button:has-text("See More"), button:has-text("see more"), '
+                'button:has-text("More jobs"), button:has-text("more jobs"), '
+                'button:has-text("Load more jobs"), button:has-text("load more jobs"), '
+                'button:has-text("View All"), button:has-text("view all"), '
                 'a:has-text("Show More"), a:has-text("show more"), '
                 'a:has-text("Load More"), a:has-text("load more"), '
+                'a:has-text("Show more results"), a:has-text("show more results"), '
+                'a:has-text("More Results"), a:has-text("more results"), '
+                'a:has-text("View More"), a:has-text("view more"), '
+                'a:has-text("See More"), a:has-text("see more"), '
+                'a:has-text("More jobs"), a:has-text("more jobs"), '
+                'a:has-text("View All"), a:has-text("view all"), '
                 '[class*="show-more"], [class*="showMore"], '
-                '[class*="load-more"], [class*="loadMore"]'
+                '[class*="load-more"], [class*="loadMore"], '
+                '[class*="load-more-jobs"], [class*="loadMoreJobs"], '
+                '[class*="show-more-results"], [class*="showMoreResults"], '
+                '[class*="view-more"], [class*="viewMore"], '
+                '[class*="view-all"], [class*="viewAll"]'
             )
             if show_more:
                 try:
@@ -2744,14 +2761,27 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
             load_more_btn = page.query_selector(
                 'button:has-text("Load More"), button:has-text("load more"), '
                 'button:has-text("Show More"), button:has-text("show more"), '
-                'button:has-text("More Results"), button:has-text("View More"), '
+                'button:has-text("Show more results"), button:has-text("show more results"), '
+                'button:has-text("More Results"), button:has-text("more results"), '
+                'button:has-text("View More"), button:has-text("view more"), '
                 'button:has-text("See More"), button:has-text("see more"), '
+                'button:has-text("More jobs"), button:has-text("more jobs"), '
+                'button:has-text("Load more jobs"), button:has-text("load more jobs"), '
+                'button:has-text("View All"), button:has-text("view all"), '
                 'a:has-text("Load More"), a:has-text("load more"), '
                 'a:has-text("Show More"), a:has-text("show more"), '
-                'a:has-text("More Results"), a:has-text("View More"), '
+                'a:has-text("Show more results"), a:has-text("show more results"), '
+                'a:has-text("More Results"), a:has-text("more results"), '
+                'a:has-text("View More"), a:has-text("view more"), '
                 'a:has-text("See More"), a:has-text("see more"), '
+                'a:has-text("More jobs"), a:has-text("more jobs"), '
+                'a:has-text("View All"), a:has-text("view all"), '
                 '[class*="load-more"], [class*="loadMore"], '
                 '[class*="show-more"], [class*="showMore"], '
+                '[class*="load-more-jobs"], [class*="loadMoreJobs"], '
+                '[class*="show-more-results"], [class*="showMoreResults"], '
+                '[class*="view-more"], [class*="viewMore"], '
+                '[class*="view-all"], [class*="viewAll"], '
                 '[data-testid*="load-more"], [data-testid*="show-more"]'
             )
             if load_more_btn:
@@ -2892,8 +2922,14 @@ def search_workingnomads(query, location="Remote", max_results=50):
         for _ in range(5):
             load_more = page.query_selector(
                 'button:has-text("Load More"), button:has-text("Show More"), '
+                'button:has-text("Show more results"), button:has-text("More jobs"), '
+                'button:has-text("View More"), button:has-text("See More"), '
                 'a:has-text("Load More"), a:has-text("Show More"), '
-                '[class*="load-more"], [class*="loadMore"]'
+                'a:has-text("Show more results"), a:has-text("More jobs"), '
+                'a:has-text("View More"), a:has-text("See More"), '
+                '[class*="load-more"], [class*="loadMore"], '
+                '[class*="show-more"], [class*="showMore"], '
+                '[class*="view-more"], [class*="viewMore"]'
             )
             if load_more:
                 try:
@@ -2961,7 +2997,13 @@ def search_jobspresso(query, location="Remote", max_results=50):
             load_more = page.query_selector(
                 'button:has-text("Load More"), a:has-text("Load More"), '
                 'button:has-text("Show More"), a:has-text("Show More"), '
+                'button:has-text("Show more results"), a:has-text("Show more results"), '
+                'button:has-text("More jobs"), a:has-text("More jobs"), '
+                'button:has-text("View More"), a:has-text("View More"), '
+                'button:has-text("See More"), a:has-text("See More"), '
                 '[class*="load_more"], [class*="load-more"], '
+                '[class*="show-more"], [class*="showMore"], '
+                '[class*="view-more"], [class*="viewMore"], '
                 '.load_more_jobs, a.load_more_listings'
             )
             if load_more:
