@@ -711,7 +711,7 @@ def _derive_title_keywords(current_role, years_experience):
         "devops": ["platform engineer", "infrastructure engineer"],
         "system design": ["systems architect"],
         "sap mm": ["sap mm consultant", "sap mm lead", "sap materials management consultant"],
-        "sap s/4hana": ["sap s/4hana consultant", "sap s/4hana lead", "sap consultant"],
+        "sap s/4hana": ["sap s/4hana consultant", "sap s/4hana lead", "sap s4hana consultant", "sap s4hana lead", "sap consultant"],
         "sap": ["sap consultant", "sap lead"],
         "erp": ["erp consultant", "erp lead"],
         "procurement": ["procurement consultant", "procurement lead"],
@@ -855,12 +855,21 @@ def score_job(title, description, company, location=""):
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
-    # --- SAP roles: if title mentions SAP, require SAP MM in JD ---
-    title_lower = title.lower().replace("-", " ")  # normalize hyphens for matching
+    # --- SAP roles: only filter if title specifies a non-matching SAP module ---
+    title_lower = title.lower().replace("-", " ").replace("/", " ")  # normalize separators for matching
+    title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)  # strip brackets
+    title_lower = re.sub(r'\s+', ' ', title_lower).strip()
     has_sap_in_title = "sap" in title_lower or "abap" in title_lower
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
-    if has_sap_in_title and has_sap_skills and "sap mm" not in text:
-        return 0, "Filtered: SAP role requires SAP MM in JD"
+    if has_sap_in_title and has_sap_skills:
+        profile_sap_modules = {s.lower() for s in PROFILE["core_skills"] if "sap" in s}
+        _known_modules = ["sap mm", "sap sd", "sap fi", "sap co", "sap hr", "sap hcm",
+                          "sap payroll", "sap successfactors", "sap s/4hana", "sap s4hana",
+                          "sap abap", "sap basis", "sap bi", "sap bw", "sap fiori",
+                          "sap hana", "sap payroll", "sap pp", "sap qm", "sap pm"]
+        title_modules = {m for m in _known_modules if re.search(r'\b' + re.escape(m) + r'\b', title_lower)}
+        if title_modules and not title_modules & profile_sap_modules:
+            return 0, f"Filtered: title specifies non-matching SAP module"
 
     # --- Skill scoring (word-boundary matching; up to 50 points) ---
     skill_hits = sum(1 for skill in PROFILE["core_skills"]
@@ -881,7 +890,11 @@ def score_job(title, description, company, location=""):
         full_role_variants = [kw for kw in title_keywords if " " in kw]
         # Single words are partial matches only
         partial_words = [kw for kw in title_keywords if " " not in kw]
-        if any(variant in title_lower for variant in full_role_variants):
+        # Word-level match: check if all words of a variant appear in title (any order)
+        title_words = set(title_lower.split())
+        def _words_in_title(variant):
+            return set(variant.split()).issubset(title_words)
+        if any(_words_in_title(v) for v in full_role_variants):
             title_relevance = 30
         elif any(kw in title_lower for kw in partial_words):
             title_relevance = 10
@@ -930,7 +943,9 @@ def _title_only_bypass(job, score, relocation_note, threshold):
     """If description is too short to score skills but title matches well, auto-pass."""
     if score >= threshold or len(job.get("description", "")) >= 100:
         return score, relocation_note
-    title_lower = job["title"].lower().replace("-", " ")
+    title_lower = job["title"].lower().replace("-", " ").replace("/", " ")
+    title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)
+    title_lower = re.sub(r'\s+', ' ', title_lower).strip()
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), PROFILE["years_experience"])
     if title_keywords:
         # Check multi-word role variants (e.g. "software engineer", "platform engineer",
@@ -940,7 +955,8 @@ def _title_only_bypass(job, score, relocation_note, threshold):
         # Exclude ambiguous variants that match non-software roles (aerospace, IT, etc.)
         _BYPASS_AMBIGUOUS = {"systems engineer", "systems architect", "distributed systems engineer"}
         full_role_variants = [kw for kw in title_keywords if " " in kw and kw not in _BYPASS_AMBIGUOUS]
-        if any(variant in title_lower for variant in full_role_variants):
+        title_words = set(title_lower.split())
+        if any(set(v.split()).issubset(title_words) for v in full_role_variants):
             score = max(score, 72)
             relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
     return score, relocation_note
@@ -2409,7 +2425,7 @@ def search_naukri(query, location="India", max_results=50):
                 if not title:
                     title = job.get("JOB_SPEC", "").strip()
                 company = job.get("companyName", "Unknown").strip()
-                loc_raw = job.get("cityfield", "")
+                loc_raw = job.get("cityfield") or ""
                 loc_clean = re.sub(r'\s{2,}', ', ', loc_raw).strip()
                 loc_clean = re.sub(r'\s*\(.*?\)\s*', '', loc_clean)
                 loc_clean = ', '.join(dict.fromkeys(loc_clean.split(', ')))
