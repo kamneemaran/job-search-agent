@@ -3715,6 +3715,7 @@ def build_email_html(matches, failed_parse=None):
           <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
             <a href="{m['url']}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
+            <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
           </p>
           <p style="margin:0 0 8px;font-size:14px;"><b>Fit score: {m['score']}%</b></p>
           {salary_line}
@@ -4977,6 +4978,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
@@ -5047,7 +5049,7 @@ def main():
                             salary_info = get_salary_info(job["company"], job["title"], job["description"])
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
-                                                "salary_info": salary_info})
+                                                "salary_info": salary_info, "source": board_name})
                         elif score >= 50:
                             print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
                 elapsed = (datetime.now() - t0).total_seconds()
@@ -5098,7 +5100,7 @@ def main():
                         salary_info = get_salary_info(job["company"], job["title"], job["description"])
                         all_matches.append({**job, "score": score, "resume": resume,
                                             "relocation_note": relocation_note, "suggestions": suggestions,
-                                            "salary_info": salary_info})
+                                            "salary_info": salary_info, "source": pw_name})
                     elif score >= 50:
                         print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
             except Exception as e:
@@ -5124,7 +5126,7 @@ def main():
                             salary_info = get_salary_info(job["company"], job["title"], job["description"])
                             all_matches.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
-                                                "salary_info": salary_info})
+                                                "salary_info": salary_info, "source": pw_name})
                         elif score >= 50:
                             print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
                 except Exception as e:
@@ -5169,6 +5171,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
@@ -5197,6 +5200,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
@@ -5227,6 +5231,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
@@ -5257,6 +5262,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
@@ -5287,6 +5293,7 @@ def main():
                         "relocation_note": relocation_note,
                         "suggestions": suggestions,
                         "salary_info": salary_info,
+                        "source": source["name"],
                     })
                 elif score >= 50:
                     print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
