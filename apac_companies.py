@@ -22,7 +22,7 @@ APAC_JOB_SOURCES = [
     {"name": "Razorpay", "url": "https://job-boards.greenhouse.io/razorpaysoftwareprivatelimited", "region": "India", "type": "company", "ats": "greenhouse", "ats_slug": "razorpaysoftwareprivatelimited"},
     {"name": "CRED", "url": "https://jobs.lever.co/cred", "region": "India", "type": "company", "ats": "lever", "ats_slug": "cred"},
     {"name": "Nykaa", "url": "https://careers.nykaa.com/", "region": "India", "type": "company", "playwright": True},
-    {"name": "MakeMyTrip", "url": "https://careers.makemytrip.com/", "region": "India", "type": "company", "playwright": True},
+    {"name": "MakeMyTrip", "url": "https://careers.makemytrip.com/", "region": "India", "type": "company", "playwright": True, "timeout": 30000},
     {"name": "OYO", "url": "https://www.oyorooms.com/careers/", "region": "India", "type": "company", "playwright": True},
     {"name": "Zerodha", "url": "https://zerodha.com/careers", "region": "India", "type": "company", "playwright": True},
     {"name": "Groww", "url": "https://job-boards.greenhouse.io/groww", "region": "India", "type": "company", "ats": "greenhouse", "ats_slug": "groww"},
@@ -30,6 +30,15 @@ APAC_JOB_SOURCES = [
     {"name": "InMobi", "url": "https://www.inmobi.com/company/careers", "region": "India", "type": "company", "playwright": True},
     {"name": "Urban Company", "url": "https://careers.urbancompany.com/", "region": "India", "type": "company", "playwright": True},
     {"name": "Meesho", "url": "https://jobs.lever.co/meesho", "region": "India", "type": "company", "ats": "lever", "ats_slug": "meesho"},
+
+    # Indian SAP consultancies / system integrators
+    {"name": "HCL Technologies", "url": "https://careers.hcltech.com/go/NonTPDemand/9558355/", "region": "India", "type": "company", "playwright": True},
+    {"name": "Tech Mahindra", "url": "https://careers.techmahindra.com/currentopportunity.aspx", "region": "India", "type": "company", "playwright": True},
+    {"name": "LTIMindtree", "url": "https://www.ltimindtree.com/careers/", "region": "India", "type": "company", "playwright": True},
+    {"name": "Mphasis", "url": "https://www.mphasis.com/careers.html", "region": "India", "type": "company", "playwright": True},
+    {"name": "Hexaware", "url": "https://hexaware.com/careers/", "region": "India", "type": "company", "playwright": True},
+    {"name": "Birlasoft", "url": "https://www.birlasoft.com/careers", "region": "India", "type": "company", "playwright": True},
+    {"name": "Zensar", "url": "https://www.zensar.com/careers", "region": "India", "type": "company", "playwright": True},
 
     # APAC tech companies
     {"name": "Tencent", "url": "https://careers.tencent.com/en-us/search.html?query=ot_40001002,ot_40001001,ot_40001003,ot_40001004,ot_40001005,ot_40001006,at_1", "region": "APAC", "type": "company", "playwright": True},

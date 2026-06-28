@@ -710,6 +710,11 @@ def _derive_title_keywords(current_role, years_experience):
         "data pipelines": ["data platform engineer"],
         "devops": ["platform engineer", "infrastructure engineer"],
         "system design": ["systems architect"],
+        "sap mm": ["sap mm consultant", "sap mm lead", "sap materials management consultant"],
+        "sap s/4hana": ["sap s/4hana consultant", "sap s/4hana lead", "sap consultant"],
+        "sap": ["sap consultant", "sap lead"],
+        "erp": ["erp consultant", "erp lead"],
+        "procurement": ["procurement consultant", "procurement lead"],
     }
     core_skills = PROFILE.get("core_skills", [])
     for skill, role_variants in _skill_role_map.items():
@@ -1412,7 +1417,7 @@ def _scrape_company_career_page(source):
         browser = _get_browser()
         page = browser.new_page()
         _with_stealth(page)
-        pw_timeout = source.get("timeout", 10000)
+        pw_timeout = source.get("timeout", 20000)
         page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
 
@@ -1422,6 +1427,31 @@ def _scrape_company_career_page(source):
             if j["url"] not in seen_urls:
                 seen_urls.add(j["url"])
                 jobs.append(j)
+
+        # Try "Show More" / "Load More" buttons up to 5 times
+        for _sm in range(5):
+            show_more = page.query_selector(
+                'button:has-text("Show More"), button:has-text("show more"), '
+                'button:has-text("Load More"), button:has-text("load more"), '
+                'a:has-text("Show More"), a:has-text("show more"), '
+                'a:has-text("Load More"), a:has-text("load more"), '
+                '[class*="show-more"], [class*="showMore"], '
+                '[class*="load-more"], [class*="loadMore"]'
+            )
+            if show_more:
+                try:
+                    show_more.scroll_into_view_if_needed()
+                    show_more.click()
+                    page.wait_for_timeout(2000)
+                    page_jobs = _extract_links(page)
+                    for j in page_jobs:
+                        if j["url"] not in seen_urls:
+                            seen_urls.add(j["url"])
+                            jobs.append(j)
+                    continue
+                except Exception:
+                    pass
+            break
 
         # Pagination: up to 5 additional pages
         for _pg in range(2, 7):
@@ -2855,7 +2885,7 @@ def search_workingnomads(query, location="Remote", max_results=50):
         )
         page = context.new_page()
         _with_stealth(page)
-        page.goto("https://www.workingnomads.com/jobs", timeout=30000, wait_until="networkidle")
+        page.goto("https://www.workingnomads.com/jobs", timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Click Load More / scroll for more results
@@ -3063,7 +3093,7 @@ def search_bulldogjob(query, location="Remote", max_results=50):
         )
         page = context.new_page()
         _with_stealth(page)
-        page.goto(f"https://bulldogjob.pl/companies/jobs/s/skills,{q}", timeout=30000, wait_until="networkidle")
+        page.goto(f"https://bulldogjob.pl/companies/jobs/s/skills,{q}", timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Click Load More / scroll for more results
@@ -4265,6 +4295,15 @@ def search_incluso(query, location="Remote", max_results=50):
 # 7. MAIN
 # ---------------------------------------------------------------------------
 
+def _fetch_source_jobs(src):
+    """Run in child process — each process gets its own Playwright browser."""
+    try:
+        jobs = fetch_jobs_from_source(src)
+        return src, jobs, None
+    except Exception as e:
+        return src, [], str(e)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Daily Job Scanner")
     parser.add_argument("--name", help="Your name (overrides PROFILE)")
@@ -4584,56 +4623,44 @@ def main():
 
     # --- EU companies (batch: eu) ---
     if args.batch == "eu":
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        _print_lock = threading.Lock()
+        import multiprocessing as _mp
+        _mp.set_start_method("spawn", force=True)
+
         sources = list(_interleave_sources(EU_JOB_SOURCES))
 
-        def _process_eu_source(src):
-            try:
-                t0 = datetime.now()
-                with _print_lock:
-                    print(f"Scanning: {src['name']} ({src.get('region','EU')}) - {src['url']}")
-                jobs = fetch_jobs_from_source(src)
-                return src, jobs, t0, None
-            except Exception as e:
-                return src, [], datetime.now(), str(e)
+        with _mp.Pool(processes=3) as pool:
+            results = pool.map(_fetch_source_jobs, sources)
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {executor.submit(_process_eu_source, s): s for s in sources}
-            for future in as_completed(futures):
-                source, jobs, t0, error = future.result()
-                elapsed = (datetime.now() - t0).total_seconds()
-                if error:
-                    with _print_lock:
-                        print(f"  [error] {source['name']}: {error}")
+        for source, jobs, error in results:
+            print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
+            t0 = datetime.now()
+            if error:
+                print(f"  [error] {source['name']}: {error}")
+                continue
+            if not jobs:
+                failed_parse.append(source)
+            print(f"  Done - {source['name']} ({(datetime.now()-t0).total_seconds():.1f}s, {len(jobs)} jobs)")
+            for job in jobs:
+                if not should_include(job):
                     continue
-                if not jobs:
-                    failed_parse.append(source)
-                with _print_lock:
-                    print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
-                for job in jobs:
-                    if not should_include(job):
-                        continue
-                    score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                    score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                    if score >= args.threshold:
-                        with _print_lock:
-                            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                        resume = pick_resume(job["company"])
-                        suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                        all_matches.append({
-                            **job,
-                            "score": score,
-                            "resume": resume,
-                            "company_url": company_url(job["company"], source.get("url")),
-                            "relocation_note": relocation_note,
-                            "suggestions": suggestions,
-                            "salary_info": salary_info,
-                        })
-                    elif score >= 50:
-                        with _print_lock:
-                            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+                score, relocation_note = score_job(job["title"], job["description"], job["company"])
+                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
+                if score >= args.threshold:
+                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
+                    resume = pick_resume(job["company"])
+                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
+                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
+                    all_matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(job["company"], source.get("url")),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                    })
+                elif score >= 50:
+                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
 
     # --- Global companies / recruiters (batch: global) ---
     if args.batch == "global":
