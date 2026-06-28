@@ -4350,6 +4350,141 @@ def search_incluso(query, location="Remote", max_results=50):
     return jobs
 
 
+def search_workinfinland(query, location="Finland", max_results=50):
+    """Search Work in Finland for jobs using Playwright (Next.js, paginated)."""
+    jobs = []
+    cats = "ict%2Csoftware-development%2Cengineering"
+    from urllib.parse import quote
+    q = quote(query.strip())
+    max_pages = 5
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        for pg in range(1, max_pages + 1):
+            page_url = f"https://www.workinfinland.com/en/open-jobs/?category={cats}&query={q}&page={pg}"
+            page.goto(page_url, timeout=30000, wait_until="domcontentloaded")
+            page.wait_for_timeout(3000)
+            try:
+                btn = page.query_selector('button:has-text("Allow all")')
+                if btn:
+                    btn.click()
+                    page.wait_for_timeout(1000)
+            except Exception:
+                pass
+            cards = page.query_selector_all("a.job-card")
+            if not cards:
+                break
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                try:
+                    title_el = card.query_selector(".job-card__title")
+                    company_el = card.query_selector(".job-card__employerName")
+                    loc_el = card.query_selector(".job-card--footer--left-item")
+                    title = title_el.inner_text().strip() if title_el else ""
+                    company = company_el.inner_text().strip() if company_el else ""
+                    loc_text = loc_el.inner_text().strip() if loc_el else location
+                    href = card.get_attribute("href") or ""
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": loc_text,
+                        "url": href if href.startswith("http") else f"https://www.workinfinland.com{href}",
+                        "description": f"Work in Finland: {title} at {company}",
+                    })
+                except Exception:
+                    continue
+            if len(jobs) >= max_results:
+                break
+            page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [workinfinland] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [workinfinland] Error: {e}")
+    return jobs
+
+
+def search_eures(query, location="Europe", max_results=50):
+    """Search EURES via their Angular app API (requires Playwright session)."""
+    jobs = []
+    query_lower = query.lower()
+    query_terms = query_lower.split()
+    country_codes = ["at", "be", "ch", "de", "dk", "lu", "nl", "pl", "se"]
+    max_pages = 3
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        base_url = "https://europa.eu/eures/portal/jv-se/search?lang=en"
+        page.goto(base_url, timeout=30000, wait_until="domcontentloaded")
+        page.wait_for_timeout(3000)
+
+        for pg in range(1, max_pages + 1):
+            results = page.evaluate('''(args) => fetch('https://europa.eu/eures/api/jv-searchengine/public/jv-search/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                body: JSON.stringify({
+                    resultsPerPage: 50,
+                    page: args.pg,
+                    sortSearch: 'BEST_MATCH',
+                    keywords: [],
+                    publicationPeriod: null,
+                    occupationUris: [],
+                    skillUris: [],
+                    requiredExperienceCodes: [],
+                    positionScheduleCodes: ['fulltime'],
+                    sectorCodes: ['k', 'n'],
+                    locationCodes: args.locCodes,
+                    requiredLanguages: [{"isoCode": "en", "level": "C2"}],
+                    requestLanguage: 'en'
+                })
+            }).then(r => r.json()).then(d => d.jvs || [])''', {"pg": pg, "locCodes": country_codes})
+            if not results:
+                break
+            for item in results:
+                if len(jobs) >= max_results:
+                    break
+                title = item.get("title", "")
+                if not title:
+                    continue
+                desc = item.get("description", "")
+                # Client-side keyword filter
+                if not all(term in title.lower() or term in desc.lower() for term in query_terms):
+                    continue
+                employer = item.get("employer") or {}
+                company = employer.get("name", "") if isinstance(employer, dict) else ""
+                loc_codes = list(item.get("locationMap", {}).keys())
+                loc = ", ".join(loc_codes) if loc_codes else location
+                job_id = item.get("id", "")
+                url = f"https://europa.eu/eures/portal/jv-se/jv-details/{job_id}" if job_id else ""
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": url,
+                    "description": desc or f"EURES: {title}",
+                })
+            if len(jobs) >= max_results or len(results) < 50:
+                break
+            page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [eures] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [eures] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -4563,6 +4698,8 @@ def main():
         ("Arbeitnow", search_arbeitnow),
         ("VisaSponsor", search_visasponsor),
         ("Incluso", search_incluso),
+        ("WorkinFinland", search_workinfinland),
+        ("EURES", search_eures),
     ]
     # Split boards: boards-major = global/major boards, boards-niche = niche/regional boards
     _split = 10
@@ -4575,7 +4712,7 @@ def main():
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
-                eu_boards = {"Xing", "JobsCh", "JobsinGermany"}
+                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
