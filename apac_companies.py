@@ -38,7 +38,9 @@ APAC_JOB_SOURCES = [
     {"name": "Mphasis", "url": "https://www.mphasis.com/careers.html", "region": "India", "type": "company", "playwright": True},
     {"name": "Hexaware", "url": "https://hexaware.com/careers/", "region": "India", "type": "company", "playwright": True},
     {"name": "Birlasoft", "url": "https://www.birlasoft.com/careers", "region": "India", "type": "company", "playwright": True},
-    {"name": "Zensar", "url": "https://www.zensar.com/careers", "region": "India", "type": "company", "playwright": True},
+    {"name": "Zensar (EU)", "url": "https://fa-etvl-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?lastSelectedFacet=LOCATIONS&selectedLocationsFacet=300000000435067%3B300000000435373%3B100000025362613%3B100000025362627%3B100000025364817", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Zensar (India)", "url": "https://fa-etvl-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?lastSelectedFacet=LOCATIONS&selectedLocationsFacet=300000000435151%3B300000000389881%3B300000000435178%3B300000000435310%3B300000000435430", "region": "India", "type": "company", "playwright": True},
+    {"name": "Zensar (US)", "url": "https://fa-etvl-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?lastSelectedFacet=LOCATIONS&selectedLocationsFacet=300000000435529%3B100000010729607%3B100000010729641%3B100000010729647%3B100000010729654%3B100000010783527", "region": "US", "type": "company", "playwright": True},
 
     # APAC tech companies
     {"name": "Tencent", "url": "https://careers.tencent.com/en-us/search.html?query=ot_40001002,ot_40001001,ot_40001003,ot_40001004,ot_40001005,ot_40001006,at_1", "region": "APAC", "type": "company", "playwright": True},
