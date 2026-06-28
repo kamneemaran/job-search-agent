@@ -3357,6 +3357,316 @@ def search_monsterde(query, location="Germany", max_results=50):
     return jobs
 
 
+def search_adzuna(query, location="Remote", max_results=50):
+    """Search Adzuna UK for jobs using cloudscraper (paginated, bypasses Cloudflare)."""
+    jobs = []
+    q = query.replace(" ", "+")
+    max_pages = 3
+    try:
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.adzuna.co.uk/search?q={q}&page={page_num}" if page_num > 1 else f"https://www.adzuna.co.uk/search?q={q}"
+            resp = scraper.get(url, timeout=20)
+            if resp.status_code != 200:
+                if page_num == 1:
+                    print(f"  [adzuna] HTTP {resp.status_code}")
+                break
+            html = resp.text
+            # Extract job articles
+            article_pattern = r'<article[^>]*data-aid="(\d+)"[^>]*>(.*?)</article>'
+            articles = re.findall(article_pattern, html, re.DOTALL)
+            if not articles:
+                break
+            for aid, card in articles:
+                if len(jobs) >= max_results:
+                    break
+                # Title from <h2><a href="...">TITLE</a></h2>
+                title_match = re.search(r'<h2[^>]*>.*?<a[^>]*>(.*?)</a>', card, re.DOTALL)
+                title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip() if title_match else ""
+                if not title or len(title) < 4:
+                    continue
+                # URL from title link or job link
+                url_match = re.search(r'href="(https://www\.adzuna\.co\.uk/jobs/details/\d+)"', card)
+                job_url = url_match.group(1) if url_match else ""
+                # Company from ui-company div (text or link)
+                company_match = re.search(r'<div[^>]*class="[^"]*ui-company[^"]*"[^>]*>(.*?)</div>', card, re.DOTALL)
+                company = re.sub(r'<[^>]+>', '', company_match.group(1)).strip() if company_match else "Unknown"
+                # Location from ui-location div
+                loc_match = re.search(r'class="[^"]*ui-location[^"]*"[^>]*>([^<]+)', card)
+                loc = loc_match.group(1).strip() if loc_match else location
+                # Description from ad-description
+                desc_match = re.search(r'class="[^"]*ad-description[^"]*"[^>]*>(.*?)</span>', card, re.DOTALL)
+                desc_text = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip() if desc_match else ""
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": job_url,
+                    "description": desc_text if desc_text else f"Adzuna: {title} at {company}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(1)
+        if jobs:
+            print(f"  [adzuna] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [adzuna] Error: {e}")
+    return jobs
+
+
+def _accept_dpg_privacy(page):
+    """Click 'Akkoord' on DPG Media privacy gate if present. Returns True if accepted."""
+    try:
+        if 'privacy' in page.url.lower() or 'consent' in page.url.lower():
+            accept = page.query_selector('button:has-text("Akkoord")')
+            if accept:
+                with page.expect_navigation(timeout=15000):
+                    accept.click()
+                page.wait_for_timeout(3000)
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def search_intermediair(query, location="Netherlands", max_results=50):
+    """Search Intermediair.nl for jobs using Playwright (DPG Media, paginated)."""
+    jobs = []
+    q = query.replace(" ", "+")
+    max_pages = 3
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.intermediair.nl/vacature/zoeken?q={q}&sort=relevance&page={page_num}"
+            page.goto(url, timeout=30000, wait_until="domcontentloaded")
+            page.wait_for_timeout(3000)
+            _accept_dpg_privacy(page)
+            page.wait_for_timeout(2000)
+            cards = page.evaluate(f"""() => {{
+                const links = document.querySelectorAll('a[href*="/vacature/"]');
+                const results = [];
+                const seen = new Set();
+                for (const link of links) {{
+                    const h2 = link.querySelector('h2');
+                    if (!h2) continue;
+                    const title = h2.innerText.trim();
+                    if (!title || title.length < 3) continue;
+                    const key = title.toLowerCase();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    const strong = link.querySelector('strong');
+                    const company = strong ? strong.innerText.trim() : '';
+                    const spans = link.querySelectorAll('span');
+                    let location = '';
+                    for (const sp of spans) {{
+                        const t = sp.innerText.trim();
+                        if (t && t !== company && t.length > 1 && !t.includes('\u20AC') && !t.includes('uur') && !t.includes('UUR')) {{
+                            location = t;
+                            break;
+                        }}
+                    }}
+                    const href = link.getAttribute('href') || '';
+                    results.push({{ title, company, location, url: href.startsWith('http') ? href : 'https://www.intermediair.nl' + href }});
+                    if (results.length >= {max_results}) break;
+                }}
+                return results;
+            }}""")
+            for card in cards:
+                jobs.append({
+                    "title": card["title"],
+                    "company": card["company"] if card["company"] else "Unknown",
+                    "location": card["location"] if card["location"] else location,
+                    "url": card["url"],
+                    "description": f"Intermediair: {card['title']} at {card['company']}",
+                })
+            if len(jobs) >= max_results:
+                break
+            page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [intermediair] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [intermediair] Error: {e}")
+    return jobs
+
+
+def search_nationalevacaturebank(query, location="Netherlands", max_results=50):
+    """Search NationaleVacaturebank.nl for jobs using Playwright (DPG Media, paginated)."""
+    jobs = []
+    q = query.replace(" ", "+")
+    max_pages = 3
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.nationalevacaturebank.nl/vacature/zoeken?q={q}&sort=relevance&page={page_num}"
+            page.goto(url, timeout=30000, wait_until="domcontentloaded")
+            page.wait_for_timeout(3000)
+            _accept_dpg_privacy(page)
+            page.wait_for_timeout(2000)
+            cards = page.evaluate(f"""() => {{
+                const links = document.querySelectorAll('a[href*="/vacature/"]');
+                const results = [];
+                const seen = new Set();
+                for (const link of links) {{
+                    const h2 = link.querySelector('h2');
+                    if (!h2) continue;
+                    const title = h2.innerText.trim();
+                    if (!title || title.length < 3) continue;
+                    const key = title.toLowerCase();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    const strong = link.querySelector('strong');
+                    const company = strong ? strong.innerText.trim() : '';
+                    const spans = link.querySelectorAll('span');
+                    let location = '';
+                    for (const sp of spans) {{
+                        const t = sp.innerText.trim();
+                        if (t && t !== company && t.length > 1 && !t.includes('\u20AC') && !t.includes('uur') && !t.includes('UUR')) {{
+                            location = t;
+                            break;
+                        }}
+                    }}
+                    const href = link.getAttribute('href') || '';
+                    results.push({{ title, company, location, url: href.startsWith('http') ? href : 'https://www.nationalevacaturebank.nl' + href }});
+                    if (results.length >= {max_results}) break;
+                }}
+                return results;
+            }}""")
+            for card in cards:
+                jobs.append({
+                    "title": card["title"],
+                    "company": card["company"] if card["company"] else "Unknown",
+                    "location": card["location"] if card["location"] else location,
+                    "url": card["url"],
+                    "description": f"NationaleVacaturebank: {card['title']} at {card['company']}",
+                })
+            if len(jobs) >= max_results:
+                break
+            page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [nationalevacaturebank] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [nationalevacaturebank] Error: {e}")
+    return jobs
+
+
+def search_reed(query, location="Remote", max_results=50):
+    """Search Reed.co.uk for jobs using Playwright (paginated)."""
+    jobs = []
+    q = query.replace(" ", "-").lower()
+    max_pages = 3
+    try:
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.reed.co.uk/jobs/{q}-jobs?page={page_num}" if page_num > 1 else f"https://www.reed.co.uk/jobs/{q}-jobs"
+            titles = _playwright_scrape(
+                url,
+                "a[data-qa='job-card-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
+                wait_selector="a[data-qa='job-card-title']",
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                url,
+                "div[data-qa='job-posted-by'] a",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            locations = _playwright_scrape(
+                url,
+                "li[data-qa='job-metadata-location']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            links = _playwright_scrape(
+                url,
+                "a[data-qa='job-card-title']",
+                "els => els.map(e => e.href)",
+            )
+            min_len = min(len(titles), len(companies), len(links))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i],
+                    "company": companies[i] if i < len(companies) else "Unknown",
+                    "location": locations[i] if i < len(locations) else "UK",
+                    "url": links[i],
+                    "description": f"Reed: {titles[i]} at {companies[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
+        if jobs:
+            print(f"  [reed] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [reed] Error: {e}")
+    return jobs
+
+
+def search_jobsite(query, location="Remote", max_results=50):
+    """Search Jobsite.co.uk for jobs using Playwright (paginated, StepStone Group)."""
+    jobs = []
+    q = query.replace(" ", "-").lower()
+    max_pages = 3
+    try:
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.jobsite.co.uk/jobs/{q}?page={page_num}" if page_num > 1 else f"https://www.jobsite.co.uk/jobs/{q}"
+            titles = _playwright_scrape(
+                url,
+                "a[data-at='job-item-title']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 3)",
+                wait_selector="a[data-at='job-item-title']",
+            )
+            if not titles:
+                break
+            companies = _playwright_scrape(
+                url,
+                "[data-at='job-item-company-name']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            locations = _playwright_scrape(
+                url,
+                "[data-at='job-item-location']",
+                "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)",
+            )
+            links = _playwright_scrape(
+                url,
+                "a[data-at='job-item-title']",
+                "els => els.map(e => e.href)",
+            )
+            min_len = min(len(titles), len(companies), len(links))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
+                jobs.append({
+                    "title": titles[i],
+                    "company": companies[i] if i < len(companies) else "Unknown",
+                    "location": locations[i] if i < len(locations) else "UK",
+                    "url": links[i],
+                    "description": f"Jobsite: {titles[i]} at {companies[i]}",
+                })
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
+        if jobs:
+            print(f"  [jobsite] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [jobsite] Error: {e}")
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # 4. EMAIL DIGEST
 # ---------------------------------------------------------------------------
@@ -4764,6 +5074,11 @@ def main():
         ("BulldogJob", search_bulldogjob),
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
+        ("Adzuna", search_adzuna),
+        ("Reed", search_reed),
+        ("Jobsite", search_jobsite),
+        ("Intermediair", search_intermediair),
+        ("NationaleVacaturebank", search_nationalevacaturebank),
     ]
     if args.source_types in ("all", "playwright") and (args.batch == "" or args.batch == "playwright"):
         for pw_name, pw_fn in pw_scrapers:

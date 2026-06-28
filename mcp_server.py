@@ -525,6 +525,11 @@ def _search_jobs(
         ("WorkAtAStartup", search_workatstartup),
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
+        ("Adzuna", search_adzuna),
+        ("Reed", search_reed),
+        ("Jobsite", search_jobsite),
+        ("Intermediair", search_intermediair),
+        ("NationaleVacaturebank", search_nationalevacaturebank),
     ]
 
     sources_lower = [s.lower() for s in sources] if sources else []
@@ -543,7 +548,8 @@ def _search_jobs(
         if desc.startswith(("LinkedIn job:", "Indeed job:", "Naukri job:", "Instahyre job:",
                             "Glassdoor job:", "SimplyHired:", "WomenInTech UK job:",
                             "WeWorkRemotely:", "RemoteOK:", "SkipTheDrive:", "WorkingNomads:",
-                            "Jobspresso:", "EnglishJobSearch:", "BulldogJob:", "WorkAtAStartup:")):
+                            "Jobspresso:", "EnglishJobSearch:", "BulldogJob:", "WorkAtAStartup:",
+                            "Adzuna:", "Reed:", "Jobsite:", "Intermediair:", "NationaleVacaturebank:")):
             desc = job["title"]
         if not require_visa:
             desc += " visa sponsorship relocation support"
