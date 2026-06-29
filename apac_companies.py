@@ -50,4 +50,20 @@ APAC_JOB_SOURCES = [
     {"name": "Samsung", "url": "https://www.samsungcareers.com/?lang=en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Wipro", "url": "https://careers.wipro.com/go/Engineering/9369255/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Flipkart", "url": "https://www.flipkartcareers.com/jobslist", "region": "India", "type": "company", "playwright": True},
+
+    # European / Swiss companies (scanned in EU batch via apac_companies import)
+    {"name": "Logitech", "url": "https://jobs.jobvite.com/logitech/", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "ELCA", "url": "https://www.elca.ch/en/careers", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Avaloq", "url": "https://www.avaloq.com/careers/job-openings", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Lonza", "url": "https://www.lonza.com/careers", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "CSL Behring", "url": "https://www.csl.com/careers", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Biogen", "url": "https://biibhr.wd3.myworkdayjobs.com/external?jobFamilyGroup=4104486c9e6610a62b3a0bd68efa03d9&jobFamilyGroup=4104486c9e6610a62b3a444f21ca0405&jobFamilyGroup=4104486c9e6610a62b3a19135a3a03e3&jobFamilyGroup=5ab74f024f490150e212acde4c01760e", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "BDO", "url": "https://www.bdo.global/en-gb/careers", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Bobst", "url": "https://jobs.bobst.com/Jobs/All", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Coca-Cola HBC Switzerland", "url": "https://careers.coca-colahellenic.com/", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Siemens Schweiz", "url": "https://jobs.siemens.com/", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Nestlé", "url": "https://www.nestle.com/jobs", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Barry Callebaut", "url": "https://www.barry-callebaut.com/en/group/careers", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Leica Geosystems", "url": "https://hexagon.com/company/careers/job-listings#jl_companyname=Geosystems&jl_e=0", "region": "Switzerland", "type": "company", "playwright": True},
+    {"name": "Rivella Group", "url": "https://rivella-group.com/karriere/offene-stellen/", "region": "Switzerland", "type": "company", "playwright": True},
 ]

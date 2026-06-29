@@ -773,7 +773,7 @@ EU_JOB_SOURCES = [
     {"name": "Manpower Poland", "url": "https://www.manpowergroup.pl/en/career/", "region": "PL", "type": "company"},
     {"name": "Manpower Sweden", "url": "https://www.manpower.se/en/search", "region": "SE", "type": "company", "playwright": True},
     {"name": "Manpower Netherlands", "url": "https://manpowergroup.nl/vacatures-bij-manpowergroup/", "region": "NL", "type": "company"},
-    {"name": "Manpower Luxembourg", "url": "https://manpower.lu/jobs-luxembourg/", "region": "LU", "type": "company"},
+    {"name": "Manpower Luxembourg", "url": "https://manpower.lu/jobs-luxembourg/?matador-categories=engineering", "region": "LU", "type": "company", "playwright": True},
     {"name": "Manpower Ireland", "url": "https://www.manpower.ie/jobs", "region": "IE", "type": "company"},
     {"name": "Hays Germany", "url": "https://www.hays.de/en/jobsearch/job-offers", "region": "DE", "type": "company"},
     {"name": "Hays Poland", "url": "https://www.hays.pl/en/job", "region": "PL", "type": "company"},
