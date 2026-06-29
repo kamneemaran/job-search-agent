@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       batch:
-        description: "Run specific batch or all (ats, boards-major, boards-niche, playwright, global, apac, us-canada, middle-east, eu)"
+        description: "Run specific batch: ats, boards-major, boards-niche, boards-eu, playwright, global, apac, us-canada, middle-east, eu"
         required: true
         default: "all"
         type: choice
@@ -13,6 +13,7 @@ on:
           - "ats"
           - "boards-major"
           - "boards-niche"
+          - "boards-eu"
           - "playwright"
           - "global"
           - "apac"
@@ -109,29 +110,33 @@ jobs:
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-niche' }}
         run: python daily_scan.py --resume "$RESUME" --batch boards-niche 2>&1 | tee scan_batch3.log
 
-      - name: Batch 4 - Playwright Scrape
+      - name: Batch 4 - EU Job Boards
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-eu' }}
+        run: python daily_scan.py --resume "$RESUME" --batch boards-eu 2>&1 | tee scan_batch4.log
+
+      - name: Batch 5 - Playwright Scrape
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'playwright' }}
-        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch4.log
+        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch5.log
 
-      - name: Batch 5 - Global Companies
+      - name: Batch 6 - Global Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'global' }}
-        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch5.log
+        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch6.log
 
-      - name: Batch 6 - APAC Companies
+      - name: Batch 7 - APAC Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'apac' }}
-        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch6.log
+        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch7.log
 
-      - name: Batch 7 - US/Canada Companies
+      - name: Batch 8 - US/Canada Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'us-canada' }}
-        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch7.log
+        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch8.log
 
-      - name: Batch 8 - Middle East Companies
+      - name: Batch 9 - Middle East Companies
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'middle-east' }}
-        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch8.log
+        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch9.log
 
-      - name: Batch 9 - EU Companies (terminal - merges all previous)
+      - name: Batch 10 - EU Companies (terminal - merges all previous)
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'eu' }}
-        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch9.log
+        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch10.log
 
       - uses: actions/upload-artifact@v5
         if: always()

@@ -679,7 +679,6 @@ EU_JOB_SOURCES = [
     {"name": "Cherry VC", "url": "https://linkedin.com/company/cherryvc", "region": "EU", "type": "company", "playwright": True},
     {"name": "Ververica", "url": "https://www.ververica.com/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "Virtual Identity AG", "url": "https://www.virtual-identity.com/jobs", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Virtual Minds GmbH", "url": "https://virtualminds.de/en/career", "region": "EU", "type": "company", "playwright": True},
     {"name": "vivenu GmbH", "url": "https://vivenu.com/de/careers", "region": "EU", "type": "company", "playwright": True},
     {"name": "VMware", "url": "https://careers.smartrecruiters.com/Vmware2", "region": "EU", "type": "company", "ats": "smartrecruiters", "ats_slug": "Vmware2"},
     {"name": "Vodafone", "url": "https://careers.vodafone.com", "region": "EU", "type": "company", "playwright": True},
