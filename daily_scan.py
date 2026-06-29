@@ -5112,6 +5112,55 @@ def search_monsterboardnl(query, location="Netherlands", max_results=50):
     return []
 
 
+def search_infoempleo(query, location="Spain", max_results=50):
+    """Search Infoempleo (Spain) for jobs — uses tech + eng filtered URLs."""
+    from bs4 import BeautifulSoup
+    h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    jobs = []
+    urls = [
+        "https://www.infoempleo.com/trabajo/area-de-empresa_tecnologia-e-informatica/?ordenacion=fechaAlta",
+        "https://www.infoempleo.com/trabajo/area-de-empresa_ingenieria-y-produccion/?ordenacion=fechaAlta",
+    ]
+    seen = set()
+    for url in urls:
+        try:
+            resp = requests.get(url, headers=h, timeout=15)
+            if resp.status_code != 200:
+                continue
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            for card in soup.select("li.offerblock"):
+                a = card.select_one("h2.title a")
+                title = a.get_text().strip() if a else ""
+                href = a.get("href", "") if a else ""
+                url_full = f"https://www.infoempleo.com{href}" if href.startswith("/") else href
+                company_el = card.select_one(".logoplusname span.extra-data")
+                company = company_el.get_text().strip() if company_el else "Unknown"
+                loc_el = card.select_one("p.extra-data")
+                loc = "Spain"
+                if loc_el:
+                    txt = loc_el.get_text().strip()
+                    for city in ["Madrid", "Barcelona", "Valencia", "Sevilla", "Bilbao",
+                                 "Málaga", "Zaragoza", "Alicante", "Murcia", "Palma",
+                                 "Granada", "Vigo", "Gijón", "Pamplona", "San Sebastián",
+                                 "Valladolid", "Toledo", "Badajoz", "Logroño", "Huelva"]:
+                        if city in txt:
+                            loc = city
+                            break
+                if title and href not in seen:
+                    seen.add(href)
+                    jobs.append({"title": title, "company": company, "location": loc,
+                                 "url": url_full, "description": title})
+                if len(jobs) >= max_results:
+                    break
+            if len(jobs) >= max_results:
+                break
+        except Exception as e:
+            print(f"  [infoempleo] Error on {url}: {e}")
+    if jobs:
+        print(f"  [infoempleo] {len(jobs)} jobs for '{query}'")
+    return jobs[:max_results]
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -5339,6 +5388,7 @@ def main():
         board_scrapers = [
             ("NetEmpregos", search_netempregos),
             ("SAPOEmprego", search_sapoemprego),
+            ("Infoempleo", search_infoempleo),
             ("Bundesagentur", search_bundesagentur),
             ("IamExpat", search_iamexpat),
             ("WorkInLux", search_workinlux),
