@@ -914,4 +914,5 @@ EU_JOB_SOURCES = [
     {"name": "Manpower Estonia", "url": "https://www.manpower.ee/et/", "region": "EU", "type": "company", "playwright": True},
     {"name": "TalentHub", "url": "https://www.talenthub.eu/", "region": "EU", "type": "company", "playwright": True},
     {"name": "RecruitLab", "url": "https://www.recruitlab.co/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Robert Walters UK", "url": "https://www.robertwalters.co.uk/expertise/technology/jobs.html?q=&specialization=information-technology", "region": "EU", "type": "company", "playwright": True},
 ]
