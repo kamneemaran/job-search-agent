@@ -877,7 +877,7 @@ EU_JOB_SOURCES = [
     {"name": "Blu Selection", "url": "https://www.bluselection.com/jobs/english/information-technologies?query=&selected_locations=&sort_type=relevance", "region": "EU", "type": "company", "playwright": True},
     {"name": "Page Personnel Spain", "url": "https://www.pagepersonnel.es/jobs/ingeniero/information-technology", "region": "EU", "type": "company", "playwright": True},
     {"name": "Spring Professional Spain", "url": "https://www.adecco.com/es-es", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Landing.Jobs", "url": "https://landing.jobs/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Landing.Jobs", "url": "https://landing.jobs/jobs?page=1&match=all&hd=false&t_co=false&t_st=false", "region": "EU", "type": "company", "playwright": True},
     {"name": "Hays Portugal", "url": "https://www.hays.pt/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Michael Page Portugal", "url": "https://www.michaelpage.pt/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Multitempo", "url": "https://www.jobandtalent.com.pt/", "region": "EU", "type": "company", "playwright": True},
