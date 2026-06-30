@@ -860,7 +860,6 @@ EU_JOB_SOURCES = [
     {"name": "Workindenmark SE", "url": "https://workindenmark.jobnet.dk/find-job?searchString=%22software+engineer%22", "region": "EU", "type": "company", "playwright": True},
     {"name": "Workindenmark SAP", "url": "https://workindenmark.jobnet.dk/find-job?searchString=SAP", "region": "EU", "type": "company", "playwright": True},
     {"name": "Moment", "url": "https://www.moment.dk/en/find-job/?categories=26", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Hartmanns", "url": "https://actief-hartmanns.dk/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Temp-Team Denmark", "url": "https://temp-team.dk/en/job-search?categories=24", "region": "EU", "type": "company", "playwright": True},
     {"name": "Academic Work Denmark", "url": "https://www.academicwork.dk/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Swisslinx", "url": "https://www.swisslinx.com/", "region": "EU", "type": "company", "playwright": True},
