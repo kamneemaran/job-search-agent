@@ -858,7 +858,7 @@ EU_JOB_SOURCES = [
     {"name": "Bravura", "url": "https://www.bravura.se/jobb/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Incluso", "url": "https://openings.incluso.se/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "Workindenmark", "url": "https://www.workindenmark.dk/", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Moment", "url": "https://www.moment.dk/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Moment", "url": "https://www.moment.dk/en/find-job/?categories=26", "region": "EU", "type": "company", "playwright": True},
     {"name": "Hartmanns", "url": "https://actief-hartmanns.dk/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Temp-Team Denmark", "url": "https://temp-team.dk/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Academic Work Denmark", "url": "https://www.academicwork.dk/", "region": "EU", "type": "company", "playwright": True},
