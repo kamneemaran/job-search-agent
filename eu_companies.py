@@ -843,7 +843,7 @@ EU_JOB_SOURCES = [
     {"name": "Adsearch", "url": "https://www.adsearch.fr/nos-offres/?_secteurs_dactivites=it-digital", "region": "EU", "type": "company", "playwright": True},
     {"name": "ISG Personalmanagement", "url": "https://www.isg.com/jobs/search/index.jsf?dswid=-9000", "region": "EU", "type": "company", "playwright": True},
     {"name": "epunkt", "url": "https://job.epunkt.com/jobs?search=&selectedJobFilters%5BjobCategoryIds%5D%5B0%5D=21&selectedJobFilters%5BjobCategoryIds%5D%5B1%5D=13", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Hays Austria", "url": "https://www.hays.at/jobsuche/stellenangebote-jobs/s/IT/1/p/1?q=&e=false&pt=false&ij=false", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Hays Austria", "url": "https://www.hays.at/jobsuche/stellenangebote-jobs/p/1?q=&e=false&pt=false&ij=false", "region": "EU", "type": "company", "playwright": True},
     {"name": "Schulmeister", "url": "https://www.schulmeister-consulting.com/de/fuer-bewerberinnen/jobs-finden", "region": "EU", "type": "company", "playwright": True},
     {"name": "Iro & Partners", "url": "https://www.iropartners.at/?page_id=17", "region": "EU", "type": "company", "playwright": True},
     {"name": "Pauwels Consulting", "url": "https://www.pauwelsconsulting.com/jobs?specialisation=(Project)+Management,Architecture,Data,Development", "region": "EU", "type": "company", "playwright": True},
