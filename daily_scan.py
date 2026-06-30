@@ -2383,6 +2383,59 @@ def search_indeed(query, location="India", max_results=50):
     return jobs
 
 
+def search_indeed_nl(query, location="Netherlands", max_results=50):
+    """Search Indeed Netherlands for jobs using Playwright (paginated)."""
+    jobs = []
+    query_param = query.replace(" ", "+")
+    page_size = 15
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    try:
+        for page_num in range(max_pages):
+            start = page_num * 10
+            page_url = f"https://nl.indeed.com/vacatures?q={query_param}&l=Netherlands&start={start}"
+            html = _playwright_html(page_url)
+            titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
+            companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
+            if not companies:
+                companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
+            if not companies:
+                companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
+            locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
+            if not locations:
+                locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
+            links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
+            if not links:
+                links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
+
+            if not titles:
+                break
+
+            min_len = min(len(titles), len(companies), len(locations))
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
+                job_url = "https://nl.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+                jobs.append({
+                    "title": titles[i].strip(),
+                    "company": companies[i].strip() if i < len(companies) else "Unknown",
+                    "location": locations[i].strip() if i < len(locations) else location,
+                    "url": job_url,
+                    "description": f"Indeed NL job: {titles[i]} at {companies[i]} in {locations[i]}",
+                })
+
+            if len(jobs) >= max_results:
+                break
+            time.sleep(2)
+
+        if jobs:
+            print(f"  [indeed-nl] {len(jobs)} jobs for '{query}' in Netherlands")
+        else:
+            print(f"  [indeed-nl] No jobs parsed for '{query}' in Netherlands")
+    except Exception as e:
+        print(f"  [indeed-nl] Error searching '{query}': {e}")
+    return jobs
+
+
 def search_naukri(query, location="India", max_results=50):
     """Search Naukri for jobs matching a query using their API (paginated)."""
     jobs = []
@@ -5392,13 +5445,14 @@ def main():
             ("Bundesagentur", search_bundesagentur),
             ("IamExpat", search_iamexpat),
             ("WorkInLux", search_workinlux),
+            ("IndeedNL", search_indeed_nl),
         ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-niche", "boards-eu")):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
-                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
+                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES", "IndeedNL"}
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
