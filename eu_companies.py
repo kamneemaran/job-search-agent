@@ -910,7 +910,6 @@ EU_JOB_SOURCES = [
     {"name": "Lugera", "url": "https://www.lugera.ro/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Adecco Romania", "url": "https://www.adecco.com/ro-ro", "region": "EU", "type": "company", "playwright": True},
     {"name": "SalesConsulting", "url": "https://www.salesconsulting.ro/", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Fontes", "url": "https://www.fontes.ee/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Manpower Estonia", "url": "https://www.manpower.ee/et/", "region": "EU", "type": "company", "playwright": True},
     {"name": "TalentHub", "url": "https://www.talenthub.eu/", "region": "EU", "type": "company", "playwright": True},
     {"name": "RecruitLab", "url": "https://www.recruitlab.co/", "region": "EU", "type": "company", "playwright": True},
