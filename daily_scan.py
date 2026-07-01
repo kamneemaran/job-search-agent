@@ -4934,6 +4934,32 @@ def _extract_monster_jobs(resp_text, link_prefix, base_url, default_loc, max_res
     return jobs
 
 
+def _enrich_descriptions(jobs, max_workers=8):
+    """Fetch full job descriptions in parallel for jobs that have URLs."""
+    from bs4 import BeautifulSoup
+    from concurrent.futures import ThreadPoolExecutor
+    h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    def fetch(job):
+        url = job.get("url", "")
+        if not url or len(url) < 10:
+            return job
+        try:
+            r = requests.get(url, headers=h, timeout=10)
+            if r.status_code == 200:
+                soup = BeautifulSoup(r.text, 'html.parser')
+                for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'aside']):
+                    tag.decompose()
+                text = soup.get_text(separator=' ', strip=True)
+                text = re.sub(r'\s+', ' ', text)
+                if len(text) > 100:
+                    job["description"] = text[:3000]
+        except:
+            pass
+        return job
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        return list(ex.map(fetch, jobs))
+
+
 def search_netempregos(query, location="Portugal", max_results=50):
     """Search Net-Empregos (Portugal) for jobs."""
     from bs4 import BeautifulSoup
@@ -4957,7 +4983,7 @@ def search_netempregos(query, location="Portugal", max_results=50):
                     jobs.append({"title": title, "company": company, "location": "Portugal",
                                  "url": url, "description": title})
             if jobs: print(f"  [netempregos] {len(jobs)} jobs for '{query}'")
-            return jobs
+            return _enrich_descriptions(jobs)
     except Exception as e:
         print(f"  [netempregos] Error: {e}")
     return []
@@ -5021,7 +5047,7 @@ def search_bundesagentur(query, location="Germany", max_results=50):
                     jobs.append({"title": title, "company": "", "location": "Germany",
                                  "url": full_url, "description": title})
             if jobs: print(f"  [bundesagentur] {len(jobs)} jobs for '{query}'")
-            return jobs
+            return _enrich_descriptions(jobs)
     except Exception as e:
         print(f"  [bundesagentur] Error: {e}")
     return []
@@ -5059,7 +5085,7 @@ def search_iamexpat(query, location="Netherlands", max_results=50):
                     jobs.append({"title": title, "company": "", "location": loc,
                                  "url": url_full, "description": title})
             if jobs: print(f"  [iamexpat] {len(jobs)} jobs for '{query}'")
-            return jobs
+            return _enrich_descriptions(jobs)
     except Exception as e:
         print(f"  [iamexpat] Error: {e}")
     return []
@@ -5092,7 +5118,7 @@ def search_workinlux(query, location="Luxembourg", max_results=50):
                     jobs.append({"title": title, "company": company, "location": "Luxembourg",
                                  "url": url_full, "description": title})
             if jobs: print(f"  [workinlux] {len(jobs)} jobs for '{query}'")
-            return jobs
+            return _enrich_descriptions(jobs)
     except Exception as e:
         print(f"  [workinlux] Error: {e}")
     return []
@@ -5211,7 +5237,7 @@ def search_infoempleo(query, location="Spain", max_results=50):
             print(f"  [infoempleo] Error on {url}: {e}")
     if jobs:
         print(f"  [infoempleo] {len(jobs)} jobs for '{query}'")
-    return jobs[:max_results]
+    return _enrich_descriptions(jobs[:max_results])
 
 
 # ---------------------------------------------------------------------------
@@ -5452,11 +5478,14 @@ def main():
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
-                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES", "IndeedNL"}
+                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
+                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL"}
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
                     regions = ["Germany", "Switzerland", "Remote"]
+                elif board_name in single_run_boards:
+                    regions = ["Remote"]
                 elif board_name in ("Naukri", "Instahyre"):
                     regions = ["India"]
                 else:
