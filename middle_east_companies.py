@@ -21,4 +21,21 @@ MIDDLE_EAST_JOB_SOURCES = [
     {"name": "TASC Outsourcing", "url": "https://tascoutsourcing.com/en", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "minds pool", "url": "https://www.minds-pool.com/careers", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "sbs", "url": "https://sbs-software.com/join-us", "region": "Middle East", "type": "company", "playwright": True},
+
+    # Turkish tech companies (from career-ops integration)
+    {"name": "Trendyol", "url": "https://www.trendyol.com/kariyerimiz", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Hepsiburada", "url": "https://www.hepsiburada.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Getir", "url": "https://jobs.lever.co/getir", "region": "Middle East", "type": "company", "ats": "lever", "ats_slug": "getir"},
+    {"name": "Insider", "url": "https://useinsider.com/careers", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Dream Games", "url": "https://www.dreamgames.com/careers", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Peak Games (Zynga)", "url": "https://www.peakgames.net/en/career", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Yemeksepeti (Delivery Hero)", "url": "https://www.yemeksepeti.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Sahibinden.com", "url": "https://www.sahibinden.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Garanti BBVA Technology", "url": "https://www.garantibbvateknoloji.com.tr/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Akbank Tech", "url": "https://www.akbank.com/tr-tr/sayfalar/kariyer.aspx", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Turkcell", "url": "https://kariyer.turkcell.com.tr", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Iyzico (PayU)", "url": "https://iyzico.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Papara", "url": "https://papara.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Craftgate", "url": "https://craftgate.io/career", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "n11.com (Do\u011fu\u015f)", "url": "https://www.n11.com/kurumsal/kariyer", "region": "Middle East", "type": "company", "playwright": True},
 ]

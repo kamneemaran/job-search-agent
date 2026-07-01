@@ -333,6 +333,22 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["search_term"],
             },
         ),
+        types.Tool(
+            name="prepare_application",
+            description="Prepare application materials for a matched job. Returns profile context, match analysis, skill gaps, and salary info so the LLM can generate a cover letter draft, STAR+R stories, and a gap mitigation plan. Run AFTER scoring a job to get the application materials.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Job title"},
+                    "company": {"type": "string", "description": "Company name"},
+                    "description": {"type": "string", "description": "Full job description text"},
+                    "location": {"type": "string", "description": "Job location (default: 'Remote')", "default": "Remote"},
+                    "url": {"type": "string", "description": "Optional URL to the job posting"},
+                    "resume": {"type": "string", "description": "Optional resume version override (e.g. 'Kamnee_Maran_Resume_FAANG.pdf')"},
+                },
+                "required": ["title", "company", "description"],
+            },
+        ),
     ]
 
 
@@ -366,6 +382,9 @@ async def handle_call_tool(
 
     if name == "search_board_jobs":
         return [types.TextContent(type="text", text=_search_board_jobs(**arguments))]
+
+    if name == "prepare_application":
+        return [types.TextContent(type="text", text=_prepare_application(**arguments))]
 
     raise ValueError(f"Unknown tool: {name}")
 
@@ -925,6 +944,239 @@ def _search_board_jobs(
         return "Error: JobSpy not installed. Run: pip install python-jobspy"
     except Exception as e:
         return f"Error searching boards: {e}"
+
+# Company descriptions from career-ops integration
+_COMPANY_CONTEXT = {
+    # US/Canada (28)
+    "anthropic": "AI safety research lab developing Claude, a helpful and harmless AI assistant.",
+    "cohere": "AI/LLM provider building enterprise-focused language models. Toronto + remote.",
+    "perplexity": "AI-native search and enterprise AI platform with real-time web answers.",
+    "weights & biases (coreweave)": "ML experiment tracking platform acquired by CoreWeave (GPU cloud).",
+    "hume ai": "Empathic voice AI platform based in NYC. Emotion-aware voice interfaces.",
+    "sierra": "AI customer agents platform founded by Bret Taylor (ex-CEO Salesforce).",
+    "decagon": "AI customer support agent platform. Building autonomous support experiences.",
+    "ada": "AI customer service automation platform. Toronto + remote.",
+    "airtable": "No-code database and collaboration platform with AI features.",
+    "vercel": "Frontend deployment and AI SDK platform creators of Next.js, v0.dev.",
+    "temporal": "Workflow orchestration platform for resilient distributed applications.",
+    "glean": "Enterprise AI search powered by your company's knowledge graph.",
+    "clay labs": "AI-native GTM and workflow automation for go-to-market teams.",
+    "langchain": "LangChain/LangSmith framework for LLM application development.",
+    "arize ai": "LLMOps and AI observability platform for monitoring ML in production.",
+    "pinecone": "Vector database purpose-built for AI similarity search and RAG.",
+    "runpod": "GPU cloud platform optimized for AI inference and training workloads.",
+    "supabase": "Open-source Firebase alternative: Postgres, Auth, Storage, Realtime.",
+    "zep ai": "Context engineering platform for AI agents. YC W24, US-only.",
+    "resend": "Email API for developers. Modern email delivery infrastructure.",
+    "clerk": "Authentication and user management platform for modern web apps.",
+    "inngest": "Durable workflow engine for serverless applications and background jobs.",
+    "workos": "Developer tools for enterprise-ready auth and platform APIs.",
+    "hightouch": "Data activation platform syncing warehouse data to SaaS tools.",
+    "planetscale": "Serverless MySQL platform with branching, deploy requests, and scale.",
+    "runway": "Generative AI video creation and creative tooling platform.",
+    "safari ai": "Computer vision AI for operations in the physical economy. Vancouver/Miami.",
+    "later": "Social media and creator platform based in Vancouver/Toronto.",
+    # EU (47)
+    "aleph alpha": "Sovereign European LLM provider based in Heidelberg, enterprise & government focus.",
+    "amplemarket": "AI-native sales platform based in Lisbon. Automating outbound sales workflows.",
+    "attio": "AI-native CRM platform. Remote EU, Series B.",
+    "black forest labs": "FLUX image generation models by ex-Stable Diffusion team. Freiburg + SF.",
+    "bland ai": "Voice AI phone agents. Series B funded.",
+    "boomi": "Integration and automation platform connecting SaaS and on-prem systems.",
+    "causaly": "Biomedical knowledge graph and AI platform. London + Athens.",
+    "clarity ai": "Sustainability analytics platform powered by AI. Madrid/Remote.",
+    "corti": "Medical AI for ambient clinical documentation. Copenhagen.",
+    "cradle": "AI-guided protein design for biotech. Zurich + Amsterdam.",
+    "deepl": "Translation and language AI. Cologne-based, 60+ open roles.",
+    "deepgram": "Speech-to-text and text-to-speech API platform.",
+    "dialpad": "Voice AI for business communications and contact centers.",
+    "elevenlabs": "Voice AI TTS leader. AI voice synthesis and dubbing.",
+    "factorial": "HR SaaS unicorn based in Barcelona.",
+    "faculty": "Applied AI consultancy based in London. 80+ roles across AI delivery.",
+    "genesys": "Cloud contact center platform with AI-powered customer experience.",
+    "gong": "Revenue intelligence platform analyzing customer calls with AI.",
+    "helsing": "Defence AI unicorn. Munich, Berlin, London, Paris. 100+ ML and FDE roles.",
+    "hugging face": "Open-source ML hub and model library. Paris + NYC + remote.",
+    "intercom": "Customer communication platform with Fin AI agent. Dublin EMEA.",
+    "isomorphic labs": "DeepMind spin-off for AI-driven drug discovery. London + Lausanne.",
+    "lakera": "AI security and guardrails platform. Zurich + SF.",
+    "langfuse": "LLMOps and observability platform. Berlin-based open-core company.",
+    "legora": "AI-native legal workspace platform. Stockholm + NYC + London.",
+    "lindy": "AI agent management platform for automating business workflows.",
+    "liveperson": "Conversational AI enterprise platform. Remote EMEA-friendly.",
+    "lovable": "AI app builder (text-to-app). Stockholm-based, 80+ open roles.",
+    "make.com (celonis)": "Automation platform (visual workflow builder). Part of Celonis.",
+    "parloa": "Voice AI for enterprise contact centers. Berlin EMEA.",
+    "photoroom": "AI photo editor. Paris-based, Head of CV and ML roles.",
+    "physicsx": "Physics-informed ML for engineering simulations. London UK.",
+    "pigment": "AI-powered FP&A planning platform. Paris + NYC + London.",
+    "pleo": "Spend-management fintech. Copenhagen-based, ML and platform roles.",
+    "polyai": "Voice AI for enterprise contact centers. UK-based.",
+    "retool": "Low-code internal tool builder. London Deployed Engineer roles.",
+    "scandit": "Computer vision and smart data capture. Zurich-based, ML roles.",
+    "speechmatics": "Speech recognition platform. Cambridge UK.",
+    "stability ai": "Generative AI image and video research lab. London + SF.",
+    "synthesia": "AI video generation platform for enterprise. London, $4B valuation.",
+    "talkdesk": "Contact center AI platform. Lisbon-based, EMEA-friendly.",
+    "templafy": "Document generation and content enablement platform. Copenhagen.",
+    "tinybird": "Real-time data platform for high-performance analytics. Remote.",
+    "travelperk": "Business travel management platform. Barcelona unicorn.",
+    "vapi": "Voice AI infrastructure for developers. Building voice-powered applications.",
+    "wayve": "Embodied AI for self-driving vehicles. London-based.",
+    "zapier": "Automation platform connecting thousands of apps. Remote-first.",
+    # APAC (2)
+    "glacis ai": "AI agents for supply chain and logistics. Ho Chi Minh City.",
+    "maxim ai": "AI evaluation and observability platform. Bangalore-based.",
+    # Middle East (15)
+    "trendyol": "Turkey's largest e-commerce platform (Alibaba-owned). Istanbul.",
+    "hepsiburada": "Major Turkish e-commerce platform listed on NASDAQ. Istanbul.",
+    "getir": "Ultra-fast delivery unicorn. Istanbul-based, now Turkey-only.",
+    "insider": "B2B SaaS marketing platform unicorn. Istanbul, remote-friendly.",
+    "dream games": "Mobile gaming company behind Royal Match. Istanbul.",
+    "peak games (zynga)": "Mobile gaming studio acquired by Zynga. Istanbul.",
+    "yemeksepeti (delivery hero)": "Food delivery platform, Delivery Hero subsidiary. Istanbul.",
+    "sahibinden.com": "Turkey's largest classifieds platform. Istanbul.",
+    "garanti bbva technology": "Fintech/banking tech arm of Garanti BBVA. Istanbul.",
+    "akbank tech": "Turkish bank with large in-house tech team. Istanbul.",
+    "turkcell": "Turkey's largest telecom with digital transformation team. Istanbul.",
+    "iyzico (payu)": "Payment infrastructure platform, PayU subsidiary. Istanbul.",
+    "papara": "Turkish fintech / digital wallet. Unicorn valuation. Istanbul.",
+    "craftgate": "Payment orchestration platform. Istanbul, engineering-first.",
+    "n11.com (doğuş)": "E-commerce marketplace, Doğuş Group. Istanbul.",
+
+    # Pre-existing companies (before career-ops import)
+    "openai": "AI research and deployment company behind GPT and DALL-E.",
+    "mistral ai": "European AI lab building open-weight language models. Paris.",
+    "palantir": "Data analytics platform for government and enterprise clients.",
+    "salesforce": "CRM and enterprise cloud platform with Agentforce AI agent platform.",
+    "celonis": "Process intelligence and execution management platform. Munich + NYC.",
+    "cognigy": "Conversational AI platform for enterprise contact centers. Dusseldorf.",
+    "contentful": "Headless CMS platform with AI content workflows. Berlin + Denver.",
+    "forto": "Digital freight forwarder platform. Berlin.",
+    "getyourguide": "Travel marketplace for tours and activities. Berlin.",
+    "hellofresh": "Meal kit delivery service with large data and ML org. Berlin.",
+    "n26": "Mobile-first neobank. Berlin + Barcelona.",
+    "qonto": "SMB neobank for European businesses. Paris.",
+    "sumup": "Payments fintech for small businesses. Berlin + London.",
+    "trade republic": "Neobroker for retail investing. Berlin + London + Paris.",
+    "vinted": "C2C marketplace for second-hand fashion. Vilnius + Berlin.",
+    "spotify": "Audio streaming platform with large ML/personalization org. Stockholm.",
+    "twilio": "Voice, messaging, and email API platform.",
+}
+
+def _prepare_application(
+    title: str,
+    company: str,
+    description: str,
+    location: str = "Remote",
+    url: str = "",
+    resume: str = "",
+) -> str:
+    """Return structured context for an LLM to generate cover letter, STAR+R stories, and gap mitigation."""
+    from daily_scan import PROFILE, score_job, pick_resume, company_url, tailoring_suggestion, get_salary_info
+
+    score, note = score_job(title, description, company, location)
+    resume_pdf = resume or pick_resume(company)
+    c_url = company_url(company)
+    suggestions = tailoring_suggestion(title, description, company)
+    salary_info = get_salary_info(company, title, description)
+    skills = PROFILE["core_skills"]
+
+    # Gap analysis: extract potential tech/domain keywords from description
+    # that aren't in the profile's core skills
+    desc_lower = (title + " " + description).lower()
+    skill_set = set(s.lower() for s in skills)
+    gap_keywords = set()
+    tech_patterns = [
+        r'\b(?:python|java|javascript|typescript|golang|rust|c\+\+|ruby|php|scala|kotlin|swift)\b',
+        r'\b(?:react|angular|vue|svelte|node\.?js|django|flask|spring|rails|laravel)\b',
+        r'\b(?:kubernetes|docker|terraform|ansible|jenkins|gitlab\s*ci|github\s*actions|circleci)\b',
+        r'\b(?:aws|gcp|azure|cloud|lambda|ec2|s3|rds|dynamodb|kafka|redis|postgresql|mysql|mongodb)\b',
+        r'\b(?:machine\s*learning|deep\s*learning|nlp|llm|langchain|pytorch|tensorflow|rag|vector|embedding)\b',
+        r'\b(?:sap|salesforce|oracle|servicenow|workday|dynamics)\b',
+        r'\b(?:api|graphql|grpc|rest|microservice|event.?driven|streaming)\b',
+    ]
+    for pat in tech_patterns:
+        for m in __import__('re').finditer(pat, desc_lower):
+            kw = m.group(0).replace('.', '-').replace('_', '')
+            if kw not in skill_set and kw not in gap_keywords:
+                gap_keywords.add(kw)
+
+    gaps = sorted(gap_keywords)[:20]
+
+    salary_str = ""
+    if salary_info:
+        if salary_info["source"] == "jd":
+            salary_str = f"Salary (from JD): {_format_salary(salary_info)}"
+        elif salary_info["source"] == "levels.fyi" and salary_info.get("median_tc"):
+            salary_str = f"Median comp (Levels.fyi): {salary_info['median_tc']}"
+
+    co_key = company.lower().strip()
+    company_desc = _COMPANY_CONTEXT.get(co_key)
+    if not company_desc:
+        # Try fuzzy match: first word(s) of company
+        for known_key, desc in _COMPANY_CONTEXT.items():
+            if known_key in co_key or co_key in known_key:
+                company_desc = desc
+                break
+
+    parts = [
+        f"## Application Context: {title} @ {company}",
+        f"",
+        f"### Job",
+        f"Title: {title}",
+        f"Company: {company}",
+        f"Company Description: {company_desc}" if company_desc else "",
+        f"Location: {location}",
+        f"URL: {url or c_url or 'N/A'}",
+        f"Score: {score}%",
+        f"Salary: {salary_str}" if salary_str else "",
+        f"",
+        f"### Profile",
+        f"Name: {PROFILE['name']}",
+        f"Current Role: {PROFILE.get('current_role', 'N/A')}",
+        f"Experience: {PROFILE['years_experience']} years",
+        f"Core Skills ({len(skills)}): {', '.join(skills)}",
+        f"",
+        f"### Resume",
+        f"Recommended: {resume_pdf}",
+        f"",
+        f"### Company Link",
+        f"{c_url}",
+        f"",
+        f"### Match Analysis",
+        f"Score: {score}%",
+        f"Notes: {note}" if note else "",
+        f"",
+        f"### Tailoring Suggestions",
+    ]
+    if suggestions:
+        for s in suggestions:
+            parts.append(f"- {s}")
+    else:
+        parts.append("(none generated)")
+
+    parts.append(f"")
+    parts.append(f"### Skill Gaps (JD vs Profile)")
+    if gaps:
+        parts.append(f"Keywords in JD not in your core skills ({len(gaps)}):")
+        for g in gaps:
+            parts.append(f"- {g}")
+    else:
+        parts.append("No significant gaps detected")
+    parts.append(f"")
+    parts.append(f"### Full Job Description")
+    parts.append(description)
+    parts.append(f"")
+    parts.append(f"---")
+    parts.append(f"Use the context above to generate:")
+    parts.append(f"1. **Cover letter draft** — adapted to the role, addressing key JD requirements with concrete achievements from the profile")
+    parts.append(f"2. **STAR+R stories** — 4-6 stories mapped to top JD requirements, with Reflection column for seniority signal")
+    parts.append(f"3. **Gap mitigation** — for each skill gap, assess if it's a hard blocker vs nice-to-have, adjacent experience, or quick project")
+    parts.append(f"Write in native professional English, active voice, no clichés. One page max for cover letter.")
+
+    return "\n".join(parts)
+
 
 async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):

@@ -33,3 +33,4 @@ Filter out these role types in `daily_scan.py` → `PROFILE["title_red_flags"]`:
   - `update_tracker` — update job status (applied/rejected/offer). Jobs go to separate Google Sheet tabs organized by resume version.
   - `parse_resume` — parse a PDF resume
   - `get_profile` — show active profile config
+  - `prepare_application` — generates structured context (profile, match analysis, skill gaps, salary, resume) for an LLM to produce a cover letter draft, STAR+R stories, and gap mitigation plan. Run after scoring a job. Pass title, company, description, and optional url/resume.

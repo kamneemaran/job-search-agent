@@ -66,4 +66,8 @@ APAC_JOB_SOURCES = [
     {"name": "Barry Callebaut", "url": "https://www.barry-callebaut.com/en/group/careers", "region": "Switzerland", "type": "company", "playwright": True},
     {"name": "Leica Geosystems", "url": "https://hexagon.com/company/careers/job-listings#jl_companyname=Geosystems&jl_e=0", "region": "Switzerland", "type": "company", "playwright": True},
     {"name": "Rivella Group", "url": "https://rivella-group.com/karriere/offene-stellen/", "region": "Switzerland", "type": "company", "playwright": True},
+
+    # AI companies (from career-ops integration)
+    {"name": "Glacis AI", "url": "https://jobs.ashbyhq.com/glacis-ai", "region": "APAC", "type": "company", "ats": "ashby", "ats_slug": "glacis-ai"},
+    {"name": "Maxim AI", "url": "https://www.getmaxim.ai/careers", "region": "APAC", "type": "company", "playwright": True},
 ]
