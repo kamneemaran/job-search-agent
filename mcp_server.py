@@ -947,6 +947,7 @@ def _search_board_jobs(
 
 # Company descriptions from career-ops integration
 _COMPANY_CONTEXT = {
+    "geberit": "Swiss sanitary products manufacturer with a large IT and engineering division for building systems, IoT plumbing, and factory automation.",
     # US/Canada (28)
     "anthropic": "AI safety research lab developing Claude, a helpful and harmless AI assistant.",
     "cohere": "AI/LLM provider building enterprise-focused language models. Toronto + remote.",
@@ -1069,6 +1070,7 @@ _COMPANY_CONTEXT = {
     "asml": "Dutch lithography equipment supplier for semiconductor manufacturing.",
     "sika": "Swiss specialty chemicals company for construction and automotive.",
     "clariant": "Swiss specialty chemical company focused on sustainability and innovation.",
+    "holcim": "Swiss global building materials and cement manufacturer.",
 }
 
 def _prepare_application(

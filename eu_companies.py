@@ -7,6 +7,7 @@ EU_JOB_SOURCES = [
     {"name": "Confluent", "url": "https://careers.confluent.io/jobs/engineering?engineering=engineering", "region": "EU", "type": "company", "playwright": True},
     {"name": "Exoscale", "url": "https://www.exoscale.com/jobs/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Georg Fischer", "url": "https://georgfischer.wd103.myworkdayjobs.com/GeorgFischer_Careers?jobFamilyGroup=d5c75ad854ca100118ef5c9ba5900000", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Geberit", "url": "https://jobs.geberit.com/default/content/search/?locale=en_US&currentPage=1&pageSize=12&jobFunction%2Flabel=Engineering+%26+Quality&jobFunction%2Flabel=Information+Technology", "region": "EU", "type": "company", "playwright": True},
     {"name": "Ricola", "url": "https://www.ricola.com/en/about/career/open-positions/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Rivero", "url": "https://join.com/companies/rivero", "region": "EU", "type": "company", "ats": "join"},
     {"name": "Mondelez International", "url": "https://www.mondelezinternational.com/careers/jobs/?term=&jobFamily=JF00064|JF00065|JF00066|JF00068|JF00069|JF00070|JF00071|JF00072|JF00073|JF00074|JF00075&timeType=Full_time", "region": "EU", "type": "company", "playwright": True},
@@ -883,6 +884,7 @@ EU_JOB_SOURCES = [
     {"name": "ASML", "url": "https://www.asml.com/en/careers/find-your-job?job_teams=Applications+Engineering%7CDesign+Engineering+and+Architecture%7CIT%7CResearch+and+Technology+Development&job_type=Fix&query=software&sort_by=relevance", "region": "EU", "type": "company", "playwright": True},
     {"name": "Sika", "url": "https://www.sika.com/en/about-us/who-we-are/global-it/jobs.html", "region": "EU", "type": "company", "playwright": True},
     {"name": "Clariant", "url": "https://careers.clariant.com/search/?createNewAlert=false&q=&optionsFacetsDD_country=&optionsFacetsDD_customfield1=&optionsFacetsDD_department=", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Holcim", "url": "https://careers.holcimgroup.com/search/?searchby=location&createNewAlert=false&q=&locationsearch=&geolocation=&optionsFacetsDD_department=Information+Technology&optionsFacetsDD_customfield1=&optionsFacetsDD_shifttype=&optionsFacetsDD_state=&optionsFacetsDD_customfield4=", "region": "EU", "type": "company", "playwright": True},
 
     # === Recruitment Agencies (from Europe_100 sheet) ===
     {"name": "AVOMIND", "url": "https://apply.workable.com/avomind/", "region": "EU", "type": "company", "playwright": True},
