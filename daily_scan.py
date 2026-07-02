@@ -2383,49 +2383,71 @@ def search_indeed(query, location="India", max_results=50):
     return jobs
 
 
+def _indeed_parse_page(html, location):
+    """Parse Indeed NL job listings from HTML. Returns list of job dicts."""
+    titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
+    companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
+    if not companies:
+        companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
+    if not companies:
+        companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
+    locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
+    if not locations:
+        locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
+    links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
+    if not links:
+        links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
+
+    if not titles:
+        return []
+
+    jobs = []
+    min_len = min(len(titles), len(companies), len(locations))
+    for i in range(min_len):
+        job_url = "https://nl.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+        jobs.append({
+            "title": titles[i].strip(),
+            "company": companies[i].strip() if i < len(companies) else "Unknown",
+            "location": locations[i].strip() if i < len(locations) else location,
+            "url": job_url,
+            "description": f"Indeed NL job: {titles[i]} at {companies[i]} in {locations[i]}",
+        })
+    return jobs
+
+
 def search_indeed_nl(query, location="Netherlands", max_results=50):
-    """Search Indeed Netherlands for jobs using Playwright (paginated)."""
+    """Search Indeed Netherlands for jobs via HTTP + Playwright fallback."""
     jobs = []
     query_param = query.replace(" ", "+")
     page_size = 15
     max_pages = min(3, (max_results + page_size - 1) // page_size)
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}
     try:
         for page_num in range(max_pages):
             start = page_num * 10
             page_url = f"https://nl.indeed.com/vacatures?q={query_param}&l=Netherlands&start={start}"
-            html = _playwright_html(page_url)
-            titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
-            companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
-            if not companies:
-                companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
-            if not companies:
-                companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
-            locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
-            if not locations:
-                locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
-            links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
-            if not links:
-                links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
-
-            if not titles:
+            # Try HTTP first — Indeed sends job data in initial HTML
+            html = ""
+            try:
+                resp = requests.get(page_url, headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    html = resp.text
+            except Exception:
+                pass
+            # Fall back to Playwright if HTTP returned nothing parseable
+            page_jobs = _indeed_parse_page(html, location)
+            if not page_jobs:
+                try:
+                    pw_html = _playwright_html(page_url, timeout=20000, wait_ms=3000)
+                    page_jobs = _indeed_parse_page(pw_html, location)
+                except Exception:
+                    pass
+            if not page_jobs:
                 break
-
-            min_len = min(len(titles), len(companies), len(locations))
-            for i in range(min_len):
-                if len(jobs) >= max_results:
-                    break
-                job_url = "https://nl.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-                jobs.append({
-                    "title": titles[i].strip(),
-                    "company": companies[i].strip() if i < len(companies) else "Unknown",
-                    "location": locations[i].strip() if i < len(locations) else location,
-                    "url": job_url,
-                    "description": f"Indeed NL job: {titles[i]} at {companies[i]} in {locations[i]}",
-                })
-
+            jobs.extend(page_jobs[:max_results - len(jobs)])
             if len(jobs) >= max_results:
                 break
-            time.sleep(2)
+            time.sleep(1.5)
 
         if jobs:
             print(f"  [indeed-nl] {len(jobs)} jobs for '{query}' in Netherlands")
