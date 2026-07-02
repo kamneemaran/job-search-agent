@@ -1062,6 +1062,13 @@ _COMPANY_CONTEXT = {
     "vinted": "C2C marketplace for second-hand fashion. Vilnius + Berlin.",
     "spotify": "Audio streaming platform with large ML/personalization org. Stockholm.",
     "twilio": "Voice, messaging, and email API platform.",
+
+    # European industrial & manufacturing
+    "abb": "Swiss-Swedish multinational robotics, power, and automation technology.",
+    "bmw group": "German luxury automobile and motorcycle manufacturer. Munich HQ.",
+    "asml": "Dutch lithography equipment supplier for semiconductor manufacturing.",
+    "sika": "Swiss specialty chemicals company for construction and automotive.",
+    "clariant": "Swiss specialty chemical company focused on sustainability and innovation.",
 }
 
 def _prepare_application(

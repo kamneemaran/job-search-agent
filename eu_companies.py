@@ -877,6 +877,13 @@ EU_JOB_SOURCES = [
     {"name": "Wayve", "url": "https://job-boards.greenhouse.io/wayve", "region": "EU", "type": "company", "ats": "greenhouse", "ats_slug": "wayve"},
     {"name": "Zapier", "url": "https://jobs.ashbyhq.com/zapier", "region": "EU", "type": "company", "ats": "ashby", "ats_slug": "zapier"},
 
+    # European industrial & manufacturing companies
+    {"name": "ABB", "url": "https://careers.abb/global/en/search-results?keywords=SAP&from=10&s=1", "region": "EU", "type": "company", "playwright": True},
+    {"name": "BMW Group", "url": "https://www.bmwgroup.jobs/de/en.html", "region": "EU", "type": "company", "playwright": True},
+    {"name": "ASML", "url": "https://www.asml.com/en/careers/find-your-job?job_teams=Applications+Engineering%7CDesign+Engineering+and+Architecture%7CIT%7CResearch+and+Technology+Development&job_type=Fix&query=software&sort_by=relevance", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Sika", "url": "https://www.sika.com/en/about-us/who-we-are/global-it/jobs.html", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Clariant", "url": "https://careers.clariant.com/search/?createNewAlert=false&q=&optionsFacetsDD_country=&optionsFacetsDD_customfield1=&optionsFacetsDD_department=", "region": "EU", "type": "company", "playwright": True},
+
     # === Recruitment Agencies (from Europe_100 sheet) ===
     {"name": "AVOMIND", "url": "https://apply.workable.com/avomind/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Talentor Germany", "url": "https://talentor.com/jobsearch?searchTerm=&country=all&field=it-telecom-internet", "region": "EU", "type": "company", "playwright": True},
