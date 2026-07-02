@@ -2895,6 +2895,7 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
 
 def _playwright_html(url, timeout=30000, wait_ms=2000):
     """Load a JS-rendered page with Playwright + stealth and return full HTML."""
+    context = None
     try:
         browser = _get_browser()
         context = browser.new_context(
@@ -2902,14 +2903,20 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
             viewport={"width": 1920, "height": 1080},
         )
         page = context.new_page()
+        page.set_default_timeout(timeout)
         _with_stealth(page)
         page.goto(url, timeout=timeout, wait_until="domcontentloaded")
         page.wait_for_timeout(wait_ms)
         html = page.content()
-        context.close()
         return html
     except Exception as e:
         return ""
+    finally:
+        if context:
+            try:
+                context.close()
+            except Exception:
+                pass
 
 
 def search_remoteok(query, location="Remote", max_results=50):
@@ -4990,37 +4997,48 @@ def search_netempregos(query, location="Portugal", max_results=50):
 
 
 def search_sapoemprego(query, location="Portugal", max_results=50):
-    """Search SAPO Emprego (Portugal) for jobs."""
-    from bs4 import BeautifulSoup
-    url = "https://emprego.sapo.pt/offers?categoria=engenharia,informatica-tecnologias&hora=full-time&ordem=mais-recentes"
-    jobs = []
-    try:
-        html = _playwright_html(url)
-        if html:
-            soup = BeautifulSoup(html, 'html.parser')
-            articles = soup.find_all("article")
-            for art in articles[:max_results]:
-                txt = art.get_text("\n", strip=True)
-                lines = [l.strip() for l in txt.split("\n") if l.strip()]
-                if not lines:
-                    continue
-                title = lines[0]
-                company = lines[1] if len(lines) > 1 else "Unknown"
-                loc = "Portugal"
-                for l in lines:
-                    for city in ["Lisboa", "Porto", "Braga", "Coimbra", "Aveiro", "Faro",
-                                 "Sintra", "Cascais", "Oeiras", "Setúbal", "Évora"]:
-                        if city in l:
-                            loc = city
-                            break
-                if title:
-                    jobs.append({"title": title, "company": company, "location": loc,
-                                 "url": "", "description": title})
-            if jobs: print(f"  [sapoemprego] {len(jobs)} jobs for '{query}'")
-            return jobs
-    except Exception as e:
-        print(f"  [sapoemprego] Error: {e}")
-    return []
+    """Search SAPO Emprego (Portugal) for jobs. Wrapped with hard timeout."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _run():
+        from bs4 import BeautifulSoup
+        url = "https://emprego.sapo.pt/offers?categoria=engenharia,informatica-tecnologias&hora=full-time&ordem=mais-recentes"
+        jobs = []
+        try:
+            html = _playwright_html(url, timeout=30000)
+            if html:
+                soup = BeautifulSoup(html, 'html.parser')
+                articles = soup.find_all("article")
+                for art in articles[:max_results]:
+                    txt = art.get_text("\n", strip=True)
+                    lines = [l.strip() for l in txt.split("\n") if l.strip()]
+                    if not lines:
+                        continue
+                    title = lines[0]
+                    company = lines[1] if len(lines) > 1 else "Unknown"
+                    loc = "Portugal"
+                    for l in lines:
+                        for city in ["Lisboa", "Porto", "Braga", "Coimbra", "Aveiro", "Faro",
+                                     "Sintra", "Cascais", "Oeiras", "Setúbal", "Évora"]:
+                            if city in l:
+                                loc = city
+                                break
+                    if title:
+                        jobs.append({"title": title, "company": company, "location": loc,
+                                     "url": "", "description": title})
+                if jobs: print(f"  [sapoemprego] {len(jobs)} jobs for '{query}'")
+                return jobs
+        except Exception as e:
+            print(f"  [sapoemprego] Error: {e}")
+        return jobs
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(_run)
+        try:
+            return future.result(timeout=45)
+        except Exception:
+            print(f"  [sapoemprego] Timeout (45s) for '{query}'")
+            return []
 
 
 def search_bundesagentur(query, location="Germany", max_results=50):
