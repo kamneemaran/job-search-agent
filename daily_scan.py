@@ -962,6 +962,67 @@ def _title_only_bypass(job, score, relocation_note, threshold):
     return score, relocation_note
 
 
+_translation_cache = {}
+
+
+def _detect_total_count(soup, default=500):
+    """Try to detect total job count from a page. Look for common count patterns."""
+    import re
+    txt = soup.get_text()[:3000]
+    patterns = [
+        # German: "13.406 Jobs", "224 Ergebnisse", "1.234 Stellen"
+        r'(\d[\d.]*)\s*(?:Jobs?|Stellen?|Ergebnisse?|Angebote?|Treffer)',
+        # Portuguese: "244 Ofertas", "244 resultados"
+        r'(\d[\d.]*)\s*(?:Ofertas?|resultados?|vagas?)',
+        # Spanish: "244 ofertas", "244 empleos"
+        r'(\d[\d.]*)\s*(?:ofertas?|empleos?|puestos?)',
+        # French: "244 offres", "244 résultats"
+        r'(\d[\d.]*)\s*(?:offres?|résultats?|emplois?)',
+        # Dutch: "244 vacatures", "244 resultaten"
+        r'(\d[\d.]*)\s*(?:vacatures?|resultaten?|banen?)',
+        # English: "224 jobs", "224 results", "224 matching offers"
+        r'(\d[\d,.]+)\s*(?:jobs?|results?|offers?|matches?|vacancies?|positions?)',
+        r'(?:of|Found)\s+(\d[\d,.]+)',
+    ]
+    for p in patterns:
+        m = re.search(p, txt, re.IGNORECASE)
+        if m:
+            num = m.group(1).replace('.', '').replace(',', '')
+            try:
+                return int(num)
+            except ValueError:
+                pass
+    return default
+
+
+def _translate_to_english(text):
+    """Translate non-English text to English. Caches results.
+    Skips translation only if text contains English stop words (strong signal it's already English).
+    Tech keywords alone (Java, Docker, AWS) don't block — they appear in many languages."""
+    if not text or len(text.strip()) < 5:
+        return text
+    text = text.strip()
+    key = text[:200]
+    if key in _translation_cache:
+        return _translation_cache[key]
+    # English stop words — strong signal text is already English
+    if re.search(r'\b(the|is|at|and|for|with|this|that|from|are|was|were|has|have|been|will|would|could|should|about|than|then|also|its|into|more|some|such|than|they|what|when|which|your|being|been|both|each|most|other|over|their|there|these|where|while|after|before|between|during|without|through|under|above|along|around|because|before|behind|below|beneath|beside|beyond|upon|within)\b', text, re.I):
+        _translation_cache[key] = text
+        return text
+    try:
+        from deep_translator import GoogleTranslator
+        translated = GoogleTranslator(source='auto', target='en').translate(text[:300])
+        if translated:
+            _translation_cache[key] = translated
+            if translated != text:
+                print(f"  [translate] \"{text[:50]}...\" -> \"{translated[:50]}...\"")
+            return translated
+    except Exception:
+        pass
+    _translation_cache[key] = text
+    return text
+
+
 def pick_resume(company):
     resume_path = os.environ.get("RESUME_PATH")
     if resume_path:
@@ -2186,7 +2247,7 @@ def fetch_jobs_from_source(source):
                 for loc in locations_to_try:
                     for q in queries[:6]:
                         try:
-                            li_jobs = search_linkedin(q, location=loc, max_results=25)
+                            li_jobs = search_linkedin(q, location=loc, max_results=500)
                             for j in li_jobs:
                                 lc = j.get("company", "").lower()
                                 if company_slug in lc or any(w in lc for w in company_slug.split() if len(w) > 3):
@@ -2222,7 +2283,7 @@ def fetch_jobs_from_source(source):
             for loc in locations_to_try:
                 for q in queries[:2]:
                     try:
-                        li_jobs = search_linkedin(q, location=loc, max_results=25)
+                        li_jobs = search_linkedin(q, location=loc, max_results=500)
                         for j in li_jobs:
                             lc = j.get("company", "").lower()
                             if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
@@ -2241,7 +2302,7 @@ def fetch_jobs_from_source(source):
     return jobs
 
 
-def search_linkedin(query, location="India", max_results=75):
+def search_linkedin(query, location="India", max_results=500):
     """Search LinkedIn Guest API for jobs matching a query (paginated)."""
     jobs = []
     headers = {
@@ -2329,7 +2390,7 @@ def search_linkedin(query, location="India", max_results=75):
     return jobs
 
 
-def search_indeed(query, location="India", max_results=50):
+def search_indeed(query, location="India", max_results=500):
     """Search Indeed for jobs matching a query using Playwright (paginated)."""
     jobs = []
     loc_param = location.replace(" ", "+")
@@ -2415,7 +2476,7 @@ def _indeed_parse_page(html, location):
     return jobs
 
 
-def search_indeed_nl(query, location="Netherlands", max_results=50):
+def search_indeed_nl(query, location="Netherlands", max_results=500):
     """Search Indeed Netherlands for jobs via HTTP + Playwright fallback."""
     jobs = []
     query_param = query.replace(" ", "+")
@@ -2458,7 +2519,7 @@ def search_indeed_nl(query, location="Netherlands", max_results=50):
     return jobs
 
 
-def search_naukri(query, location="India", max_results=50):
+def search_naukri(query, location="India", max_results=500):
     """Search Naukri for jobs matching a query using their API (paginated)."""
     jobs = []
     session = requests.Session()
@@ -2531,7 +2592,7 @@ def search_naukri(query, location="India", max_results=50):
     return jobs
 
 
-def search_instahyre(query, location="India", max_results=50):
+def search_instahyre(query, location="India", max_results=500):
     """Search Instahyre for jobs matching a query using their API (paginated)."""
     jobs = []
     scraper = cloudscraper.create_scraper()
@@ -2597,7 +2658,7 @@ def search_instahyre(query, location="India", max_results=50):
     return jobs
 
 
-def search_womenintech(query, location="UK", max_results=50):
+def search_womenintech(query, location="UK", max_results=500):
     """Search WomenInTech UK job board using Playwright with Load More support."""
     jobs = []
     try:
@@ -2640,7 +2701,7 @@ def search_womenintech(query, location="UK", max_results=50):
     return jobs
 
 
-def search_weworkremotely(query, location="Remote", max_results=25):
+def search_weworkremotely(query, location="Remote", max_results=500):
     """Search We Work Remotely for jobs matching a query."""
     jobs = []
     scraper = cloudscraper.create_scraper()
@@ -2673,7 +2734,7 @@ def search_weworkremotely(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_simplyhired(query, location="India", max_results=50):
+def search_simplyhired(query, location="India", max_results=500):
     """Search SimplyHired for jobs matching a query using Playwright (paginated).
     Fetches actual job descriptions from detail pages for better scoring."""
     jobs = []
@@ -2754,7 +2815,7 @@ def search_simplyhired(query, location="India", max_results=50):
     return jobs
 
 
-def search_glassdoor(query, location="India", max_results=50):
+def search_glassdoor(query, location="India", max_results=500):
     """Search Glassdoor for jobs matching a query using Playwright (paginated)."""
     jobs = []
     loc_map = {"India": "113", "Remote": "0", "Germany": "96", "Netherlands": "178",
@@ -2941,7 +3002,7 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
                 pass
 
 
-def search_remoteok(query, location="Remote", max_results=50):
+def search_remoteok(query, location="Remote", max_results=500):
     """Search RemoteOK using Playwright with infinite scroll."""
     jobs = []
     term = query.replace(" ", "-").lower()
@@ -2981,7 +3042,7 @@ def search_remoteok(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_skipthedrive(query, location="Remote", max_results=50):
+def search_skipthedrive(query, location="Remote", max_results=500):
     """Search SkipTheDrive for remote jobs using HTTP (paginated)."""
     jobs = []
     scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
@@ -3019,7 +3080,7 @@ def search_skipthedrive(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_workingnomads(query, location="Remote", max_results=50):
+def search_workingnomads(query, location="Remote", max_results=500):
     """Search WorkingNomads using Playwright with Load More / infinite scroll."""
     jobs = []
     try:
@@ -3093,7 +3154,7 @@ def search_workingnomads(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_jobspresso(query, location="Remote", max_results=50):
+def search_jobspresso(query, location="Remote", max_results=500):
     """Search Jobspresso using Playwright with Load More button clicking."""
     jobs = []
     try:
@@ -3170,7 +3231,7 @@ def search_jobspresso(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_englishjobsearch(query, location="Remote", max_results=50):
+def search_englishjobsearch(query, location="Remote", max_results=500):
     """Search EnglishJobSearch.ch for English-speaking jobs in Switzerland/EU (paginated).
 
     Uses plain HTTP + regex (the site is server-rendered, no JS needed).
@@ -3238,7 +3299,7 @@ def search_englishjobsearch(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_bulldogjob(query, location="Remote", max_results=50):
+def search_bulldogjob(query, location="Remote", max_results=500):
     """Search BulldogJob.pl for tech jobs in Poland/EU with Load More support."""
     jobs = []
     q = query.replace(" ", "+")
@@ -3301,7 +3362,7 @@ def search_bulldogjob(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_workatstartup(query, location="Remote", max_results=50):
+def search_workatstartup(query, location="Remote", max_results=500):
     """Search WorkAtAStartup (YC) using Playwright with infinite scroll."""
     jobs = []
     exp = PROFILE["years_experience"]
@@ -3349,7 +3410,7 @@ def search_workatstartup(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_stepstone(query, location="Germany", max_results=50):
+def search_stepstone(query, location="Germany", max_results=500):
     """Search StepStone Germany for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "-").lower()
@@ -3402,7 +3463,7 @@ def search_stepstone(query, location="Germany", max_results=50):
     return jobs
 
 
-def search_monsterde(query, location="Germany", max_results=50):
+def search_monsterde(query, location="Germany", max_results=500):
     """Search Monster Germany for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+").lower()
@@ -3455,7 +3516,7 @@ def search_monsterde(query, location="Germany", max_results=50):
     return jobs
 
 
-def search_adzuna(query, location="Remote", max_results=50):
+def search_adzuna(query, location="Remote", max_results=500):
     """Search Adzuna UK for jobs using cloudscraper (paginated, bypasses Cloudflare)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -3527,7 +3588,7 @@ def _accept_dpg_privacy(page):
     return False
 
 
-def search_intermediair(query, location="Netherlands", max_results=50):
+def search_intermediair(query, location="Netherlands", max_results=500):
     """Search Intermediair.nl for jobs using Playwright (DPG Media, paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -3594,7 +3655,7 @@ def search_intermediair(query, location="Netherlands", max_results=50):
     return jobs
 
 
-def search_nationalevacaturebank(query, location="Netherlands", max_results=50):
+def search_nationalevacaturebank(query, location="Netherlands", max_results=500):
     """Search NationaleVacaturebank.nl for jobs using Playwright (DPG Media, paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -3661,7 +3722,7 @@ def search_nationalevacaturebank(query, location="Netherlands", max_results=50):
     return jobs
 
 
-def search_reed(query, location="Remote", max_results=50):
+def search_reed(query, location="Remote", max_results=500):
     """Search Reed.co.uk for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "-").lower()
@@ -3713,7 +3774,7 @@ def search_reed(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_jobsite(query, location="Remote", max_results=50):
+def search_jobsite(query, location="Remote", max_results=500):
     """Search Jobsite.co.uk for jobs using Playwright (paginated, StepStone Group)."""
     jobs = []
     q = query.replace(" ", "-").lower()
@@ -4296,7 +4357,7 @@ class JobTracker:
             return False
 
 
-def search_remotive(query, location="Remote", max_results=50):
+def search_remotive(query, location="Remote", max_results=500):
     """Search Remotive public API for remote jobs."""
     jobs = []
     try:
@@ -4318,7 +4379,7 @@ def search_remotive(query, location="Remote", max_results=50):
 
 
 
-def search_foundit(query, location="India", max_results=50):
+def search_foundit(query, location="India", max_results=500):
     """Search Foundit (Monster India) for jobs (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4353,7 +4414,7 @@ def search_foundit(query, location="India", max_results=50):
     return jobs
 
 
-def search_timesjobs(query, location="India", max_results=50):
+def search_timesjobs(query, location="India", max_results=500):
     """Search TimesJobs for jobs (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4385,7 +4446,7 @@ def search_timesjobs(query, location="India", max_results=50):
     return jobs
 
 
-def search_arcdev(query, location="Remote", max_results=50):
+def search_arcdev(query, location="Remote", max_results=500):
     """Search Arc.dev for remote developer jobs using Playwright (JS-rendered)."""
     jobs = []
     q = query.replace(" ", "-")
@@ -4425,7 +4486,7 @@ def search_arcdev(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_seek(query, location="Australia", max_results=50):
+def search_seek(query, location="Australia", max_results=500):
     """Search Seek (AU/NZ) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4467,7 +4528,7 @@ def search_seek(query, location="Australia", max_results=50):
     return jobs
 
 
-def search_jora(query, location="Australia", max_results=50):
+def search_jora(query, location="Australia", max_results=500):
     """Search Jora (AU/NZ) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4503,7 +4564,7 @@ def search_jora(query, location="Australia", max_results=50):
     return jobs
 
 
-def search_xing(query, location="Germany", max_results=50):
+def search_xing(query, location="Germany", max_results=500):
     """Search Xing (Europe) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4545,7 +4606,7 @@ def search_xing(query, location="Germany", max_results=50):
     return jobs
 
 
-def search_jobsch(query, location="Switzerland", max_results=50):
+def search_jobsch(query, location="Switzerland", max_results=500):
     """Search Jobs.ch (Switzerland) for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4581,7 +4642,7 @@ def search_jobsch(query, location="Switzerland", max_results=50):
     return jobs
 
 
-def search_jobsingermany(query, location="Germany", max_results=50):
+def search_jobsingermany(query, location="Germany", max_results=500):
     """Search JobsinGermany for jobs using Playwright (paginated)."""
     jobs = []
     q = query.replace(" ", "+")
@@ -4617,7 +4678,7 @@ def search_jobsingermany(query, location="Germany", max_results=50):
     return jobs
 
 
-def search_arbeitnow(query, location="Remote", max_results=25):
+def search_arbeitnow(query, location="Remote", max_results=500):
     """Search Arbeitnow API for jobs matching a query.
 
     The public API (www.arbeitnow.com/api/job-board-api) returns all jobs
@@ -4666,7 +4727,7 @@ def search_arbeitnow(query, location="Remote", max_results=25):
     return jobs
 
 
-def search_visasponsor(query, location="Remote", max_results=50):
+def search_visasponsor(query, location="Remote", max_results=500):
     """Search VisaSponsor.Jobs for visa-sponsored jobs using Playwright with Load More / scroll."""
     jobs = []
     classifications = "Engineering&classification=Financial-Services&classification=Information-Technology&classification=Management-and-Strategy&classification=Manufacturing-and-Logistics"
@@ -4701,7 +4762,7 @@ def search_visasponsor(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_incluso(query, location="Remote", max_results=50):
+def search_incluso(query, location="Remote", max_results=500):
     """Search Incluso (Teamtailor) jobs via JSON Feed (paginated)."""
     jobs = []
     query_lower = query.lower()
@@ -4759,7 +4820,7 @@ def search_incluso(query, location="Remote", max_results=50):
     return jobs
 
 
-def search_workinfinland(query, location="Finland", max_results=50):
+def search_workinfinland(query, location="Finland", max_results=500):
     """Search Work in Finland for jobs using Playwright (Next.js, paginated)."""
     jobs = []
     cats = "ict%2Csoftware-development%2Cengineering"
@@ -4819,7 +4880,7 @@ def search_workinfinland(query, location="Finland", max_results=50):
     return jobs
 
 
-def search_eures(query, location="Europe", max_results=50):
+def search_eures(query, location="Europe", max_results=500):
     """Search EURES via their Angular app API (requires Playwright session)."""
     jobs = []
     query_lower = query.lower()
@@ -4899,7 +4960,7 @@ def search_eures(query, location="Europe", max_results=50):
 # ---------------------------------------------------------------------------
 
 def _extract_jobs_bs4(html, title_sel, company_sel=None, link_sel=None, loc_sel=None,
-                      link_prefix="", base_url="", default_loc="", max_results=50):
+                      link_prefix="", base_url="", default_loc="", max_results=500):
     """Helper: parse HTML with BeautifulSoup and extract job listings."""
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, 'html.parser')
@@ -4989,18 +5050,34 @@ def _enrich_descriptions(jobs, max_workers=8):
         return list(ex.map(fetch, jobs))
 
 
-def search_netempregos(query, location="Portugal", max_results=50):
-    """Search Net-Empregos (Portugal) for jobs."""
+def search_netempregos(query, location="Portugal", max_results=500):
+    """Search Net-Empregos (Portugal) for jobs with pagination."""
     from bs4 import BeautifulSoup
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
     jobs = []
+    seen = set()
     try:
         resp = requests.get(f"https://www.net-empregos.com/pesquisa/?q={q}", headers=h, timeout=15)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, 'html.parser')
+        if resp.status_code != 200:
+            return []
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        total_count = _detect_total_count(soup)
+        effective_max = min(total_count, max_results)
+        page_num = 1
+        while len(jobs) < effective_max:
+            if page_num > 1:
+                pag_url = f"https://www.net-empregos.com/pesquisa-empregos.asp?page={page_num}&chaves=pesquisa"
+                resp = requests.get(pag_url, headers=h, timeout=15)
+                if resp.status_code != 200:
+                    break
+                soup = BeautifulSoup(resp.text, 'html.parser')
             cards = soup.select(".media-body.align-self-center")
-            for card in cards[:max_results]:
+            if not cards:
+                break
+            for card in cards:
+                if len(jobs) >= effective_max:
+                    break
                 h2 = card.find("h2")
                 a = h2.find("a") if h2 else None
                 title = a.get_text().strip() if a else (h2.get_text().strip() if h2 else "")
@@ -5008,92 +5085,138 @@ def search_netempregos(query, location="Portugal", max_results=50):
                 url = f"https://www.net-empregos.com{href}" if href else ""
                 img = card.find("img", class_="net-img-logo")
                 company = img.get("alt", "Unknown") if img else "Unknown"
-                if title:
+                dedup_key = href or f"{title}|{company}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
                     jobs.append({"title": title, "company": company, "location": "Portugal",
                                  "url": url, "description": title})
-            if jobs: print(f"  [netempregos] {len(jobs)} jobs for '{query}'")
-            return _enrich_descriptions(jobs)
+            page_num += 1
+        if jobs:
+            print(f"  [netempregos] {len(jobs)} jobs for '{query}'")
+        return jobs
     except Exception as e:
         print(f"  [netempregos] Error: {e}")
     return []
 
 
-def search_sapoemprego(query, location="Portugal", max_results=50):
-    """Search SAPO Emprego (Portugal) for jobs. Wrapped with hard timeout."""
-    from concurrent.futures import ThreadPoolExecutor
+def search_sapoemprego(query, location="Portugal", max_results=500):
+    """Search SAPO Emprego (Portugal) for jobs with pagination."""
+    from bs4 import BeautifulSoup
+    base_url = "https://emprego.sapo.pt/offers?categoria=engenharia,informatica-tecnologias&hora=full-time&ordem=mais-recentes"
+    jobs = []
+    seen = set()
+    try:
+        html = _playwright_html(base_url, timeout=30000)
+        if not html:
+            return jobs
+        soup = BeautifulSoup(html, 'html.parser')
+        total = _detect_total_count(soup, default=500)
+        total_pages = min((total // 20) + 1, 327)
+        print(f"  [sapoemprego] ~{total} jobs across ~{total_pages} pages for '{query}'")
 
-    def _run():
-        from bs4 import BeautifulSoup
-        url = "https://emprego.sapo.pt/offers?categoria=engenharia,informatica-tecnologias&hora=full-time&ordem=mais-recentes"
-        jobs = []
-        try:
-            html = _playwright_html(url, timeout=30000)
-            if html:
-                soup = BeautifulSoup(html, 'html.parser')
-                articles = soup.find_all("article")
-                for art in articles[:max_results]:
-                    txt = art.get_text("\n", strip=True)
-                    lines = [l.strip() for l in txt.split("\n") if l.strip()]
-                    if not lines:
-                        continue
-                    title = lines[0]
-                    company = lines[1] if len(lines) > 1 else "Unknown"
-                    loc = "Portugal"
-                    for l in lines:
-                        for city in ["Lisboa", "Porto", "Braga", "Coimbra", "Aveiro", "Faro",
-                                     "Sintra", "Cascais", "Oeiras", "Setúbal", "Évora"]:
-                            if city in l:
-                                loc = city
-                                break
-                    if title:
-                        jobs.append({"title": title, "company": company, "location": loc,
-                                     "url": "", "description": title})
-                if jobs: print(f"  [sapoemprego] {len(jobs)} jobs for '{query}'")
-                return jobs
-        except Exception as e:
-            print(f"  [sapoemprego] Error: {e}")
+        def _parse_articles(soup):
+            parsed = []
+            articles = soup.find_all("article")
+            for art in articles:
+                if len(jobs) + len(parsed) >= max_results:
+                    break
+                classes = art.get("class", [])
+                if "picture-card" in classes or "ad" in classes:
+                    continue
+                title_el = art.select_one("h3 a") or art.select_one("h3")
+                if not title_el:
+                    continue
+                title = title_el.get_text().strip()
+                company_el = art.select_one("ul.company li.name a") or art.select_one("ul.company li.name")
+                company = company_el.get_text().strip() if company_el else "Unknown"
+                key = (title, company)
+                if key in seen:
+                    continue
+                seen.add(key)
+                txt_all = art.get_text(" ", strip=True)
+                loc = "Portugal"
+                for city in ["Lisboa", "Porto", "Braga", "Coimbra", "Aveiro", "Faro",
+                             "Sintra", "Cascais", "Oeiras", "Setúbal", "Évora"]:
+                    if city in txt_all:
+                        loc = city
+                        break
+                link_el = art.select_one("a[href*='/offers/']")
+                url_full = link_el.get("href", "") if link_el else ""
+                if title and company:
+                    parsed.append({"title": title, "company": company, "location": loc,
+                                   "url": url_full, "description": title})
+            return parsed
+
+        jobs.extend(_parse_articles(soup))
+
+        for page in range(2, total_pages + 1):
+            if len(jobs) >= max_results:
+                break
+            page_url = f"{base_url}&pagina={page}"
+            html = _playwright_html(page_url, timeout=30000)
+            if not html:
+                continue
+            soup = BeautifulSoup(html, 'html.parser')
+            page_jobs = _parse_articles(soup)
+            jobs.extend(page_jobs)
+            if not page_jobs:
+                break
+
+        if jobs:
+            print(f"  [sapoemprego] {len(jobs)} jobs for '{query}'")
         return jobs
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(_run)
-        try:
-            return future.result(timeout=45)
-        except Exception:
-            print(f"  [sapoemprego] Timeout (45s) for '{query}'")
-            return []
+    except Exception as e:
+        print(f"  [sapoemprego] Error: {e}")
+    return jobs
 
 
-def search_bundesagentur(query, location="Germany", max_results=50):
-    """Search Bundesagentur für Arbeit (Germany) for jobs."""
+def search_bundesagentur(query, location="Germany", max_results=500):
+    """Search Bundesagentur für Arbeit (Germany) for IT/software jobs."""
     from bs4 import BeautifulSoup
     q = query.replace(" ", "+")
+    berufsfeld = "IT-Systemanalyse,%20-Anwendungsberatung%20und%20-Vertrieb;Informatik;Softwareentwicklung%20und%20Programmierung"
+    base = f"https://www.arbeitsagentur.de/jobsuche/suche?berufsfeld={berufsfeld}&angebotsart=1&begriff={q}"
+    jobs = []
+    seen = set()
+    page = 1
     try:
-        html = _playwright_html(f"https://www.arbeitsagentur.de/jobsuche/suche?begriff={q}&umkreis=200")
-        if html:
+        effective_max = max_results
+        while len(jobs) < effective_max:
+            html = _playwright_html(f"{base}&seite={page}")
+            if not html:
+                break
             soup = BeautifulSoup(html, 'html.parser')
-            jobs = []
+            if page == 1:
+                total_count = _detect_total_count(soup)
+                effective_max = min(total_count, max_results)
+                if total_count > max_results:
+                    print(f"    (capped to {effective_max} of {total_count} available)")
             links = soup.select('a[href*="jobdetail"]')
-            seen = set()
+            if not links:
+                break
             for a in links:
+                if len(jobs) >= max_results:
+                    break
                 href = a.get("href", "")
                 if href in seen:
                     continue
                 seen.add(href)
                 full_url = href if href.startswith("http") else f"https://www.arbeitsagentur.de{href}"
-                # Title is in the link text, stripped of "X. Ergebnis: " prefix
                 title = a.get_text().strip()
                 title = re.sub(r'^\d+\.\s*Ergebnis:\s*', '', title).strip()
-                if title and len(jobs) < max_results:
+                if title:
                     jobs.append({"title": title, "company": "", "location": "Germany",
                                  "url": full_url, "description": title})
-            if jobs: print(f"  [bundesagentur] {len(jobs)} jobs for '{query}'")
-            return _enrich_descriptions(jobs)
+            page += 1
+        if jobs:
+            print(f"  [bundesagentur] {len(jobs)} jobs for '{query}'")
+        return jobs
     except Exception as e:
         print(f"  [bundesagentur] Error: {e}")
     return []
 
 
-def search_iamexpat(query, location="Netherlands", max_results=50):
+def search_iamexpat(query, location="Netherlands", max_results=500):
     """Search IamExpat (Netherlands) for English-friendly jobs."""
     from bs4 import BeautifulSoup
     url = "https://www.iamexpat.nl/career/jobs-netherlands?category=it-technology,engineering&language=english"
@@ -5125,46 +5248,62 @@ def search_iamexpat(query, location="Netherlands", max_results=50):
                     jobs.append({"title": title, "company": "", "location": loc,
                                  "url": url_full, "description": title})
             if jobs: print(f"  [iamexpat] {len(jobs)} jobs for '{query}'")
-            return _enrich_descriptions(jobs)
+            return jobs
     except Exception as e:
         print(f"  [iamexpat] Error: {e}")
     return []
 
 
-def search_workinlux(query, location="Luxembourg", max_results=50):
+def search_workinlux(query, location="Luxembourg", max_results=500):
     """Search Work in Luxembourg for jobs."""
     from bs4 import BeautifulSoup
-    url = ("https://jobs.workinluxembourg.com/offers?"
-           "e34647bc-f73a-4055-bf2c-0a4ee9c3a12b=e4b6947d-32a2-45ce-8f4d-8fedff4b559d"
-           "&e34647bc-f73a-4055-bf2c-0a4ee9c3a12b=485b8c96-35f4-49ae-b321-69109eaea14d&page=0")
+    import re
+    base = ("https://jobs.workinluxembourg.com/offers?"
+            "e34647bc-f73a-4055-bf2c-0a4ee9c3a12b=e4b6947d-32a2-45ce-8f4d-8fedff4b559d"
+            "&e34647bc-f73a-4055-bf2c-0a4ee9c3a12b=485b8c96-35f4-49ae-b321-69109eaea14d")
     jobs = []
+    seen = set()
+    page = 1
     try:
-        html = _playwright_html(url, wait_ms=6000)
-        if html:
+        effective_max = max_results
+        while len(jobs) < effective_max:
+            html = _playwright_html(f"{base}&page={page}", wait_ms=5000)
+            if not html:
+                break
             soup = BeautifulSoup(html, 'html.parser')
-            # Each card is in .offer-card__info or .offer-card__wrapper
+            if page == 1:
+                total_count = _detect_total_count(soup)
+                effective_max = min(total_count, max_results)
+                if total_count > max_results:
+                    print(f"    (capped to {effective_max} of {total_count} available)")
             cards = soup.select('.offer-card__info')
-            for card in cards[:max_results]:
+            if not cards:
+                break
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
                 company_el = card.select_one('.offer-card-info__header .text, .offer-card-info__header')
                 title_el = card.select_one('.offer-card-info__body')
-                footer_el = card.select_one('.offer-card-info__footer')
                 company = company_el.get_text().strip() if company_el else "Unknown"
                 title = title_el.get_text().strip() if title_el else ""
-                # Find the parent link
                 wrapper = card.find_parent('a')
                 href = wrapper.get("href", "") if wrapper else ""
                 url_full = f"https://jobs.workinluxembourg.com{href}" if href.startswith("/") else href
-                if title:
+                dedup_key = f"{company}|{title}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
                     jobs.append({"title": title, "company": company, "location": "Luxembourg",
                                  "url": url_full, "description": title})
-            if jobs: print(f"  [workinlux] {len(jobs)} jobs for '{query}'")
-            return _enrich_descriptions(jobs)
+            page += 1
+        if jobs:
+            print(f"  [workinlux] {len(jobs)} jobs for '{query}'")
+        return jobs
     except Exception as e:
         print(f"  [workinlux] Error: {e}")
     return []
 
 
-def search_infojobs(query, location="Spain", max_results=50):
+def search_infojobs(query, location="Spain", max_results=500):
     """Search InfoJobs (Spain) for jobs."""
     from bs4 import BeautifulSoup
     q = query.replace(" ", "+")
@@ -5201,7 +5340,7 @@ def search_infojobs(query, location="Spain", max_results=50):
     return []
 
 
-def search_monsterlu(query, location="Luxembourg", max_results=50):
+def search_monsterlu(query, location="Luxembourg", max_results=500):
     """Search Monster.lu for jobs."""
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
@@ -5216,7 +5355,7 @@ def search_monsterlu(query, location="Luxembourg", max_results=50):
     return []
 
 
-def search_monsterboardnl(query, location="Netherlands", max_results=50):
+def search_monsterboardnl(query, location="Netherlands", max_results=500):
     """Search Monsterboard.nl for jobs."""
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
@@ -5231,53 +5370,223 @@ def search_monsterboardnl(query, location="Netherlands", max_results=50):
     return []
 
 
-def search_infoempleo(query, location="Spain", max_results=50):
-    """Search Infoempleo (Spain) for jobs — uses tech + eng filtered URLs."""
+def search_infoempleo(query, location="Spain", max_results=500):
+    """Search Infoempleo (Spain) for jobs — uses tech + eng filtered URLs with pagination."""
     from bs4 import BeautifulSoup
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     jobs = []
-    urls = [
-        "https://www.infoempleo.com/trabajo/area-de-empresa_tecnologia-e-informatica/?ordenacion=fechaAlta",
-        "https://www.infoempleo.com/trabajo/area-de-empresa_ingenieria-y-produccion/?ordenacion=fechaAlta",
+    base_urls = [
+        "https://www.infoempleo.com/trabajo/area-de-empresa_tecnologia-e-informatica",
+        "https://www.infoempleo.com/trabajo/area-de-empresa_ingenieria-y-produccion",
     ]
     seen = set()
-    for url in urls:
+    for base in base_urls:
+        page = 1
         try:
-            resp = requests.get(url, headers=h, timeout=15)
-            if resp.status_code != 200:
-                continue
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            for card in soup.select("li.offerblock"):
-                a = card.select_one("h2.title a")
-                title = a.get_text().strip() if a else ""
-                href = a.get("href", "") if a else ""
-                url_full = f"https://www.infoempleo.com{href}" if href.startswith("/") else href
-                company_el = card.select_one(".logoplusname span.extra-data")
-                company = company_el.get_text().strip() if company_el else "Unknown"
-                loc_el = card.select_one("p.extra-data")
-                loc = "Spain"
-                if loc_el:
-                    txt = loc_el.get_text().strip()
-                    for city in ["Madrid", "Barcelona", "Valencia", "Sevilla", "Bilbao",
-                                 "Málaga", "Zaragoza", "Alicante", "Murcia", "Palma",
-                                 "Granada", "Vigo", "Gijón", "Pamplona", "San Sebastián",
-                                 "Valladolid", "Toledo", "Badajoz", "Logroño", "Huelva"]:
-                        if city in txt:
-                            loc = city
-                            break
-                if title and href not in seen:
-                    seen.add(href)
-                    jobs.append({"title": title, "company": company, "location": loc,
-                                 "url": url_full, "description": title})
-                if len(jobs) >= max_results:
+            while len(jobs) < max_results:
+                url = f"{base}/{page}/?ordenacion=fechaAlta" if page > 1 else f"{base}/?ordenacion=fechaAlta"
+                resp = requests.get(url, headers=h, timeout=15)
+                if resp.status_code != 200:
                     break
-            if len(jobs) >= max_results:
-                break
+                soup = BeautifulSoup(resp.text, 'html.parser')
+                cards = soup.select("li.offerblock")
+                if not cards:
+                    break
+                import time
+                if page > 1:
+                    time.sleep(0.5)
+                for card in cards:
+                    if len(jobs) >= max_results:
+                        break
+                    a = card.select_one("h2.title a")
+                    title = a.get_text().strip() if a else ""
+                    href = a.get("href", "") if a else ""
+                    url_full = f"https://www.infoempleo.com{href}" if href.startswith("/") else href
+                    company_el = card.select_one(".logoplusname span.extra-data")
+                    company = company_el.get_text().strip() if company_el else "Unknown"
+                    loc_el = card.select_one("p.extra-data")
+                    loc = "Spain"
+                    if loc_el:
+                        txt = loc_el.get_text().strip()
+                        for city in ["Madrid", "Barcelona", "Valencia", "Sevilla", "Bilbao",
+                                     "Málaga", "Zaragoza", "Alicante", "Murcia", "Palma",
+                                     "Granada", "Vigo", "Gijón", "Pamplona", "San Sebastián",
+                                     "Valladolid", "Toledo", "Badajoz", "Logroño", "Huelva"]:
+                            if city in txt:
+                                loc = city
+                                break
+                    if title and href not in seen:
+                        seen.add(href)
+                        jobs.append({"title": title, "company": company, "location": loc,
+                                     "url": url_full, "description": title})
+                page += 1
         except Exception as e:
-            print(f"  [infoempleo] Error on {url}: {e}")
+            print(f"  [infoempleo] Error on {base}: {e}")
     if jobs:
         print(f"  [infoempleo] {len(jobs)} jobs for '{query}'")
-    return _enrich_descriptions(jobs[:max_results])
+    return jobs[:max_results]
+
+
+def search_crossover(query, location="Remote", max_results=500):
+    """Search Crossover.com for jobs — JS-rendered page with card elements."""
+    from bs4 import BeautifulSoup
+    url = f"https://www.crossover.com/jobs?Search={query}&Location=Any%20Country"
+    jobs = []
+    seen = set()
+    try:
+        html = _playwright_html(url, wait_ms=8000)
+        if html:
+            soup = BeautifulSoup(html, 'html.parser')
+            cards = soup.select('[class*=card]')
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                title_el = card.select_one('h1, h2, h3, h4, strong')
+                title = title_el.get_text().strip() if title_el else ""
+                if not title:
+                    continue
+                if title not in seen:
+                    seen.add(title)
+                    jobs.append({"title": title, "company": "Crossover",
+                                 "location": "Remote", "url": url,
+                                 "description": title})
+            if jobs:
+                print(f"  [crossover] {len(jobs)} jobs for '{query}'")
+            return jobs
+    except Exception as e:
+        print(f"  [crossover] Error: {e}")
+    return []
+
+
+def search_nodesk(query, location="Remote", max_results=500):
+    """Search NoDesk (remote jobs board) for jobs."""
+    from bs4 import BeautifulSoup
+    url = "https://nodesk.co/remote-jobs/engineering/"
+    jobs = []
+    seen = set()
+    try:
+        html = _playwright_html(url, wait_ms=6000)
+        if html:
+            soup = BeautifulSoup(html, 'html.parser')
+            main = soup.find('main')
+            if main:
+                for a in main.find_all('a', href=True):
+                    href = a.get('href', '')
+                    if '/remote-jobs/' in href and href != '/remote-jobs/' \
+                            and not href.startswith('/remote-jobs/new/'):
+                        title = a.get_text().strip()
+                        if len(title) > 10 and href not in seen:
+                            seen.add(href)
+                            path = href.split('/remote-jobs/')[-1].strip('/')
+                            company = path.split('-')[0].title() if '-' in path else "Unknown"
+                            url_full = f"https://nodesk.co{href}" if href.startswith('/') else href
+                            jobs.append({
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "url": url_full,
+                                "description": title
+                            })
+            if jobs:
+                print(f"  [nodesk] {len(jobs)} jobs for '{query}'")
+            return jobs[:max_results]
+    except Exception as e:
+        print(f"  [nodesk] Error: {e}")
+    return []
+
+
+def search_kelly(query, location="Remote", max_results=500):
+    """Search KellyOCG careers via Playwright + BeautifulSoup with pagination."""
+    from bs4 import BeautifulSoup
+    import re
+    jobs = []
+    seen = set()
+    page = 1
+    try:
+        while len(jobs) < max_results:
+            url = "https://careers.kellyocg.com/search" if page == 1 else f"https://careers.kellyocg.com/search?PageID={page}"
+            html = _playwright_html(url, wait_ms=8000)
+            if not html:
+                break
+            soup = BeautifulSoup(html, 'html.parser')
+            links = soup.select('a[href*="/job/"]')
+            if not links:
+                break
+            for a in links:
+                if len(jobs) >= max_results:
+                    break
+                href = a.get("href", "")
+                if href in seen:
+                    continue
+                seen.add(href)
+                title = a.get_text().strip()
+                if not title:
+                    continue
+                url_full = f"https://careers.kellyocg.com{href}" if href.startswith("/") else href
+                # Extract location from title
+                loc = location
+                if "Remote" in title:
+                    loc = "Remote"
+                elif "|" in title:
+                    for part in title.split("|"):
+                        m = re.search(r'([A-Za-z].*?,\s*[A-Z]{2})', part)
+                        if m:
+                            loc = m.group(1).strip()
+                            break
+                jobs.append({"title": title, "company": "Kelly", "location": loc,
+                             "url": url_full, "description": title})
+            if not soup.select_one('a.page-link-next, a.JQPagingLinkNext'):
+                break
+            page += 1
+        if jobs:
+            print(f"  [kelly] {len(jobs)} jobs for '{query}'")
+        return jobs[:max_results]
+    except Exception as e:
+        print(f"  [kelly] Error: {e}")
+        return []
+
+
+def search_workew(query, location="Remote", max_results=500):
+    """Search Workew.com for remote jobs using Playwright."""
+    from bs4 import BeautifulSoup
+    q = query.replace(" ", "+")
+    url = f"https://workew.com/remote-jobs/?search_keywords={q}&search_region=&search_categories%5B%5D=5"
+    jobs = []
+    seen = set()
+    try:
+        html = _playwright_html(url, wait_ms=6000)
+        if html and len(html) > 2000:
+            soup = BeautifulSoup(html, 'html.parser')
+            total_count = _detect_total_count(soup)
+            cards = soup.select('li.w-job-card')
+            if not cards:
+                cards = soup.select('[class*=card]')
+                cards = [c for c in cards if c.name == 'li']
+            for card in cards[:max_results]:
+                title_el = card.select_one('h3.w-job-card__title') or card.select_one('h2')
+                title = title_el.get_text().strip() if title_el else ""
+                link_el = card.select_one('a.w-job-card__link')
+                href = link_el.get("href", "") if link_el else ""
+                if not title and link_el:
+                    title = link_el.get("aria-label", "")
+                img_el = card.select_one('img.w-job-card__logo img, .w-job-card__logo img')
+                if not img_el:
+                    img_el = card.select_one('.w-job-card__logo img')
+                company = img_el.get("alt", "").strip() if img_el else ""
+                if not company:
+                    company_el = card.select_one('.w-job-card__company')
+                    company = company_el.get_text().strip().split(" ")[0] if company_el else "Unknown"
+                dedup_key = href or f"{title}|{company}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append({"title": title, "company": company, "location": "Remote",
+                                 "url": href, "description": title})
+            if jobs:
+                print(f"  [workew] {len(jobs)} jobs for '{query}'")
+            return jobs
+    except Exception as e:
+        print(f"  [workew] Error: {e}")
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -5310,8 +5619,8 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
-    parser.add_argument("--batch", type=str, choices=["ats", "boards-major", "boards-niche", "boards-eu", "playwright", "eu", "global", "apac", "us-canada", "middle-east"], default="",
-                        help="Run in batches: ats=company ATS APIs, boards-major=LinkedIn/Indeed/Glassdoor etc, boards-niche=regional/niche boards, boards-eu=EU country job boards, playwright=JS-rendered pages, eu/global/apac/us-canada/middle-east=region companies. Run sequentially.")
+    parser.add_argument("--batch", type=str, choices=["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"], default="",
+                        help="Run in batches: ats=company ATS APIs, boards-major=LinkedIn/Indeed/Glassdoor etc, boards-AU-NZ=Seek+Jora+regional boards, boards-eu=EU country job boards, boards-remote=remote-only job boards, playwright=JS-rendered pages, eu/global/apac/us-canada/middle-east=region companies. Run sequentially.")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -5478,32 +5787,30 @@ def main():
         ("Naukri", search_naukri),
         ("Glassdoor", search_glassdoor),
         ("SimplyHired", search_simplyhired),
-        ("WeWorkRemotely", search_weworkremotely),
         ("WomenInTech", search_womenintech),
         ("Instahyre", search_instahyre),
-        ("Remotive", search_remotive),
 
         ("Foundit", search_foundit),
         ("TimesJobs", search_timesjobs),
-        ("ArcDev", search_arcdev),
         ("Seek", search_seek),
         ("Jora", search_jora),
         ("Xing", search_xing),
         ("JobsCh", search_jobsch),
         ("JobsinGermany", search_jobsingermany),
-        ("Arbeitnow", search_arbeitnow),
-        ("VisaSponsor", search_visasponsor),
-        ("Incluso", search_incluso),
         ("WorkinFinland", search_workinfinland),
         ("EURES", search_eures),
     ]
-    # Split boards: boards-major = global/major boards, boards-niche = niche/regional boards
-    _split = 10
+    # Split boards: boards-major = global/major boards, boards-AU-NZ = niche/regional boards
+    _split = 9
     if args.batch == "boards-major":
         board_scrapers = board_scrapers[:_split]
-    elif args.batch == "boards-niche":
+    elif args.batch == "boards-AU-NZ":
         board_scrapers = board_scrapers[_split:]
     elif args.batch == "boards-eu":
+        # Pre-warm Playwright in main thread so SAPOEmprego's ThreadPoolExecutor
+        # doesn't create the browser in a subthread (causes greenlet thread errors
+        # that break all subsequent Playwright calls from the main thread).
+        _get_browser()
         board_scrapers = [
             ("NetEmpregos", search_netempregos),
             ("SAPOEmprego", search_sapoemprego),
@@ -5513,13 +5820,34 @@ def main():
             ("WorkInLux", search_workinlux),
             ("IndeedNL", search_indeed_nl),
         ]
+    elif args.batch == "boards-remote":
+        _get_browser()
+        board_scrapers = [
+            ("WeWorkRemotely", search_weworkremotely),
+            ("Remotive", search_remotive),
+            ("ArcDev", search_arcdev),
+            ("RemoteOK", search_remoteok),
+            ("SkipTheDrive", search_skipthedrive),
+            ("WorkingNomads", search_workingnomads),
+            ("Jobspresso", search_jobspresso),
+            ("Arbeitnow", search_arbeitnow),
+            ("EnglishJobSearch", search_englishjobsearch),
+            ("Bulldogjob", search_bulldogjob),
+            ("VisaSponsor", search_visasponsor),
+            ("Incluso", search_incluso),
+            ("Crossover", search_crossover),
+            ("NoDesk", search_nodesk),
+            ("Workew", search_workew),
+            ("Kelly", search_kelly),
+        ]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-niche", "boards-eu")):
+    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote")):
         for query in domain_queries:
             for board_name, board_fn in board_scrapers:
                 au_boards = {"Seek", "Jora"}
                 eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
-                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL"}
+                remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
+                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL"} | remote_boards
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
@@ -5537,6 +5865,8 @@ def main():
                     for job in jobs:
                         if not should_include(job):
                             continue
+                        job["title"] = _translate_to_english(job.get("title", ""))
+                        job["description"] = _translate_to_english(job.get("description", ""))
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
                         score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
@@ -5829,7 +6159,7 @@ def main():
             person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
             batch_labels = {
                 "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
-                "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
+                "boards-AU-NZ": "AU-NZ+Regional Boards", "boards-remote": "Remote Job Boards", "playwright": "Playwright Scrape",
                 "eu": "EU Companies", "global": "Global Companies",
                 "apac": "APAC Companies", "us-canada": "US-Canada Companies",
                 "middle-east": "Middle East Companies",
@@ -5844,9 +6174,10 @@ def main():
         if args.batch != "eu":
             batch_sequence = {
                 "ats": "boards-major",
-                "boards-major": "boards-niche",
+                "boards-major": "boards-AU-NZ",
+                "boards-AU-NZ": "boards-remote",
+                "boards-remote": "boards-eu",
                 "boards-eu": "playwright",
-                "boards-niche": "boards-eu",
                 "playwright": "global",
                 "global": "apac",
                 "apac": "us-canada",
@@ -5859,7 +6190,7 @@ def main():
                 return
 
         # Terminal batch (eu): load all previous batch results and merge
-        all_batch_ids = ["ats", "boards-major", "boards-niche", "boards-eu", "playwright", "global", "apac", "us-canada", "middle-east", "eu"]
+        all_batch_ids = ["ats", "boards-major", "boards-AU-NZ", "boards-remote", "boards-eu", "playwright", "global", "apac", "us-canada", "middle-east", "eu"]
         for b in all_batch_ids:
             if b == args.batch:
                 continue  # current batch is already in all_matches
@@ -5897,7 +6228,7 @@ def main():
         person_name = PROFILE.get("name", "Job Seeker").split()[0].title()
         batch_labels = {
             "ats": "ATS-Company Scrape", "boards-major": "Major Job Boards",
-            "boards-niche": "Niche Job Boards", "playwright": "Playwright Scrape",
+            "boards-AU-NZ": "AU-NZ+Regional Boards", "boards-remote": "Remote Job Boards", "playwright": "Playwright Scrape",
             "eu": "EU Companies", "global": "Global Companies",
             "apac": "APAC Companies", "us-canada": "US-Canada Companies",
             "middle-east": "Middle East Companies",
