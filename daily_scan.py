@@ -1496,7 +1496,20 @@ def _scrape_company_career_page(source):
         _with_stealth(page)
         pw_timeout = source.get("timeout", 20000)
         page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(5000)
+
+        page.evaluate("""
+            () => {
+                const overlays = document.querySelectorAll(
+                    '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                    '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                    '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                    '[class*="modal"], [class*="banner"], ' +
+                    '[role="dialog"], [aria-modal="true"]'
+                );
+                overlays.forEach(el => el.remove());
+            }
+        """)
 
         seen_urls = set()
         page_jobs = _extract_links(page)
@@ -1535,6 +1548,18 @@ def _scrape_company_career_page(source):
             if show_more:
                 try:
                     show_more.scroll_into_view_if_needed()
+                    page.evaluate("""
+                        () => {
+                            const overlays = document.querySelectorAll(
+                                '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                                '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                                '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                                '[class*="modal"], [class*="banner"], ' +
+                                '[role="dialog"], [aria-modal="true"]'
+                            );
+                            overlays.forEach(el => el.remove());
+                        }
+                    """)
                     show_more.click()
                     page.wait_for_timeout(2000)
                     page_jobs = _extract_links(page)
@@ -1568,9 +1593,24 @@ def _scrape_company_career_page(source):
                     )
                     if disabled:
                         break
-                    next_btn.click()
+                    page.evaluate("""
+                        () => {
+                            const overlays = document.querySelectorAll(
+                                '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                                '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                                '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                                '[class*="modal"], [class*="banner"], ' +
+                                '[role="dialog"], [aria-modal="true"]'
+                            );
+                            overlays.forEach(el => el.remove());
+                        }
+                    """)
+                    next_btn.click(force=True)
                     page.wait_for_timeout(2000)
-                    page.wait_for_selector("a", timeout=5000)
+                    try:
+                        page.wait_for_selector("a", timeout=5000)
+                    except Exception:
+                        pass
                 except Exception:
                     break
             else:
@@ -2516,6 +2556,94 @@ def search_indeed_nl(query, location="Netherlands", max_results=500):
             print(f"  [indeed-nl] No jobs parsed for '{query}' in Netherlands")
     except Exception as e:
         print(f"  [indeed-nl] Error searching '{query}': {e}")
+    return jobs
+
+
+def search_welcome_to_nl(query, location="Netherlands", max_results=500):
+    """Search Welcome to NL (welcome-to-nl.nl/jobs) via Elastic App Search API.
+
+    Uses the Nuxt site's internal Elastic search API with a static Bearer token.
+    """
+    api_url = "https://jobportal.ent.europe-west4.gcp.elastic-cloud.com/api/as/v1/engines/rvo/search"
+    session = requests.Session()
+    session.headers.update({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer search-o21ix7ak2jiao92yvzceums2",
+        "Accept": "application/json",
+    })
+    jobs = []
+    page_size = 50
+    page = 1
+    consecutive_errors = 0
+    try:
+        while len(jobs) < max_results:
+            payload = {
+                "page": {"current": page, "size": min(page_size, max_results - len(jobs))},
+                "query": query,
+                "sort": [{"created_at": "desc"}],
+            }
+            try:
+                resp = session.post(api_url, json=payload, timeout=30)
+                if resp.status_code != 200:
+                    if page == 1:
+                        print(f"  [welcome-to-nl] API returned HTTP {resp.status_code}")
+                    break
+                consecutive_errors = 0
+            except Exception:
+                consecutive_errors += 1
+                if consecutive_errors >= 2:
+                    break
+                time.sleep(2)
+                continue
+            data = resp.json()
+            results = data.get("results", [])
+            if not results:
+                break
+            for r in results:
+                raw = r.get("_meta", {}).get("raw", r)
+                title = raw.get("title", {}).get("raw", "") or ""
+                if not title:
+                    continue
+                company = raw.get("company_name", {}).get("raw", "Unknown")
+                locs = raw.get("locations", {}).get("raw", [])
+                loc = locs[0] if locs else "Netherlands"
+                url = raw.get("url", {}).get("raw", "")
+                job_fn = raw.get("job_functions", {}).get("raw", [])
+                seniority = raw.get("seniority", {}).get("raw", "")
+                work_mode = raw.get("work_mode", {}).get("raw", "")
+                description = f"{title} at {company}. Seniority: {seniority or 'N/A'}, Work mode: {work_mode or 'N/A'}, Functions: {', '.join(job_fn) if job_fn else 'N/A'}"
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": loc,
+                    "url": url,
+                    "description": description,
+                })
+                if len(jobs) >= max_results:
+                    break
+            total_results = data.get("meta", {}).get("page", {}).get("total_results", 0)
+            if page * page_size >= total_results:
+                break
+            page += 1
+            time.sleep(1)
+            # Recreate session periodically to avoid stale connections
+            if page % 5 == 0:
+                session.close()
+                session = requests.Session()
+                session.headers.update({
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer search-o21ix7ak2jiao92yvzceums2",
+                    "Accept": "application/json",
+                })
+
+        if jobs:
+            print(f"  [welcome-to-nl] {len(jobs)} jobs for '{query}' in Netherlands")
+        else:
+            print(f"  [welcome-to-nl] No jobs for '{query}' in Netherlands")
+    except Exception as e:
+        print(f"  [welcome-to-nl] Error searching '{query}': {e}")
+    finally:
+        session.close()
     return jobs
 
 
@@ -5303,6 +5431,61 @@ def search_workinlux(query, location="Luxembourg", max_results=500):
     return []
 
 
+def search_togetherabroad(query, location="Netherlands", max_results=500):
+    """Search Together Abroad (Netherlands job board) for jobs.
+
+    Uses the IT category page with server-side pagination (/p/{n}/...).
+    """
+    from bs4 import BeautifulSoup
+    h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}
+    jobs = []
+    seen = set()
+    page = 1
+    try:
+        while len(jobs) < max_results:
+            if page == 1:
+                url = "https://www.togetherabroad.nl/information-technology-jobs-netherlands.html"
+            else:
+                url = f"https://www.togetherabroad.nl/p/{page}/information-technology-jobs-netherlands"
+            resp = requests.get(url, headers=h, timeout=15)
+            if resp.status_code != 200:
+                break
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            items = soup.select('h3.itemTitle.actItemTitle a')
+            if not items:
+                break
+            for a in items:
+                if len(jobs) >= max_results:
+                    break
+                text = a.get_text().strip()
+                if not text:
+                    continue
+                parts = [p.strip() for p in text.split(" - ")]
+                if len(parts) < 3:
+                    continue
+                title = " - ".join(parts[:-2])
+                location = parts[-2]
+                company = parts[-1]
+                href = a.get("href", "")
+                dedup_key = f"{company}|{title}"
+                if dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append({"title": title, "company": company,
+                                 "location": location, "url": href,
+                                 "description": title})
+            # Check for next page
+            next_link = soup.select_one('a.pnNext')
+            if not next_link:
+                break
+            page += 1
+        if jobs:
+            print(f"  [togetherabroad] {len(jobs)} jobs for '{query}'")
+        return jobs
+    except Exception as e:
+        print(f"  [togetherabroad] Error: {e}")
+    return []
+
+
 def search_infojobs(query, location="Spain", max_results=500):
     """Search InfoJobs (Spain) for jobs."""
     from bs4 import BeautifulSoup
@@ -5819,6 +6002,12 @@ def main():
             ("IamExpat", search_iamexpat),
             ("WorkInLux", search_workinlux),
             ("IndeedNL", search_indeed_nl),
+            ("WelcomeToNL", search_welcome_to_nl),
+            ("TogetherAbroad", search_togetherabroad),
+            ("StepStone", search_stepstone),
+            ("Adzuna", search_adzuna),
+            ("Intermediair", search_intermediair),
+            ("NationaleVacaturebank", search_nationalevacaturebank),
         ]
     elif args.batch == "boards-remote":
         _get_browser()
@@ -5847,7 +6036,7 @@ def main():
                 au_boards = {"Seek", "Jora"}
                 eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
                 remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL"} | remote_boards
+                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
