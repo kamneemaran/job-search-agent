@@ -13,8 +13,11 @@ Filter out these role types in `daily_scan.py` → `PROFILE["title_red_flags"]`:
 - `rejected` - not moving forward or not relevant (skipped in future scans)
 - `offer` - offer received
 
-## Google Sheet
-- Sheet: `job_matches` at https://docs.google.com/spreadsheets/d/1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg/edit
+## Google Sheets
+- **Tracker sheet** (`job_matches`): https://docs.google.com/spreadsheets/d/1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg/edit — tracks applied/rejected/offer status
+- **Links sheet** (`1mgD6L5e6...`): https://docs.google.com/spreadsheets/d/1mgD6L5e6-5HLiuSYggCYi48LUONnul0lzoqfL2RYWpo/edit — master list of all companies & boards managed in batches
+  - "Companies" tab (1260 rows): Name, URL, Region, ATS, Playwright
+  - "Job Boards" tab (50 rows): Name, URL, Region, ATS, Playwright
 - "Resume" column replaced with "Company Link" (career page or LinkedIn company URL)
 
 ## MCP Server
