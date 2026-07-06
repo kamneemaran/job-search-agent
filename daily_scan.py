@@ -3130,39 +3130,53 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
                 pass
 
 
+_remoteok_cache = None
+_remoteok_cache_time = 0
+
 def search_remoteok(query, location="Remote", max_results=500):
-    """Search RemoteOK using Playwright with infinite scroll."""
+    """Search RemoteOK using public JSON API (no auth needed)."""
+    global _remoteok_cache, _remoteok_cache_time
     jobs = []
-    term = query.replace(" ", "-").lower()
-    url = f"https://remoteok.com/remote-{term}-jobs"
+    term = query.lower()
     try:
-        # Use infinite scroll to load more results
-        html = _playwright_load_more(url, max_clicks=5, wait_ms=2000)
-        if not html:
-            print(f"  [remoteok] No response for '{query}'")
-            return jobs
-        # Parse from expanded HTML
-        titles = re.findall(r'itemprop="title"[^>]*>\s*([^<]{4,}?)\s*<', html)
-        if not titles:
-            titles = re.findall(r'class="[^"]*position[^"]*"[^>]*>\s*<h2[^>]*>\s*([^<]+)', html)
-        companies = re.findall(r'itemprop="name"[^>]*>\s*([^<]{2,}?)\s*<', html)
-        links = re.findall(r'href="(/remote-jobs/[^"]+)"', html)
-        # Deduplicate links
-        seen_links = set()
-        unique_links = []
-        for link in links:
-            if link not in seen_links:
-                seen_links.add(link)
-                unique_links.append(link)
-        min_len = min(len(titles), len(unique_links))
-        for i in range(min(min_len, max_results)):
+        now = time.time()
+        if now - _remoteok_cache_time > 60:
+            resp = requests.get(
+                "https://remoteok.com/api",
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            _remoteok_cache = data if isinstance(data, list) else []
+            _remoteok_cache_time = now
+        for item in _remoteok_cache:
+            if not isinstance(item, dict) or "id" not in item:
+                continue
+            title = (item.get("position") or "").strip()
+            company = (item.get("company") or "Unknown").strip()
+            url = (item.get("url") or "").strip()
+            tags = [t.lower() for t in (item.get("tags") or [])]
+            desc = (item.get("description") or "").lower()
+            if not title or not url:
+                continue
+            if term != "remote" and term not in title.lower() and term not in desc and not any(term in t for t in tags):
+                continue
+            salary_parts = []
+            if item.get("salary_min"):
+                salary_parts.append(f"${int(item['salary_min']):,}")
+            if item.get("salary_max"):
+                salary_parts.append(f"${int(item['salary_max']):,}")
+            salary_str = f" ({' - '.join(salary_parts)})" if salary_parts else ""
             jobs.append({
-                "title": titles[i].strip(),
-                "company": companies[i].strip() if i < len(companies) else "Unknown",
+                "title": title,
+                "company": company,
                 "location": "Remote",
-                "url": f"https://remoteok.com{unique_links[i]}",
-                "description": f"RemoteOK: {titles[i].strip()}",
+                "url": url,
+                "description": f"RemoteOK: {title} at {company}{salary_str}",
             })
+            if len(jobs) >= max_results:
+                break
         if jobs:
             print(f"  [remoteok] {len(jobs)} jobs for '{query}'")
     except Exception as e:
@@ -5486,6 +5500,62 @@ def search_togetherabroad(query, location="Netherlands", max_results=500):
     return []
 
 
+_himalayas_cache = None
+_himalayas_cache_time = 0
+
+def search_himalayas(query, location="Remote", max_results=500):
+    """Search Himalayas remote jobs using public JSON API."""
+    global _himalayas_cache, _himalayas_cache_time
+    jobs = []
+    term = query.lower()
+    try:
+        now = time.time()
+        if now - _himalayas_cache_time > 300:
+            resp = requests.get(
+                "https://himalayas.app/jobs/api",
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            _himalayas_cache = data.get("jobs", [])
+            _himalayas_cache_time = now
+        for item in _himalayas_cache:
+            title = (item.get("title") or "").strip()
+            company = (item.get("companyName") or "Unknown").strip()
+            guid = (item.get("guid") or "").strip()
+            url = guid if guid.startswith("http") else f"https://himalayas.app/jobs/{guid}" if guid else ""
+            categories = [c.lower() for c in (item.get("categories") or [])]
+            desc = (item.get("description") or "").lower()
+            if not title or not url:
+                continue
+            if term != "remote" and term not in title.lower() and term not in desc and not any(term in c for c in categories):
+                continue
+            salary_parts = []
+            if item.get("minSalary"):
+                salary_parts.append(f"${int(item['minSalary']):,}")
+            if item.get("maxSalary"):
+                salary_parts.append(f"${int(item['maxSalary']):,}")
+            currency = item.get("currency") or ""
+            salary_str = f" ({' '.join(salary_parts)} {currency})" if salary_parts else ""
+            seniority = ", ".join(item.get("seniority") or [])
+            locs = ", ".join(item.get("locationRestrictions") or ["Remote"])
+            jobs.append({
+                "title": title,
+                "company": company,
+                "location": locs,
+                "url": url,
+                "description": f"Himalayas: {title} at {company}{salary_str}. Seniority: {seniority}",
+            })
+            if len(jobs) >= max_results:
+                break
+        if jobs:
+            print(f"  [himalayas] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [himalayas] Error: {e}")
+    return jobs
+
+
 def search_infojobs(query, location="Spain", max_results=500):
     """Search InfoJobs (Spain) for jobs."""
     from bs4 import BeautifulSoup
@@ -6016,6 +6086,7 @@ def main():
             ("Remotive", search_remotive),
             ("ArcDev", search_arcdev),
             ("RemoteOK", search_remoteok),
+            ("Himalayas", search_himalayas),
             ("SkipTheDrive", search_skipthedrive),
             ("WorkingNomads", search_workingnomads),
             ("Jobspresso", search_jobspresso),
@@ -6075,12 +6146,9 @@ def main():
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
     exp = PROFILE["years_experience"]
     if is_sap_profile:
-        pw_scrapers = [
-            ("RemoteOK", search_remoteok),
-        ]
+        pw_scrapers = []
     else:
         pw_scrapers = [
-            ("RemoteOK", search_remoteok),
             ("WorkAtAStartup", search_workatstartup),
         ]
     # Batch scrapers (HTTP + Playwright) that support domain-specific queries

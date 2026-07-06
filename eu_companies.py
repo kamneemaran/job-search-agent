@@ -968,7 +968,7 @@ EU_JOB_SOURCES = [
     {"name": "Hays Romania", "url": "https://www.hays.ro/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Lugera", "url": "https://www.lugera.ro/jobex/public/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Adecco Romania", "url": "https://www.adecco.com/ro-ro/job-search?CategoryFilter=ADCROCAT014", "region": "EU", "type": "company", "playwright": True},
-    {"name": "SalesConsulting", "url": "https://www.salesconsulting.ro/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "SalesConsulting", "url": "https://teamtailor.salesconsulting.ro/jobs", "region": "EU", "type": "company", "ats": "teamtailor"},
     {"name": "Manpower Estonia", "url": "https://www.manpower.ee/et/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Robert Walters UK", "url": "https://www.robertwalters.co.uk/expertise/technology/jobs.html?q=&specialization=information-technology", "region": "EU", "type": "company", "playwright": True},
     {"name": "ING Bank", "url": "https://ing.wd3.myworkdayjobs.com/en-US/ICSGBLCOR?jobFamilyGroup=d96464b913e3010194d93840aed50000", "region": "EU", "type": "company", "playwright": True},
