@@ -25,10 +25,10 @@ MIDDLE_EAST_JOB_SOURCES = [
     # Turkish tech companies (from career-ops integration)
     {"name": "Trendyol", "url": "https://www.trendyol.com/kariyerimiz", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Hepsiburada", "url": "https://www.hepsiburada.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
-    {"name": "Getir", "url": "https://jobs.lever.co/getir", "region": "Middle East", "type": "company", "ats": "lever", "ats_slug": "getir"},
+    {"name": "Getir", "url": "https://getir.careers-page.com/", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Insider", "url": "https://useinsider.com/careers", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Dream Games", "url": "https://www.dreamgames.com/careers", "region": "Middle East", "type": "company", "playwright": True},
-    {"name": "Peak Games (Zynga)", "url": "https://www.peakgames.net/en/career", "region": "Middle East", "type": "company", "playwright": True},
+    {"name": "Zynga", "url": "https://job-boards.greenhouse.io/zyngacareers", "region": "Middle East", "type": "company", "ats": "greenhouse", "ats_slug": "zyngacareers"},
     {"name": "Yemeksepeti (Delivery Hero)", "url": "https://www.yemeksepeti.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Sahibinden.com", "url": "https://www.sahibinden.com/kariyer", "region": "Middle East", "type": "company", "playwright": True},
     {"name": "Garanti BBVA Technology", "url": "https://www.garantibbvateknoloji.com.tr/kariyer", "region": "Middle East", "type": "company", "playwright": True},
