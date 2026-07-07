@@ -3995,19 +3995,31 @@ def _format_salary(s):
         return f"{sym}{fmt_min}"
     return ""
 
-def _table_rows(matches):
+def _card_rows(matches):
     rows = ""
     for m in matches:
+        salary_line = _salary_html(m.get("salary_info"))
         url = m.get("url", "#")
         rows += f"""
-    <tr>
-      <td style="padding:8px;border-bottom:1px solid #ddd;"><a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['title']}</a></td>
-      <td style="padding:8px;border-bottom:1px solid #ddd;">{m['company']}</td>
-      <td style="padding:8px;border-bottom:1px solid #ddd;">{m.get('location', 'N/A')}</td>
-      <td style="padding:8px;border-bottom:1px solid #ddd;"><span style="background:#e8f0fe;font-size:11px;padding:2px 6px;border-radius:4px;">{m.get('source', '')}</span></td>
-      <td style="padding:8px;border-bottom:1px solid #ddd;text-align:center;"><b>{m['score']}%</b></td>
-      <td style="padding:8px;border-bottom:1px solid #ddd;"><a href="{url}" style="color:#1a73e8;">Apply</a></td>
-    </tr>"""
+    <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
+          <p style="margin:0 0 8px;color:#666;font-size:13px;">
+            <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
+            <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
+            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>
+          </p>
+        </div>
+        <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>
+      </div>
+      {salary_line}
+      <p style="margin:0 0 8px;font-size:13px;color:#444;">{m.get('relocation_note', '')}</p>
+      <ul style="margin:0 0 8px;font-size:13px;color:#444;">
+        {''.join(f'<li>{s}</li>' for s in m.get('suggestions', []))}
+      </ul>
+      <a href="{url}" style="font-size:13px;">Open job posting &rarr;</a>
+    </div>"""
     return rows
 
 def build_email_html(matches, failed_parse=None):
@@ -4019,32 +4031,28 @@ def build_email_html(matches, failed_parse=None):
         low = [m for m in matches if m["score"] < 65]
 
         sections = ""
-        header = "<tr style='font-size:13px;color:#555;'><th style='padding:8px;text-align:left;'>Position</th><th style='padding:8px;text-align:left;'>Company</th><th style='padding:8px;text-align:left;'>Location</th><th style='padding:8px;text-align:left;'>Source</th><th style='padding:8px;text-align:center;'>Score</th><th style='padding:8px;'>Link</th></tr>"
 
         if high:
             sections += f"""
-    <h3 style="color:#2e7d32;">Strong Matches ({len(high)})</h3>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #a5d6a7;border-radius:6px;margin-bottom:24px;">
-      <thead><tr style="background:#c8e6c9;color:#1b5e20;">{header}</tr></thead>
-      <tbody>{_table_rows(high)}</tbody>
-    </table>"""
+    <div style="border:2px solid #a5d6a7;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#2e7d32;margin:0 0 12px;">Strong Matches ({len(high)})</h3>
+      {_card_rows(high)}
+    </div>"""
 
         if mid:
             sections += f"""
-    <h3 style="color:#e65100;">Moderate Matches ({len(mid)})</h3>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #ffcc80;border-radius:6px;margin-bottom:24px;">
-      <thead><tr style="background:#ffe0b2;color:#bf360c;">{header}</tr></thead>
-      <tbody>{_table_rows(mid)}</tbody>
-    </table>"""
+    <div style="border:2px solid #ffcc80;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#e65100;margin:0 0 12px;">Moderate Matches ({len(mid)})</h3>
+      {_card_rows(mid)}
+    </div>"""
 
         if low:
             sections += f"""
-    <h3 style="color:#b71c1c;">Possible Matches ({len(low)})</h3>
-    <p style="font-size:13px;color:#666;">These may be relevant for you — do check and apply if needed.</p>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #ef9a9a;border-radius:6px;margin-bottom:24px;">
-      <thead><tr style="background:#ffcdd2;color:#b71c1c;">{header}</tr></thead>
-      <tbody>{_table_rows(low)}</tbody>
-    </table>"""
+    <div style="border:2px solid #ef9a9a;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#b71c1c;margin:0 0 12px;">Possible Matches ({len(low)})</h3>
+      <p style="font-size:13px;color:#666;">These may be relevant for you — do check and apply if needed.</p>
+      {_card_rows(low)}
+    </div>"""
 
         body = f"""
       <h2>Daily job matches - {datetime.now().strftime('%d %b %Y')}</h2>
