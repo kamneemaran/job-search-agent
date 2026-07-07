@@ -65,6 +65,21 @@ The file ID is the string between `/d/` and `/view`. Append `&confirm=t` if the 
 
 The job tracker persists across workflow runs by loading from Google Sheets at startup, so applied/rejected jobs are remembered.
 
+### Workflow Batches & Coverage
+
+| Batch Name | Job Boards / Sources Covered | Approximate Count of Scanned Links/Endpoints | Regions Covered | Approximate Time Taken |
+| :--- | :--- | :--- | :--- | :--- |
+| **`ats`** | Direct ATS APIs (Greenhouse, Lever, Ashby, Manatal) | ~110+ custom company endpoints | Global / Remote | **1.5 – 3 minutes** (Uses rapid concurrent API requests) |
+| **`boards-major`** | LinkedIn, Indeed, Naukri, Glassdoor, SimplyHired, WomenInTech, Instahyre | ~7 global job boards | Global, India, Remote | **4 – 6 minutes** (Runs concurrently where possible) |
+| **`boards-AU-NZ`** | Seek, Jora | ~2 regional job boards | Australia, New Zealand | **2 – 3 minutes** |
+| **`boards-eu`** | NetEmpregos, SAPOEmprego, Infoempleo, Bundesagentur, IamExpat, WorkInLux, IndeedNL, WelcomeToNL, TogetherAbroad, StepStone, Adzuna, Freelancermap, Intermediair, NationaleVacaturebank, Philips, Liebherr | ~14 European boards + 2 paginated enterprise portals | Germany, Netherlands, Luxembourg, Spain, Portugal, Switzerland, UK, EU | **6 – 10 minutes** *(Optimized)* |
+| **`boards-remote`** | WeWorkRemotely, Remotive, ArcDev, RemoteOK, Himalayas, SkipTheDrive, WorkingNomads, Jobspresso, Arbeitnow, EnglishJobSearch, Bulldogjob, VisaSponsor, Incluso, Crossover, NoDesk, Workew, Kelly | ~17 dedicated remote job boards | Remote (Worldwide) | **5 – 8 minutes** *(Optimized)* |
+| **`eu`** | Custom career pages for major European enterprises | ~220+ curated companies | UK, Germany, Netherlands, France, Switzerland, Nordics, etc. | **10 – 15 minutes** (Run concurrently in thread pool) |
+| **`us-canada`** | Custom career pages for US & Canadian companies | ~150+ curated companies | USA, Canada | **8 – 12 minutes** (Run concurrently in thread pool) |
+| **`apac`** | Custom career pages for APAC-based tech companies | ~50+ curated companies | Singapore, Japan, Australia, APAC | **3 – 5 minutes** (Run concurrently in thread pool) |
+| **`middle-east`** | Custom career pages for Middle East enterprises | ~20+ curated companies | UAE, Saudi Arabia, Qatar, etc. | **2 – 3 minutes** (Run concurrently in thread pool) |
+| **`global`** | Custom career pages for major multinational giants | ~50+ global enterprise portals | Global / Hybrid / Remote | **3 – 5 minutes** (Run concurrently in thread pool) |
+
 ### Interactive MCP server
 
 ```bash
