@@ -1284,6 +1284,58 @@ def _get_static_levels_salary(company):
 
     return None
 
+# Static company descriptions (shown in email cards)
+_COMPANY_DESCRIPTIONS = {
+    "infosys": "Indian IT services company",
+    "accenture": "Global professional services (IT consulting)",
+    "deloitte": "Big 4 professional services firm",
+    "capgemini": "French IT services & consulting",
+    "ibm": "American tech & consulting giant",
+    "tcs": "India's largest IT services company",
+    "wipro": "Indian IT services company",
+    "hcl": "Indian IT services company",
+    "cognizant": "US-based IT services company",
+    "epam systems": "Eastern European software engineering",
+    "ncs group": "Australian IT services company",
+    "dxc technology": "US IT services (HP Enterprise spin-off)",
+    "sap": "German enterprise software (ERP)",
+    "ntt data": "Japanese IT services company",
+    "xcede": "UK-based SAP recruitment agency",
+    "google": "Search & cloud computing giant",
+    "microsoft": "Software & cloud platform giant",
+    "amazon": "E-commerce & cloud (AWS) giant",
+    "meta": "Social media & platforms (Facebook)",
+    "apple": "Consumer tech & hardware",
+    "netflix": "Streaming & entertainment",
+    "spotify": "Music streaming platform",
+    "stripe": "Online payment infrastructure",
+    "coinbase": "Cryptocurrency exchange platform",
+    "databricks": "Data & AI platform (Spark)",
+    "snowflake": "Cloud data warehouse platform",
+    "mongodb": "NoSQL database company",
+    "elastic": "Search & observability (Elasticsearch)",
+    "datadog": "Cloud monitoring & observability",
+    "cloudflare": "CDN & security infrastructure",
+    "hashicorp": "Cloud infrastructure (Terraform, Vault)",
+    "confluent": "Data streaming (Kafka) platform",
+    "nvidia": "GPU & AI hardware leader",
+    "anthropic": "AI safety research (Claude)",
+    "openai": "AI research (ChatGPT, GPT-4)",
+    "vercel": "Frontend deployment platform",
+    "gitlab": "DevOps platform (CI/CD)",
+    "github": "Code hosting & collaboration (Microsoft)",
+    "shopify": "E-commerce platform",
+    "atlassian": "Team collaboration (Jira, Confluence)",
+}
+
+def _company_description(company):
+    slug = company.lower().strip()
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    for known, desc in _COMPANY_DESCRIPTIONS.items():
+        if known in slug:
+            return desc
+    return ""
+
 def get_salary_info(company, title, description):
     """Get salary info: try JD first, fall back to static levels.fyi data."""
     jd_salary = _extract_salary_from_jd(description)
@@ -4079,6 +4131,8 @@ def _card_rows(matches):
         url = m.get("url", "#")
         jt = _job_type_badge(m)
         jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
+        co_desc = _company_description(m.get("company", ""))
+        co_desc_html = f"""<br><span style="font-size:12px;color:#888;">{co_desc}</span>""" if co_desc else ""
         rows += f"""
     <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -4088,7 +4142,7 @@ def _card_rows(matches):
             <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
             <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
             {jt_html}
-            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>
+            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}
           </p>
         </div>
         <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>
@@ -5974,9 +6028,13 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
+    parser.add_argument("--digest", action="store_true",
+                        help="Also scan Gmail for Glassdoor/Indeed job digest emails")
     _BATCH_CHOICES = ["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
     parser.add_argument("--batch", type=str, default="",
                         help=f"Batch(es) to run: comma-separated ({', '.join(_BATCH_CHOICES)}) or 'all'. Examples: --batch boards-major or --batch boards-major,boards-eu")
+    parser.add_argument("--preview", action="store_true",
+                        help="Save email HTML to preview.html instead of sending")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -6537,6 +6595,39 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
+    # --- Email digest scan (Glassdoor / Indeed) ---
+    if args.digest:
+        print(f"\n  [digest] Scanning Gmail for job digest emails...")
+        try:
+            from email_digest_scan import parse_all_digests
+            digest_jobs = parse_all_digests(days=7)
+            print(f"  [digest] {len(digest_jobs)} jobs parsed, scoring...")
+            for dj in digest_jobs:
+                if not should_include(dj):
+                    continue
+                score, relocation_note = score_job(dj.get("title", ""), dj.get("description", ""), dj.get("company", ""))
+                score, relocation_note = _title_only_bypass(dj, score, relocation_note, args.threshold)
+                if score >= 50:
+                    if score >= args.threshold:
+                        print(f"  [digest-match] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
+                    else:
+                        print(f"  [digest-near] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
+                    resume = pick_resume(dj.get("company", ""))
+                    suggestions = tailoring_suggestion(dj.get("title", ""), "", dj.get("company", ""))
+                    salary_info = get_salary_info(dj.get("company", ""), dj.get("title", ""), "")
+                    all_matches.append({
+                        **dj,
+                        "score": score,
+                        "resume": resume,
+                        "company_url": company_url(dj.get("company", ""), ""),
+                        "relocation_note": relocation_note,
+                        "suggestions": suggestions,
+                        "salary_info": salary_info,
+                        "source": dj.get("source", "email-digest"),
+                    })
+        except Exception as e:
+            print(f"  [digest] ERROR: {e}")
+
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
     # --- Deduplicate matches (same job from multiple sources) ---
@@ -6577,7 +6668,12 @@ def main():
             label = batch_labels.get(args.batch, args.batch)
             subject = f"{person_name}-Job matches-{label}"
             html = build_email_html(all_matches, failed_parse)
-            send_email(html, subject=subject)
+            if args.preview:
+                with open("preview.html", "w") as f:
+                    f.write(html)
+                print(f"  [preview] Saved to preview.html ({len(html)} bytes) — open in browser")
+            else:
+                send_email(html, subject=subject)
         else:
             print(f"  [email] No matches found for resume - skipping email")
 
@@ -6644,6 +6740,8 @@ def main():
             "middle-east": "Middle East Companies",
         }
         label = batch_labels.get(args.batch, "All Sources") if args.batch else "All Sources"
+        if args.digest:
+            label += "+Digests"
         send_email(html, subject=f"{person_name}-Job matches-{label}")
     else:
         print(f"  [email] No matches found for resume - skipping email")
