@@ -981,6 +981,34 @@ def score_job(title, description, company, location=""):
                     if re.search(r'\b' + re.escape(module_part) + r'\b', text):
                         skill_hits += 1
                         break  # at most one extra point from this relaxation
+    # SAP module full-name aliases: "Materials Management" → sap mm hit, etc.
+    # JDs and titles often use full module names instead of abbreviations.
+    _SAP_MODULE_ALIASES = {
+        "sap mm": [r"materials?\s+management", r"material\s+management"],
+        "sap ewm": [r"extended\s+warehouse\s+management"],
+        "sap wm": [r"warehouse\s+management"],
+        "sap qm": [r"quality\s+management"],
+        "sap pp": [r"production\s+planning"],
+        "sap sd": [r"sales\s+(?:and|&)\s+distribution"],
+        "sap pm": [r"plant\s+maintenance"],
+        "sap fi": [r"financial\s+accounting"],
+        "sap co": [r"controlling"],
+        "sap hcm": [r"human\s+capital\s+management"],
+    }
+    if has_sap_skills:
+        for sap_skill in PROFILE["core_skills"]:
+            sk = sap_skill.lower()
+            if sk in _SAP_MODULE_ALIASES:
+                for alias_pat in _SAP_MODULE_ALIASES[sk]:
+                    if re.search(alias_pat, text, re.IGNORECASE):
+                        skill_hits += 1
+                        break  # one extra hit per module alias
+    # Also count supply chain / logistics as adjacent hits for MM/EWM profiles
+    if has_sap_skills and any(s in PROFILE["core_skills"] for s in ("sap mm", "sap ewm", "sap wm")):
+        for adj_pat in [r"supply\s+chain", r"\blogistics?\b", r"procure.to.pay", r"\bscm\b"]:
+            if re.search(adj_pat, text, re.IGNORECASE):
+                skill_hits += 1
+                break  # at most one adjacent hit
     total_skills = len(PROFILE["core_skills"])
     # Need 40% of resume skills to appear in JD for full score (min 5 hits)
     skill_denominator = max(int(total_skills * 0.4), 5)
@@ -1041,6 +1069,31 @@ def score_job(title, description, company, location=""):
         # 85%+ — very strong evidence; boost even if partial title match (10) already set
         title_relevance = max(title_relevance, 20)
 
+    # --- Title SAP module bonus ---
+    # When the title explicitly names a SAP module that matches the profile's skills,
+    # the role is unambiguously relevant. Thin JDs shouldn't penalize an exact match.
+    # E.g. "SAP MM Consultant" for an SAP MM profile = guaranteed match (+10).
+    # Also match full module names: "Materials Management" = MM, etc.
+    title_module_bonus = 0
+    if has_sap_skills and not sap_module_mismatch:
+        profile_sap_modules = {s for s in PROFILE["core_skills"] if s.startswith("sap ") and s != "sap"}
+        # Check abbreviations in title
+        for mod in profile_sap_modules:
+            mod_part = mod.replace("sap ", "", 1)
+            if re.search(r'\b' + re.escape(mod_part) + r'\b', title_lower):
+                title_module_bonus = 10
+                break
+        # Check full module names in title
+        if title_module_bonus == 0:
+            for mod, aliases in _SAP_MODULE_ALIASES.items():
+                if mod in profile_sap_modules:
+                    for alias_pat in aliases:
+                        if re.search(alias_pat, title_lower, re.IGNORECASE):
+                            title_module_bonus = 10
+                            break
+                    if title_module_bonus > 0:
+                        break
+
     # --- International opportunity bonuses (visa & relocation scored independently) ---
     # For jobs outside India with a relevant match (title OR skills), visa sponsorship
     # and relocation support each contribute points independently.
@@ -1061,7 +1114,7 @@ def score_job(title, description, company, location=""):
         if has_relo_support or relocation_note:
             relo_bonus = 5
 
-    score = round(skill_score + title_relevance + seniority_score + visa_bonus + relo_bonus)
+    score = round(skill_score + title_relevance + seniority_score + title_module_bonus + visa_bonus + relo_bonus)
     score = max(0, min(100, score))
     # Combine relocation note and visa note
     notes = " | ".join(n for n in [relocation_note, visa_note] if n)
