@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       batch:
-        description: "Run specific batch: ats, boards-major, boards-niche, boards-eu, playwright, global, apac, us-canada, middle-east, eu"
+        description: "Run specific batch: ats, boards-major, boards-AU-NZ, boards-eu, playwright, global, apac, us-canada, middle-east, eu"
         required: true
         default: "all"
         type: choice
@@ -12,7 +12,7 @@ on:
           - all
           - "ats"
           - "boards-major"
-          - "boards-niche"
+          - "boards-AU-NZ"
           - "boards-eu"
           - "playwright"
           - "global"
@@ -106,9 +106,9 @@ jobs:
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-major' }}
         run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2.log
 
-      - name: Batch 3 - Niche/Regional Boards
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-niche' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-niche 2>&1 | tee scan_batch3.log
+      - name: Batch 3 - AU/NZ Regional Boards
+        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-AU-NZ' }}
+        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch3.log
 
       - name: Batch 4 - EU Job Boards
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == 'boards-eu' }}

@@ -94,9 +94,9 @@ jobs:
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2a' }}
         run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2a.log
 
-      - name: Batch 2b - Niche/Regional Boards
+      - name: Batch 2b - AU/NZ Regional Boards
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2b' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-niche 2>&1 | tee scan_batch2b.log
+        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch2b.log
 
       - name: Batch 3 - Playwright + Merge + Email
         if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
