@@ -5874,7 +5874,8 @@ def search_netempregos(query, location="Portugal", max_results=500):
         total_count = _detect_total_count(soup)
         effective_max = min(total_count, max_results)
         page_num = 1
-        while len(jobs) < effective_max:
+        max_pages = 3
+        while len(jobs) < effective_max and page_num <= max_pages:
             if page_num > 1:
                 pag_url = f"https://www.net-empregos.com/pesquisa-empregos.asp?page={page_num}&chaves=pesquisa"
                 resp = requests.get(pag_url, headers=h, timeout=15)
@@ -5988,9 +5989,10 @@ def search_bundesagentur(query, location="Germany", max_results=500):
     jobs = []
     seen = set()
     page = 1
+    max_pages = 3
     try:
         effective_max = max_results
-        while len(jobs) < effective_max:
+        while len(jobs) < effective_max and page <= max_pages:
             html = _playwright_html(f"{base}&seite={page}")
             if not html:
                 break
@@ -6086,9 +6088,10 @@ def search_workinlux(query, location="Luxembourg", max_results=500):
     jobs = []
     seen = set()
     page = 1
+    max_pages = 3
     try:
         effective_max = max_results
-        while len(jobs) < effective_max:
+        while len(jobs) < effective_max and page <= max_pages:
             html = _playwright_html(f"{base}&page={page}", wait_ms=5000)
             if not html:
                 break
@@ -6978,10 +6981,31 @@ def main():
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
         single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly"}
+        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk"}
 
         def _process_board(board_name, board_fn):
             collected = []
-            for query in domain_queries:
+            is_slow = board_name in pw_names or board_name == "Adzuna"
+            current_queries = domain_queries
+            if is_slow:
+                pruned = []
+                for q in domain_queries:
+                    starts_with_prefix = False
+                    for prefix in ["senior", "lead", "staff", "principal", "junior", "associate", "sr.", "sr"]:
+                        if q.lower().startswith(prefix + " "):
+                            starts_with_prefix = True
+                            break
+                    if not starts_with_prefix:
+                        pruned.append(q)
+                current_queries = pruned
+                print(f"  [{board_name.lower()}] Pruned queries from {len(domain_queries)} to {len(current_queries)} for optimized execution")
+
+            if board_name in static_boards:
+                current_queries = [current_queries[0]] if current_queries else [""]
+                print(f"  [{board_name.lower()}] Board ignores search query; executing exactly once to avoid redundant page loads")
+
+            for query in current_queries:
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
