@@ -659,12 +659,12 @@ COMPANY_RESUME_MAP = {
 _SENIORITY_PREFIXES = ["senior ", "sr. ", "sr ", "lead ", "staff ", "principal ", "junior ", "associate ", "chief "]
 
 # --- Precompiled regex patterns (avoid re-compiling per job in score_job) ---
-_JUNIOR_RE = [re.compile(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])')
-              for flag in PROFILE["junior_red_flags"]]
-_TITLE_RED_FLAG_RE = [(flag.strip(), re.compile(r'(?<![a-z])' + re.escape(flag.strip()) + r'(?![a-z])'))
-                      for flag in PROFILE["title_red_flags"]]
-_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
-             for skill in PROFILE["core_skills"]]
+# These are rebuilt by _rebuild_precompiled_patterns() whenever PROFILE is
+# mutated (e.g. via --resume or --profile).  Initial build uses the default
+# hardcoded PROFILE so standalone imports still work.
+_JUNIOR_RE = []
+_TITLE_RED_FLAG_RE = []
+_SKILL_RE = []
 _EXP_PATTERNS = [
     (re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'min'),
     (re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'min'),
@@ -678,9 +678,32 @@ _TRAVEL_MANDATORY_RE = [re.compile(p) for p in [
     r'require[sd]?\s+travel\s+(?:extensively|frequently|regularly)',
     r'extensive\s+travel', r'frequent\s+travel',
 ]]
-# Cache title keywords and seniority keywords (PROFILE is constant during a scan)
+# Cache title keywords and seniority keywords — invalidated by _rebuild_precompiled_patterns()
 _CACHED_TITLE_KEYWORDS = None
 _CACHED_SENIORITY_KEYWORDS = None
+
+
+def _rebuild_precompiled_patterns():
+    """Rebuild all precompiled regex patterns and caches from current PROFILE.
+
+    MUST be called after any mutation of PROFILE (--resume, --profile, CLI overrides).
+    """
+    global _JUNIOR_RE, _TITLE_RED_FLAG_RE, _SKILL_RE
+    global _CACHED_TITLE_KEYWORDS, _CACHED_SENIORITY_KEYWORDS
+
+    _JUNIOR_RE = [re.compile(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])')
+                  for flag in PROFILE["junior_red_flags"]]
+    _TITLE_RED_FLAG_RE = [(flag.strip(), re.compile(r'(?<![a-z])' + re.escape(flag.strip()) + r'(?![a-z])'))
+                          for flag in PROFILE["title_red_flags"]]
+    _SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+                 for skill in PROFILE["core_skills"]]
+    # Invalidate cached derived values so they're recomputed from updated PROFILE
+    _CACHED_TITLE_KEYWORDS = None
+    _CACHED_SENIORITY_KEYWORDS = None
+
+
+# Initial build from default hardcoded PROFILE
+_rebuild_precompiled_patterns()
 
 
 def _get_cached_title_keywords():
@@ -6228,6 +6251,7 @@ def main():
             PROFILE["junior_red_flags"] = loaded["junior_red_flags"]
         if loaded.get("title_red_flags"):
             PROFILE["title_red_flags"] = loaded["title_red_flags"]
+        _rebuild_precompiled_patterns()  # rebuild regex from updated PROFILE
         print(f"  Loaded profile: {PROFILE['name']} | {PROFILE['years_experience']}yr | role: {PROFILE.get('current_role', 'N/A')}")
         print(f"  Skills ({len(PROFILE['core_skills'])}): {', '.join(PROFILE['core_skills'][:10])}...")
         # Auto-set recipient email from profile name if no --email-to given
@@ -6286,6 +6310,7 @@ def main():
             PROFILE["current_role"] = parsed["current_role"]
         # Auto-configure title filters based on detected role domain
         PROFILE["title_red_flags"] = auto_detect_title_red_flags(PROFILE["core_skills"])
+        _rebuild_precompiled_patterns()  # rebuild regex from resume-derived PROFILE
         os.environ["RESUME_PATH"] = resume_path
         # Auto-set recipient email from resume (sender stays as .env GMAIL_ADDRESS)
         if parsed["email"] and not args.email_to:
@@ -6301,6 +6326,9 @@ def main():
         PROFILE["core_skills"] = [s.strip() for s in args.skills.split(",")]
     if args.exp is not None:
         PROFILE["years_experience"] = args.exp
+    # If CLI overrode skills or experience, rebuild precompiled patterns
+    if args.skills or args.exp is not None:
+        _rebuild_precompiled_patterns()
 
     # Override .env from CLI args
     if args.resume and not args.resume.startswith("---"):  # already handled above
