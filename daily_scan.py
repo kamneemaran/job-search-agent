@@ -3995,53 +3995,63 @@ def _format_salary(s):
         return f"{sym}{fmt_min}"
     return ""
 
+def _table_rows(matches):
+    rows = ""
+    for m in matches:
+        url = m.get("url", "#")
+        rows += f"""
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #ddd;"><a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['title']}</a></td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;">{m['company']}</td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;">{m.get('location', 'N/A')}</td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;"><span style="background:#e8f0fe;font-size:11px;padding:2px 6px;border-radius:4px;">{m.get('source', '')}</span></td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;text-align:center;"><b>{m['score']}%</b></td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;"><a href="{url}" style="color:#1a73e8;">Apply</a></td>
+    </tr>"""
+    return rows
+
 def build_email_html(matches, failed_parse=None):
     if not matches:
         body = "<p>No new matches above threshold today.</p>"
     else:
-        # Group matches by location
-        from collections import OrderedDict
-        grouped = OrderedDict()
-        for m in matches:
-            loc = m.get("location", "Unknown").strip() or "Unknown"
-            grouped.setdefault(loc, []).append(m)
+        high = [m for m in matches if m["score"] >= 75]
+        mid = [m for m in matches if 65 <= m["score"] < 75]
+        low = [m for m in matches if m["score"] < 65]
 
         sections = ""
-        for loc, loc_matches in grouped.items():
-            rows = ""
-            for m in loc_matches:
-                salary_line = _salary_html(m.get("salary_info"))
-                rows += f"""
-        <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
-          <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
-          <p style="margin:0 0 8px;color:#666;font-size:13px;">
-            <a href="{m['url']}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
-            <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
-          </p>
-          <p style="margin:0 0 8px;font-size:14px;"><b>Fit score: {m['score']}%</b></p>
-          {salary_line}
-          <p style="margin:0 0 8px;font-size:13px;color:#444;">{m['relocation_note']}</p>
-          <ul style="margin:0 0 8px;font-size:13px;color:#444;">
-            {''.join(f'<li>{s}</li>' for s in m['suggestions'])}
-          </ul>
-          <a href="{m['url']}" style="font-size:13px;">Open job posting &rarr;</a>
-        </div>
-        """
+        header = "<tr style='font-size:13px;color:#555;'><th style='padding:8px;text-align:left;'>Position</th><th style='padding:8px;text-align:left;'>Company</th><th style='padding:8px;text-align:left;'>Location</th><th style='padding:8px;text-align:left;'>Source</th><th style='padding:8px;text-align:center;'>Score</th><th style='padding:8px;'>Link</th></tr>"
+
+        if high:
             sections += f"""
-    <div style="margin-bottom:24px;">
-      <h3 style="background:#f0f4f8;padding:8px 12px;border-radius:6px;font-size:15px;">
-        {loc} ({len(loc_matches)})
-      </h3>
-      {rows}
-    </div>
-    """
+    <h3 style="color:#2e7d32;">Strong Matches ({len(high)})</h3>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #a5d6a7;border-radius:6px;margin-bottom:24px;">
+      <thead><tr style="background:#c8e6c9;color:#1b5e20;">{header}</tr></thead>
+      <tbody>{_table_rows(high)}</tbody>
+    </table>"""
+
+        if mid:
+            sections += f"""
+    <h3 style="color:#e65100;">Moderate Matches ({len(mid)})</h3>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #ffcc80;border-radius:6px;margin-bottom:24px;">
+      <thead><tr style="background:#ffe0b2;color:#bf360c;">{header}</tr></thead>
+      <tbody>{_table_rows(mid)}</tbody>
+    </table>"""
+
+        if low:
+            sections += f"""
+    <h3 style="color:#b71c1c;">Possible Matches ({len(low)})</h3>
+    <p style="font-size:13px;color:#666;">These may be relevant for you — do check and apply if needed.</p>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #ef9a9a;border-radius:6px;margin-bottom:24px;">
+      <thead><tr style="background:#ffcdd2;color:#b71c1c;">{header}</tr></thead>
+      <tbody>{_table_rows(low)}</tbody>
+    </table>"""
+
         body = f"""
       <h2>Daily job matches - {datetime.now().strftime('%d %b %Y')}</h2>
       <p>{len(matches)} role(s) scored above threshold.</p>
       {sections}
     """
 
-    # Failed-to-parse section
     failed_html = ""
     if failed_parse:
         rows = ""
@@ -4059,7 +4069,7 @@ def build_email_html(matches, failed_parse=None):
     """
 
     return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:600px;">
+    <html><body style="font-family:Arial,sans-serif;max-width:700px;">
       {body}
       {failed_html}
     </body></html>
