@@ -827,10 +827,14 @@ def score_job(title, description, company, location=""):
     if any(pat.search(text) for pat in _JUNIOR_RE):
         return 0, "Filtered: junior/entry-level role detected"
 
-    # Reject roles whose titles match red-flag career tracks (word-boundary matching)
+    # Check if title matches red-flag career tracks (word-boundary matching).
+    # Instead of hard-rejecting, flag it — if skill overlap is high enough later,
+    # we let the job through (some companies title backend roles as "DevOps", etc.)
+    red_flag_match = None
     for red_flag, pat in _TITLE_RED_FLAG_RE:
         if pat.search(title_lower):
-            return 0, f"Filtered: title matches non-relevant track ({red_flag})"
+            red_flag_match = red_flag
+            break
 
     # --- Seniority filter: reject roles too senior for candidate's experience ---
     exp_years = PROFILE["years_experience"]
@@ -1064,6 +1068,22 @@ def score_job(title, description, company, location=""):
     if sap_module_mismatch:
         prefix = "Title: non-matching SAP module — scored by JD"
         notes = f"{prefix} | {notes}" if notes else prefix
+
+    # --- Red-flag title enforcement ---
+    # If title matched a red-flag track, check if skill overlap is high enough
+    # to override. Some companies use titles like "DevOps Engineer" for roles
+    # that are really backend/platform engineering. Use denominator-adjusted
+    # skill_score (not raw ratio) since profiles with many skills have a low
+    # raw ratio even when the JD matches well.
+    if red_flag_match:
+        if skill_score >= 35:
+            # Strong skill overlap (≥70% of adjusted denominator) — let score stand
+            notes = (f"Title red-flag ({red_flag_match}) overridden by skill match "
+                     f"({skill_hits}/{total_skills})" + (" | " + notes if notes else ""))
+        else:
+            # Skill overlap too low — enforce the filter
+            return 0, f"Filtered: title matches non-relevant track ({red_flag_match})"
+
     return score, notes
 
 
@@ -1107,9 +1127,30 @@ def _title_only_bypass(job, score, relocation_note, threshold):
         _BYPASS_AMBIGUOUS = {"systems engineer", "systems architect", "distributed systems engineer"}
         full_role_variants = [kw for kw in title_keywords if " " in kw and kw not in _BYPASS_AMBIGUOUS]
         title_words = set(title_lower.split())
-        if any(set(v.split()).issubset(title_words) for v in full_role_variants):
-            score = max(score, 72)
-            relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
+        matched_variants = [v for v in full_role_variants if set(v.split()).issubset(title_words)]
+        if matched_variants:
+            # Require the matched variant to contain at least one profile skill word.
+            # This prevents generic titles like "Software Engineer" (no domain signal)
+            # from bypassing, while allowing "Backend Engineer" ("backend" is a skill),
+            # "SAP MM Consultant" ("sap"/"mm" are skill words), etc.
+            # Generic words that appear in many titles are excluded.
+            _GENERIC_TITLE_WORDS = {
+                "engineer", "developer", "software", "senior", "junior", "lead",
+                "staff", "principal", "manager", "consultant", "architect", "analyst",
+                "specialist", "associate", "intern", "head", "director", "vp",
+            }
+            skill_words = set()
+            for s in PROFILE.get("core_skills", []):
+                skill_words.update(s.lower().split())
+            skill_words -= _GENERIC_TITLE_WORDS
+
+            has_skill_signal = any(
+                set(v.split()) & skill_words
+                for v in matched_variants
+            )
+            if has_skill_signal:
+                score = max(score, 72)
+                relocation_note = (relocation_note + " | " if relocation_note else "") + "Title-match pass (no full JD)"
     return score, relocation_note
 
 
