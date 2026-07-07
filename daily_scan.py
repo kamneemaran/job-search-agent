@@ -3976,14 +3976,14 @@ def search_monsterde(query, location="Germany", max_results=500):
 
 
 _adzuna_last_call = 0.0  # rate limiter for Adzuna queries
+_adzuna_delay = 10.0     # base delay between queries (safe for dedicated thread)
 
 def search_adzuna(query, location="Remote", max_results=500):
     """Search Adzuna UK for jobs using cloudscraper (paginated, bypasses Cloudflare)."""
-    global _adzuna_last_call
-    # Enforce minimum 5s gap between Adzuna calls to avoid 429
+    global _adzuna_last_call, _adzuna_delay
     elapsed = time.time() - _adzuna_last_call
-    if elapsed < 5.0:
-        time.sleep(5.0 - elapsed)
+    if elapsed < _adzuna_delay:
+        time.sleep(_adzuna_delay - elapsed)
     _adzuna_last_call = time.time()
     jobs = []
     q = query.replace(" ", "+")
@@ -3992,11 +3992,21 @@ def search_adzuna(query, location="Remote", max_results=500):
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
         for page_num in range(1, max_pages + 1):
             url = f"https://www.adzuna.co.uk/search?q={q}&page={page_num}" if page_num > 1 else f"https://www.adzuna.co.uk/search?q={q}"
-            resp = scraper.get(url, timeout=20)
-            if resp.status_code == 429:
-                print(f"  [adzuna] HTTP 429 — rate limited, backing off")
-                time.sleep(10)
+            
+            # Request with robust retry loop for HTTP 429
+            resp = None
+            retries = 3
+            backoff = 15.0
+            for attempt in range(retries + 1):
                 resp = scraper.get(url, timeout=20)
+                if resp.status_code == 429:
+                    print(f"  [adzuna] HTTP 429 — rate limited on attempt {attempt + 1}/{retries + 1}, backing off {backoff}s")
+                    _adzuna_delay = max(_adzuna_delay, 15.0)  # dynamically increase inter-query delay
+                    time.sleep(backoff)
+                    backoff *= 2.0  # exponential backoff
+                else:
+                    break
+            
             if resp.status_code != 200:
                 if page_num == 1:
                     print(f"  [adzuna] HTTP {resp.status_code}")
