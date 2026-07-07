@@ -6385,12 +6385,14 @@ def main():
         ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote")):
-        for query in domain_queries:
-            for board_name, board_fn in board_scrapers:
-                au_boards = {"Seek", "Jora"}
-                eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
-                remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-                single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
+        au_boards = {"Seek", "Jora"}
+        eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
+        remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
+        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
+
+        def _process_board(board_name, board_fn):
+            collected = []
+            for query in domain_queries:
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
                 elif board_name in eu_boards:
@@ -6417,13 +6419,31 @@ def main():
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
                             salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                            all_matches.append({**job, "score": score, "resume": resume,
+                            collected.append({**job, "score": score, "resume": resume,
                                                 "relocation_note": relocation_note, "suggestions": suggestions,
                                                 "salary_info": salary_info, "source": board_name})
                         elif score >= 50:
                             print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
                 elapsed = (datetime.now() - t0).total_seconds()
                 print(f"    [{board_name.lower()}] Done ({elapsed:.1f}s)")
+            return collected
+
+        if args.batch == "boards-eu":
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            heavy_names = {"SAPOEmprego", "Bundesagentur", "WorkInLux"}
+            fast_scrapers = [(n, f) for n, f in board_scrapers if n not in heavy_names]
+            heavy_scrapers = [(n, f) for n, f in board_scrapers if n in heavy_names]
+
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                futures = []
+                futures.append(pool.submit(lambda: [r for n, f in fast_scrapers for r in _process_board(n, f)]))
+                for name, fn in heavy_scrapers:
+                    futures.append(pool.submit(_process_board, name, fn))
+                for f in as_completed(futures):
+                    all_matches.extend(f.result())
+        else:
+            for board_name, board_fn in board_scrapers:
+                all_matches.extend(_process_board(board_name, board_fn))
 
     # --- Playwright-based scrapers (JS-rendered sites, called once not per query) ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])

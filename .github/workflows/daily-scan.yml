@@ -49,7 +49,7 @@ on:
         default: false
         type: boolean
       batch-eu:
-        description: "EU Companies (terminal - merges all previous)"
+        description: "EU Companies (terminal)"
         required: false
         default: false
         type: boolean
@@ -63,12 +63,33 @@ env:
   GSHEET_ID: ${{ secrets.GSHEET_ID }}
 
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        run: |
+          MATRIX='{"include":[]}'
+          [[ "${{ github.event.inputs.batch-ats }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"ats"}]')
+          [[ "${{ github.event.inputs.batch-boards-major }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-major"}]')
+          [[ "${{ github.event.inputs.batch-boards-AU-NZ }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-AU-NZ"}]')
+          [[ "${{ github.event.inputs.batch-boards-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-eu"}]')
+          [[ "${{ github.event.inputs.batch-playwright }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"playwright"}]')
+          [[ "${{ github.event.inputs.batch-global }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"global"}]')
+          [[ "${{ github.event.inputs.batch-apac }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"apac"}]')
+          [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"us-canada"}]')
+          [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"middle-east"}]')
+          [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"eu"}]')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   scan:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    defaults:
-      run:
-        shell: bash
+    strategy:
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v5
 
@@ -85,6 +106,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+
       - name: Download resume from URL
         run: |
           URL="${{ github.event.inputs.resume_url }}"
@@ -131,52 +153,15 @@ jobs:
           print('All secrets set')
           "
 
-      - name: Batch 1 - Company ATS
-        if: ${{ github.event.inputs.batch-ats == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch ats 2>&1 | tee scan_batch1.log
-
-      - name: Batch 2 - Major Job Boards
-        if: ${{ github.event.inputs.batch-boards-major == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2.log
-
-      - name: Batch 3 - AU/NZ Regional Boards
-        if: ${{ github.event.inputs.batch-boards-AU-NZ == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch3.log
-
-      - name: Batch 4 - EU Job Boards
-        if: ${{ github.event.inputs.batch-boards-eu == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-eu 2>&1 | tee scan_batch4.log
-
-      - name: Batch 5 - Playwright Scrape
-        if: ${{ github.event.inputs.batch-playwright == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch5.log
-
-      - name: Batch 6 - Global Companies
-        if: ${{ github.event.inputs.batch-global == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch6.log
-
-      - name: Batch 7 - APAC Companies
-        if: ${{ github.event.inputs.batch-apac == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch7.log
-
-      - name: Batch 8 - US/Canada Companies
-        if: ${{ github.event.inputs.batch-us-canada == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch8.log
-
-      - name: Batch 9 - Middle East Companies
-        if: ${{ github.event.inputs.batch-middle-east == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch9.log
-
-      - name: Batch 10 - EU Companies (terminal - merges all previous)
-        if: ${{ github.event.inputs.batch-eu == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch10.log
+      - name: Run batch
+        run: python daily_scan.py --resume "$RESUME" --batch ${{ matrix.batch }} 2>&1 | tee scan_batch_${{ matrix.batch }}.log
 
       - uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: scan-logs
+          name: scan-logs-${{ matrix.batch }}
           path: |
-            scan_batch*.log
-            last_scan_results_batch_*.json
+            scan_batch_${{ matrix.batch }}.log
+            last_scan_results_batch_${{ matrix.batch }}.json
             last_scan_results.json
           retention-days: 7
