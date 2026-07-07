@@ -6642,8 +6642,15 @@ def main():
             t0 = datetime.now()
             jobs = fetch_fn(src)
             if jobs:
-                src_name = src.get("name", src[0]) if isinstance(src, dict) else src[0]
-                src_url = src.get("url") if isinstance(src, dict) else None
+                if isinstance(src, dict):
+                    src_name = src.get("name", src.get("url", "unknown"))
+                    src_url = src.get("url")
+                elif isinstance(src, (list, tuple)) and len(src) > 0:
+                    src_name = src[0]
+                    src_url = src[1] if len(src) > 1 else None
+                else:
+                    src_name = str(src)
+                    src_url = None
                 print(f"  Scanning: {src_name} (retry)")
                 _score_collect(jobs, src_name, src_url, all_matches)
                 print(f"  Done - {src_name} (retry, {len(jobs)} jobs)")
