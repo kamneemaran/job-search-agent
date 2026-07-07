@@ -892,7 +892,12 @@ def score_job(title, description, company, location=""):
             if re.search(r'\b' + re.escape(standalone) + r'\b', title_lower):
                 title_modules.add(mapped)
         if title_modules and not title_modules & profile_sap_modules:
-            return 0, f"Filtered: title specifies non-matching SAP module"
+            # Don't hard-reject — let JD content decide (cross-module roles exist)
+            sap_module_mismatch = True
+        else:
+            sap_module_mismatch = False
+    else:
+        sap_module_mismatch = False
 
     # --- Skill scoring (word-boundary matching; up to 50 points) ---
     skill_hits = sum(1 for skill in PROFILE["core_skills"]
@@ -968,12 +973,18 @@ def score_job(title, description, company, location=""):
     score = max(0, min(100, score))
     # Combine relocation note and visa note
     notes = " | ".join(n for n in [relocation_note, visa_note] if n)
+    if sap_module_mismatch:
+        prefix = "Title: non-matching SAP module — scored by JD"
+        notes = f"{prefix} | {notes}" if notes else prefix
     return score, notes
 
 
 def _title_only_bypass(job, score, relocation_note, threshold):
     """If description is too short to score skills but title matches well, auto-pass."""
     if score >= threshold or len(job.get("description", "")) >= 100:
+        return score, relocation_note
+    # Don't bypass explicit filters (e.g., junior role, etc.) or SAP module mismatches
+    if relocation_note.startswith("Filtered:") or "non-matching SAP module" in relocation_note:
         return score, relocation_note
     title_lower = job["title"].lower().replace("-", " ").replace("/", " ")
     title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)
@@ -3855,6 +3866,40 @@ def search_adzuna(query, location="Remote", max_results=500):
     return jobs
 
 
+def search_freelancermap(query, location="Germany", max_results=100):
+    """Search freelancermap.com (German IT freelancer marketplace, many SAP projects)."""
+    from bs4 import BeautifulSoup
+    q = query.replace(" ", "+")
+    jobs = []
+    try:
+        html = _playwright_html(f"https://www.freelancermap.com/projects?search={q}")
+        if not html:
+            return jobs
+        soup = BeautifulSoup(html, "html.parser")
+        for card in soup.select("[class*=project-card]"):
+            if len(jobs) >= max_results:
+                break
+            text = card.get_text(separator=" | ", strip=True)
+            parts = [p.strip() for p in text.split(" | ") if p.strip()]
+            if len(parts) < 2:
+                continue
+            company = parts[0]
+            title = parts[1] if len(parts) > 1 else ""
+            loc = next((p for p in parts[2:] if any(c in p for c in [",", "Remote", "On-site"])), "")
+            link = card.find("a", href=re.compile(r"^/project/"))
+            url = f"https://www.freelancermap.com{link['href']}" if link and link.get("href") else ""
+            if title:
+                jobs.append({
+                    "title": title, "company": company, "location": loc,
+                    "url": url, "description": text,
+                })
+        if jobs:
+            print(f"  [freelancermap] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [freelancermap] Error: {e}")
+    return jobs
+
+
 def _accept_dpg_privacy(page):
     """Click 'Akkoord' on DPG Media privacy gate if present. Returns True if accepted."""
     try:
@@ -6313,6 +6358,7 @@ def main():
             ("TogetherAbroad", search_togetherabroad),
             ("StepStone", search_stepstone),
             ("Adzuna", search_adzuna),
+            ("Freelancermap", search_freelancermap),
             ("Intermediair", search_intermediair),
             ("NationaleVacaturebank", search_nationalevacaturebank),
         ]
