@@ -6230,42 +6230,80 @@ def main():
             return False
         return True
 
+    def _is_permanent_error(msg):
+        if not msg:
+            return False
+        kw = ["cloudflare", "captcha", "access denied", "403", "blocked", "challenge", "unreachable"]
+        return any(k in msg.lower() for k in kw)
+
+    def _score_collect(jobs, src_name, src_url, matches):
+        for job in jobs:
+            if not should_include(job):
+                continue
+            score, rn = score_job(job["title"], job["description"], job["company"])
+            score, rn = _title_only_bypass(job, score, rn, args.threshold)
+            if score >= args.threshold:
+                print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
+                matches.append({**job, "score": score, "resume": pick_resume(job["company"]),
+                    "company_url": company_url(job["company"], src_url),
+                    "relocation_note": rn,
+                    "suggestions": tailoring_suggestion(job["title"], job["description"], job["company"]),
+                    "salary_info": get_salary_info(job["company"], job["title"], job["description"]),
+                    "source": src_name})
+            elif score >= 50:
+                print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+
+    def _score_collect_ats(job, src_name, src_url, matches, sd):
+        if not should_include(job):
+            return
+        score, rn = score_job(job["title"], job["description"], job["company"])
+        if score == 0:
+            sd["filtered"] += 1
+        elif score < args.threshold:
+            sd["low_score"] += 1
+            if score > sd["top_score"]:
+                sd["top_score"] = score
+                sd["top_title"] = f"{job['title']} @ {job['company']}"
+        if score >= args.threshold:
+            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
+            matches.append({**job, "score": score, "resume": pick_resume(job["company"]),
+                "company_url": company_url(job["company"], src_url),
+                "relocation_note": rn,
+                "suggestions": tailoring_suggestion(job["title"], job["description"], job["company"]),
+                "salary_info": get_salary_info(job["company"], job["title"], job["description"]),
+                "source": src_name})
+        elif score >= 50:
+            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+
+    def _retry_empty(empty, fetch_fn, label):
+        if not empty:
+            return
+        print(f"\n  [retry] Retrying {len(empty)} {label} with 30s buffer...")
+        for src in empty:
+            time.sleep(30)
+            t0 = datetime.now()
+            jobs = fetch_fn(src)
+            if jobs:
+                src_name = src.get("name", src[0]) if isinstance(src, dict) else src[0]
+                src_url = src.get("url") if isinstance(src, dict) else None
+                print(f"  Scanning: {src_name} (retry)")
+                _score_collect(jobs, src_name, src_url, all_matches)
+                print(f"  Done - {src_name} (retry, {len(jobs)} jobs)")
+
     if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "ats"):
         _score_debug = {"filtered": 0, "low_score": 0, "top_score": 0, "top_title": ""}
+        ats_empty = []
         for source in _interleave_sources(JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
+            if not jobs:
+                ats_empty.append(source)
             for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                if score == 0:
-                    _score_debug["filtered"] += 1
-                elif score < args.threshold:
-                    _score_debug["low_score"] += 1
-                    if score > _score_debug["top_score"]:
-                        _score_debug["top_score"] = score
-                        _score_debug["top_title"] = f"{job['title']} @ {job['company']}"
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+                _score_collect_ats(job, source["name"], source.get("url"), all_matches, _score_debug)
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        _retry_empty(ats_empty, fetch_jobs_from_source, "empty ATS sources")
         print(f"  [scoring-debug] Filtered: {_score_debug['filtered']}, Below threshold: {_score_debug['low_score']}, "
               f"Best non-match: {_score_debug['top_score']} ({_score_debug['top_title'][:60]})")
 
@@ -6429,47 +6467,18 @@ def main():
             t0 = datetime.now()
             try:
                 jobs = pw_fn("", location="Remote")
-                for job in jobs:
-                    if not should_include(job):
-                        continue
-                    score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                    score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                    if score >= args.threshold:
-                        print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                        resume = pick_resume(job["company"])
-                        suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                        salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                        all_matches.append({**job, "score": score, "resume": resume,
-                                            "relocation_note": relocation_note, "suggestions": suggestions,
-                                            "salary_info": salary_info, "source": pw_name})
-                    elif score >= 50:
-                        print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+                _score_collect(jobs, pw_name, None, all_matches)
             except Exception as e:
                 print(f"  [{pw_name.lower()}] Error: {e}")
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
-        # Pass domain query to batch scrapers that support it
         for pw_name, pw_fn in pw_batch_scrapers:
             print(f"  [{pw_name.lower()}] Processing {len(domain_queries)} queries")
             t0 = datetime.now()
             for query in domain_queries:
                 try:
                     jobs = pw_fn(query, location="Remote")
-                    for job in jobs:
-                        if not should_include(job):
-                            continue
-                        score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                        score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                        if score >= args.threshold:
-                            print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                            resume = pick_resume(job["company"])
-                            suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                            salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                            all_matches.append({**job, "score": score, "resume": resume,
-                                                "relocation_note": relocation_note, "suggestions": suggestions,
-                                                "salary_info": salary_info, "source": pw_name})
-                        elif score >= 50:
-                            print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+                    _score_collect(jobs, pw_name, None, all_matches)
                 except Exception as e:
                     print(f"  [{pw_name.lower()}] Error: {e}")
             elapsed = (datetime.now() - t0).total_seconds()
@@ -6490,156 +6499,72 @@ def main():
             t0 = datetime.now()
             if error:
                 print(f"  [error] {source['name']}: {error}")
-                continue
-            if not jobs:
                 failed_parse.append(source)
+                continue
+            if jobs:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
             print(f"  Done - {source['name']} ({(datetime.now()-t0).total_seconds():.1f}s, {len(jobs)} jobs)")
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+        _retry_empty(failed_parse, fetch_jobs_from_source, "EU sources")
 
     # --- Global companies / recruiters (batch: global) ---
     if args.batch == "global":
+        empty = []
         for source in _interleave_sources(GLOBAL_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Global')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+            if not jobs:
+                empty.append(source)
+            else:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        _retry_empty(empty, fetch_jobs_from_source, "global sources")
 
     # --- APAC companies (batch: apac) ---
     if args.batch == "apac":
+        empty = []
         for source in _interleave_sources(APAC_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','APAC')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+            if not jobs:
+                empty.append(source)
+            else:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        _retry_empty(empty, fetch_jobs_from_source, "APAC sources")
 
     # --- US/Canada companies (batch: us-canada) ---
     if args.batch == "us-canada":
+        empty = []
         for source in _interleave_sources(US_CANADA_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','US/Canada')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+            if not jobs:
+                empty.append(source)
+            else:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        _retry_empty(empty, fetch_jobs_from_source, "US/Canada sources")
 
     # --- Middle East companies (batch: middle-east) ---
     if args.batch == "middle-east":
+        empty = []
         for source in _interleave_sources(MIDDLE_EAST_JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source.get('region','Middle East')}) - {source['url']}")
             t0 = datetime.now()
             jobs = fetch_jobs_from_source(source)
-            for job in jobs:
-                if not should_include(job):
-                    continue
-                score, relocation_note = score_job(job["title"], job["description"], job["company"])
-                score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
-                if score >= args.threshold:
-                    print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
-                    resume = pick_resume(job["company"])
-                    suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
-                    salary_info = get_salary_info(job["company"], job["title"], job["description"])
-                    all_matches.append({
-                        **job,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(job["company"], source.get("url")),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": source["name"],
-                    })
-                elif score >= 50:
-                    print(f"  [near-miss] {job['title'][:60]} @ {job['company']} (score {score})")
+            if not jobs:
+                empty.append(source)
+            else:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
+        _retry_empty(empty, fetch_jobs_from_source, "Middle East sources")
 
     # --- Email digest scan (Glassdoor / Indeed) — only for own profile (Gmail creds are hardcoded) ---
     if args.digest and "kamnee" in PROFILE.get("name", "").lower():
