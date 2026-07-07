@@ -1349,6 +1349,28 @@ def get_salary_info(company, title, description):
     return None
 
 
+# Build company → ATS lookup from JOB_SOURCES
+_COMPANY_ATS = {}
+for _src in JOB_SOURCES:
+    _name = _src.get("name", "").lower()
+    _ats = _src.get("ats", "")
+    if _name and _ats:
+        _COMPANY_ATS[_name] = _ats
+
+def _easy_apply_ats(company):
+    """Check if a company uses an easy-apply ATS (greenhouse/lever/ashby)."""
+    slug = company.lower().strip()
+    # Direct match
+    if _COMPANY_ATS.get(slug):
+        return _COMPANY_ATS[slug]
+    # Fuzzy: check if any key is in company name
+    for known, ats in _COMPANY_ATS.items():
+        if known in slug and len(known) > 3:
+            return ats
+    return None
+
+EASY_APPLY_ATS = {"greenhouse", "lever", "ashby"}
+
 # ---------------------------------------------------------------------------
 # 3b. PROFILE-AWARE QUERY EXPANSION
 # ---------------------------------------------------------------------------
@@ -4131,6 +4153,10 @@ def _card_rows(matches):
         url = m.get("url", "#")
         jt = _job_type_badge(m)
         jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
+        ea = _easy_apply_ats(m.get("company", ""))
+        ea_html = f"""<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ Easy Apply ({ea})</span>""" if ea and ea in EASY_APPLY_ATS else ""
+        ago = m.get("ago", "") or ""
+        ago_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {ago}</span>""" if ago else ""
         co_desc = _company_description(m.get("company", ""))
         co_desc_html = f"""<br><span style="font-size:12px;color:#888;">{co_desc}</span>""" if co_desc else ""
         rows += f"""
@@ -4141,8 +4167,8 @@ def _card_rows(matches):
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
             <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
             <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
-            {jt_html}
-            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}
+            {jt_html}{ea_html}
+            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}{ago_html}
           </p>
         </div>
         <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>

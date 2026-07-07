@@ -10,85 +10,74 @@ Integration:
 """
 import imaplib, email, re, json, sys, os
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 
 GMAIL_USER = "kamneemaran45@gmail.com"
 GMAIL_PASS = "bttjcludverlbmnr"
 
-# ── Glassdoor HTML parsing helpers ─────────────────────────────────────────
+# ── Glassdoor HTML parsing ────────────────────────────────────────────────
 
-def _extract_gd_company_from_logo(html):
-    """Extract company name from Glassdoor company logo URLs."""
-    names = set()
-    for m in re.finditer(r'media\.glassdoor\.com/sql/\d+/([^/]+?)-squareLogo', html, re.I):
-        name = m.group(1).replace("-", " ").strip()
-        # Clean up common suffixes
-        name = re.sub(r'\s*\.{2,}', '', name)
-        if name and len(name) > 1:
-            names.add(name.title())
-    return list(names)
+def parse_glassdoor_email(html_body):
+    """Parse Glassdoor digest email HTML for job listings using BeautifulSoup.
 
-
-def _extract_gd_job_ids(html):
-    """Extract job listing IDs from Glassdoor URLs."""
-    ids = set()
-    for m in re.finditer(r'jobListingId=(\d{10,})', html):
-        ids.add(m.group(1))
-    return list(ids)
-
-
-def _extract_gd_jobs_from_subject(subject):
-    """Parse Glassdoor subject: 'Title at Company and N more jobs in Location'."""
-    subject = subject.strip()
-    m = re.match(r'^(.+?)\s+at\s+(.+?)\s+and\s+(\d+)\s+more\s+jobs\s+in\s+(.+?)\s+for\s+you', subject, re.I)
-    if m:
-        title = m.group(1).strip()
-        company = m.group(2).strip()
-        count = int(m.group(3)) + 1  # +1 for the first job
-        location = m.group(4).strip()
-        return title, company, count, location
-    # Try simpler: 'Title at Company' 
-    m = re.match(r'^(.+?)\s+at\s+(.+?)$', subject)
-    if m:
-        return m.group(1).strip(), m.group(2).strip(), 1, ""
-    return None
-
-
-def parse_glassdoor_email(subject, html_body):
-    """Parse Glassdoor digest email for job listings."""
-    result = _extract_gd_jobs_from_subject(subject)
-    if not result:
-        return []
-    title, company, count, location = result
-    companies_from_logos = _extract_gd_company_from_logo(html_body)
-    job_ids = _extract_gd_job_ids(html_body)
-
-    # Build job entries from what we can extract
-    if count == 1:
-        jobs = [{"title": title, "company": company, "location": location, "source": "glassdoor"}]
-    else:
-        jobs = [{"title": title, "company": company, "location": location, "source": "glassdoor"}]
-        # Add other jobs from companies list (minus the first which is the subject company)
-        other_companies = [c for c in companies_from_logos if c.lower() != company.lower()]
-        job_ids_other = list(job_ids) if len(job_ids) > 1 else []
-        for i in range(min(count - 1, max(len(other_companies), len(job_ids_other), 1))):
-            c = other_companies[i] if i < len(other_companies) else f"Unknown ({company})"
-            jid = job_ids_other[i] if i < len(job_ids_other) else ""
-            jobs.append({
-                "title": f"Role at {c}",
-                "company": c,
-                "location": location,
-                "source": "glassdoor",
-                "job_id": jid,
-            })
-
-    # Apply URL template for Glassdoor
+    Returns list of dicts with title, company, location, url, source, easy_apply.
+    """
+    soup = BeautifulSoup(html_body, "html.parser")
     base = "https://www.glassdoor.co.in/partner/jobListing.htm"
-    for j in jobs:
-        jid = j.get("job_id", "")
-        if jid:
-            j["url"] = f"{base}?jobListingId={jid}"
-        else:
-            j["url"] = ""
+    jobs = []
+
+    for link in soup.find_all("a", href=re.compile(r"jobListingId=\d{10,}")):
+        href = link.get("href", "")
+        jid = re.search(r"jobListingId=(\d{10,})", href)
+        job_id = jid.group(1) if jid else ""
+
+        text = link.parent.get_text(separator=" | ", strip=True) if link.parent else ""
+        if not text:
+            continue
+
+        parts = [p.strip() for p in text.split(" | ") if p.strip()]
+
+        # Structure detection: skip rating (★★★) and bracket noise
+        has_rating = any("★" in p for p in parts)
+        offset = 1 if has_rating else 0  # skip rating if present
+
+        # Detect Easy Apply
+        easy_apply = any("easy apply" in p.lower() for p in parts)
+
+        # Detect salary and "Est." markers
+        salary = next((p for p in parts if re.search(r'[₹$€£NZ]', p) or "Est." in p), "")
+
+        # Detect age (e.g. 3d, 20h)
+        ago = next((p for p in parts if re.match(r'\d+[dhm]', p)), "")
+
+        # Company is first part
+        company = parts[0] if len(parts) > 0 else ""
+
+        # Title is at index 1+offset (or 1 if no offset but part 1 has a ★ — fallback)
+        title_idx = 1 + offset
+        title = parts[title_idx] if len(parts) > title_idx else ""
+
+        # Location is at index 2+offset
+        loc_idx = 2 + offset
+        location = parts[loc_idx] if len(parts) > loc_idx else ""
+
+        # Skip malformed entries where title is actually a location or salary
+        if not title or not company:
+            continue
+        if re.match(r'^[₹$€£NZ]', title) or "," in title:
+            continue
+
+        jobs.append({
+            "title": title,
+            "company": company,
+            "location": location,
+            "salary_raw": salary.replace("( ", "").replace(" )", "").strip(),
+            "url": f"{base}?jobListingId={job_id}",
+            "source": "glassdoor",
+            "easy_apply": easy_apply,
+            "ago": ago,
+            "job_id": job_id,
+        })
 
     return jobs
 
@@ -180,7 +169,7 @@ def fetch_glassdoor_emails(days=7):
                         break
             else:
                 html_body = (msg.get_payload(decode=True) or b"").decode("utf-8", errors="ignore")
-            parsed = parse_glassdoor_email(subj, html_body)
+            parsed = parse_glassdoor_email(html_body)
             jobs.extend(parsed)
 
     mail.logout()
