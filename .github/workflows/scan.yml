@@ -3,22 +3,51 @@ name: Daily Job Scan
 on:
   workflow_dispatch:
     inputs:
-      batch:
-        description: "Run specific batch or all (1=ATS, 2a=global boards, 2b=niche boards, 3=playwright, 4=EU companies, 5=Global, 6=APAC, 7=US/Canada, 8=Middle East)"
-        required: true
-        default: "all"
-        type: choice
-        options:
-          - all
-          - "1"
-          - "2a"
-          - "2b"
-          - "3"
-          - "4"
-          - "5"
-          - "6"
-          - "7"
-          - "8"
+      batch-ats:
+        description: "Company ATS"
+        required: false
+        default: false
+        type: boolean
+      batch-boards-major:
+        description: "Major Job Boards"
+        required: false
+        default: false
+        type: boolean
+      batch-boards-AU-NZ:
+        description: "AU/NZ Regional Boards"
+        required: false
+        default: false
+        type: boolean
+      batch-playwright:
+        description: "Playwright Scrape"
+        required: false
+        default: false
+        type: boolean
+      batch-global:
+        description: "Global Companies"
+        required: false
+        default: false
+        type: boolean
+      batch-apac:
+        description: "APAC Companies"
+        required: false
+        default: false
+        type: boolean
+      batch-us-canada:
+        description: "US/Canada Companies"
+        required: false
+        default: false
+        type: boolean
+      batch-middle-east:
+        description: "Middle East Companies"
+        required: false
+        default: false
+        type: boolean
+      batch-eu:
+        description: "EU Companies (terminal - merges all previous)"
+        required: false
+        default: false
+        type: boolean
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
         required: true
@@ -87,40 +116,40 @@ jobs:
           "
 
       - name: Batch 1 - Company ATS
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '1' }}
+        if: ${{ github.event.inputs.batch-ats == 'true' }}
         run: python daily_scan.py --resume "$RESUME" --batch ats 2>&1 | tee scan_batch1.log
 
-      - name: Batch 2a - Global Job Boards
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2a' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2a.log
+      - name: Batch 2 - Major Job Boards
+        if: ${{ github.event.inputs.batch-boards-major == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2.log
 
-      - name: Batch 2b - AU/NZ Regional Boards
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '2b' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch2b.log
+      - name: Batch 3 - AU/NZ Regional Boards
+        if: ${{ github.event.inputs.batch-boards-AU-NZ == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch3.log
 
-      - name: Batch 3 - Playwright + Merge + Email
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '3' }}
-        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch3.log
+      - name: Batch 4 - Playwright Scrape
+        if: ${{ github.event.inputs.batch-playwright == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch4.log
 
-      - name: Batch 4 - Global Companies
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '4' }}
-        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch4.log
+      - name: Batch 5 - Global Companies
+        if: ${{ github.event.inputs.batch-global == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch5.log
 
-      - name: Batch 5 - APAC Companies
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '5' }}
-        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch5.log
+      - name: Batch 6 - APAC Companies
+        if: ${{ github.event.inputs.batch-apac == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch6.log
 
-      - name: Batch 6 - US/Canada Companies
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '6' }}
-        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch6.log
+      - name: Batch 7 - US/Canada Companies
+        if: ${{ github.event.inputs.batch-us-canada == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch7.log
 
-      - name: Batch 7 - Middle East Companies
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '7' }}
-        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch7.log
+      - name: Batch 8 - Middle East Companies
+        if: ${{ github.event.inputs.batch-middle-east == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch8.log
 
-      - name: Batch 8 - EU Companies (terminal - merges all previous)
-        if: ${{ github.event.inputs.batch == 'all' || github.event.inputs.batch == '8' }}
-        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch8.log
+      - name: Batch 9 - EU Companies (terminal - merges all previous)
+        if: ${{ github.event.inputs.batch-eu == 'true' }}
+        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch9.log
 
       - uses: actions/upload-artifact@v5
         if: always()
