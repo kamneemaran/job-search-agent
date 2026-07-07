@@ -6523,12 +6523,13 @@ def main():
 
     # --- EU companies (batch: eu) ---
     if args.batch == "eu":
-        from concurrent.futures import ThreadPoolExecutor
+        import multiprocessing as _mp
+        _mp.set_start_method("spawn", force=True)
 
         sources = list(_interleave_sources(EU_JOB_SOURCES))
 
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            results = list(pool.map(_fetch_source_jobs, sources))
+        with _mp.Pool(processes=4) as pool:
+            results = pool.map(_fetch_source_jobs, sources)
 
         for source, jobs, error in results:
             print(f"Scanning: {source['name']} ({source.get('region','EU')}) - {source['url']}")
