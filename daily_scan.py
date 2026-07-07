@@ -1231,6 +1231,35 @@ LEVELS_STATIC_SALARIES = {
     "discord": {"median_tc": "$310,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/discord/salaries/software-engineer"},
     "reddit": {"median_tc": "$290,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/reddit/salaries/software-engineer"},
     "pinterest": {"median_tc": "$330,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/pinterest/salaries/software-engineer"},
+    # SAP / ERP consulting firms
+    "infosys": {"median_tc": "$120,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/infosys/salaries/sap-consultant"},
+    "accenture": {"median_tc": "$145,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/accenture/salaries/sap-consultant"},
+    "accenture federal services": {"median_tc": "$145,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/accenture/salaries/sap-consultant"},
+    "deloitte": {"median_tc": "$155,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/deloitte/salaries/sap-consultant"},
+    "capgemini": {"median_tc": "$130,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/capgemini/salaries/sap-consultant"},
+    "ibm": {"median_tc": "$160,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/ibm/salaries/sap-consultant"},
+    "tcs": {"median_tc": "$95,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/tcs/salaries/sap-consultant"},
+    "wipro": {"median_tc": "$100,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/wipro/salaries/sap-consultant"},
+    "hcl": {"median_tc": "$100,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/hcl/salaries/sap-consultant"},
+    "cognizant": {"median_tc": "$115,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/cognizant/salaries/sap-consultant"},
+    "epam systems": {"median_tc": "$140,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/epam-systems/salaries/sap-consultant"},
+    "ncs group": {"median_tc": "$120,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/ncs-group/salaries/sap-consultant"},
+    "dxc technology": {"median_tc": "$125,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/dxc-technology/salaries/sap-consultant"},
+    "atos": {"median_tc": "$115,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/atos/salaries/sap-consultant"},
+    "sap": {"median_tc": "$175,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/sap/salaries/sap-consultant"},
+    "ntt data": {"median_tc": "$120,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/ntt-data/salaries/sap-consultant"},
+    "xcede": {"median_tc": "$130,000", "currency": "USD", "levels": [], "url": ""},
+    # Additional tech companies
+    "anthropic": {"median_tc": "$400,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/anthropic/salaries/software-engineer"},
+    "openai": {"median_tc": "$450,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/openai/salaries/software-engineer"},
+    "vercel": {"median_tc": "$250,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/vercel/salaries/software-engineer"},
+    "grafana": {"median_tc": "$235,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/grafana/salaries/software-engineer"},
+    "confluent": {"median_tc": "$340,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/confluent/salaries/software-engineer"},
+    "hashicorp": {"median_tc": "$310,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/hashicorp/salaries/software-engineer"},
+    "nvidia": {"median_tc": "$420,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/nvidia/salaries/software-engineer"},
+    "doordash": {"median_tc": "$360,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/doordash/salaries/software-engineer"},
+    "block": {"median_tc": "$320,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/block/salaries/software-engineer"},
+    "robinhood": {"median_tc": "$380,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/robinhood/salaries/software-engineer"},
 }
 
 def _get_static_levels_salary(company):
@@ -1247,6 +1276,11 @@ def _get_static_levels_salary(company):
     for key in slug.split('-'):
         if key in LEVELS_STATIC_SALARIES:
             return {**LEVELS_STATIC_SALARIES[key], "source": "levels.fyi"}
+
+    # Check if any known key is a substring of the company name
+    for known_key, data in LEVELS_STATIC_SALARIES.items():
+        if known_key in slug and len(known_key) > 3:
+            return {**data, "source": "levels.fyi"}
 
     return None
 
