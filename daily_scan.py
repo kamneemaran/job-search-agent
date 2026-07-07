@@ -6595,8 +6595,8 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
 
-    # --- Email digest scan (Glassdoor / Indeed) ---
-    if args.digest:
+    # --- Email digest scan (Glassdoor / Indeed) — only for own profile (Gmail creds are hardcoded) ---
+    if args.digest and "kamnee" in PROFILE.get("name", "").lower():
         print(f"\n  [digest] Scanning Gmail for job digest emails...")
         try:
             from email_digest_scan import parse_all_digests
