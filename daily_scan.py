@@ -4027,11 +4027,24 @@ def _format_salary(s):
         return f"{sym}{fmt_min}"
     return ""
 
+def _job_type_badge(m):
+    jt = m.get("job_type", "") or ""
+    if jt:
+        return jt
+    text = ((m.get("title", "") or "") + " " + (m.get("description", "") or "")).lower()
+    if any(kw in text for kw in ["contract", "contractor", "freelance", "temporary", "12-month", "6-month"]):
+        return "Contract"
+    if any(kw in text for kw in ["full-time", "full time", "part-time", "part time", "permanent"]):
+        return "Full-Time"
+    return ""
+
 def _card_rows(matches):
     rows = ""
     for m in matches:
         salary_line = _salary_html(m.get("salary_info"))
         url = m.get("url", "#")
+        jt = _job_type_badge(m)
+        jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
         rows += f"""
     <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -4040,6 +4053,7 @@ def _card_rows(matches):
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
             <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
             <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
+            {jt_html}
             <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>
           </p>
         </div>
@@ -5590,11 +5604,14 @@ def search_himalayas(query, location="Remote", max_results=500):
             salary_str = f" ({' '.join(salary_parts)} {currency})" if salary_parts else ""
             seniority = ", ".join(item.get("seniority") or [])
             locs = ", ".join(item.get("locationRestrictions") or ["Remote"])
+            et = item.get("employmentType") or ""
+            jt = "Contract" if any(k in (et or "").lower() for k in ["contract", "freelance", "temporary"]) else "Full-Time" if et else ""
             jobs.append({
                 "title": title,
                 "company": company,
                 "location": locs,
                 "url": url,
+                "job_type": jt,
                 "description": f"Himalayas: {title} at {company}{salary_str}. Seniority: {seniority}",
             })
             if len(jobs) >= max_results:
