@@ -2425,35 +2425,8 @@ def fetch_jobs_from_source(source):
                 print(f"  [join] Error fetching {source['name']}: {e}")
 
         elif source.get("playwright"):
-            # For LinkedIn URLs, skip Playwright and use LinkedIn job search API directly
             if "linkedin.com/company/" in source["url"].lower():
-                from urllib.parse import urlparse as _urlparse
-                li_path = _urlparse(source["url"]).path.rstrip("/")
-                company_slug = li_path.split("/company/")[-1].replace("-", " ").strip()
-                locations_to_try = ["Remote"]
-                region = source.get("region", "")
-                if region and region not in ("Remote", "Global"):
-                    locations_to_try.insert(0, region)
-                queries = build_domain_queries()
-                for loc in locations_to_try:
-                    for q in queries[:6]:
-                        try:
-                            li_jobs = search_linkedin(q, location=loc, max_results=500)
-                            for j in li_jobs:
-                                lc = j.get("company", "").lower()
-                                if company_slug in lc or any(w in lc for w in company_slug.split() if len(w) > 3):
-                                    j["url"] = j.get("url") or source["url"]
-                                    j["company"] = source["name"]
-                                    if j not in jobs:
-                                        jobs.append(j)
-                        except Exception:
-                            pass
-                    if jobs:
-                        break
-                if jobs:
-                    print(f"  [linkedin] {len(jobs)} jobs for {source['name']}")
-                else:
-                    print(f"  [linkedin] No LinkedIn jobs found for {source['name']}. Check manually: {source['url']}")
+                print(f"  [linkedin] Skipping {source['name']} - LinkedIn search is handled by boards-major batch")
             else:
                 jobs = _scrape_company_career_page(source)
 
@@ -2463,33 +2436,6 @@ def fetch_jobs_from_source(source):
     except Exception as e:
         print(f"  [error] Failed to fetch {source['name']}: {e}")
 
-    if not jobs and source.get("type") == "company":
-        try:
-            source_name_clean = re.sub(r'\s+(GmbH|AG|SE|& Co\. KG|Ltd|Limited|Inc|PLC|SA|BV|NV)($|\s|,|\()', '', source["name"]).strip().lower()
-            locations_to_try = ["Remote"]
-            region = source.get("region", "")
-            if region and region not in ("Remote", "Global"):
-                locations_to_try.insert(0, region)
-            queries = build_domain_queries()
-            for loc in locations_to_try:
-                for q in queries[:2]:
-                    try:
-                        li_jobs = search_linkedin(q, location=loc, max_results=500)
-                        for j in li_jobs:
-                            lc = j.get("company", "").lower()
-                            if source_name_clean in lc or lc in source_name_clean or any(w in lc for w in source_name_clean.split() if len(w) > 3):
-                                j["url"] = j.get("url") or source["url"]
-                                j["company"] = source["name"]
-                                if j not in jobs:
-                                    jobs.append(j)
-                    except Exception:
-                        pass
-                if jobs:
-                    break
-            if jobs:
-                print(f"  [linkedin] {len(jobs)} jobs for {source['name']} (fallback)")
-        except Exception:
-            pass
     return jobs
 
 
@@ -2510,12 +2456,20 @@ def search_linkedin(query, location="India", max_results=500):
         for page_num in range(max_pages):
             start = page_num * page_size
             params = {"keywords": query, "location": location, "start": start}
-            resp = requests.get(
-                "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
-                params=params,
-                headers=headers,
-                timeout=15,
-            )
+            retries = 3
+            for attempt in range(retries):
+                resp = requests.get(
+                    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
+                    params=params,
+                    headers=headers,
+                    timeout=15,
+                )
+                if resp.status_code == 429:
+                    wait = (attempt + 1) * 10
+                    print(f"  [web] LinkedIn 429 for '{query}' in {location}, retry {attempt+1}/{retries} in {wait}s")
+                    time.sleep(wait)
+                    continue
+                break
             if resp.status_code != 200:
                 if page_num == 0:
                     print(f"  [web] LinkedIn HTTP {resp.status_code} for '{query}' in {location}")
