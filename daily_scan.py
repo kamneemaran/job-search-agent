@@ -7014,13 +7014,16 @@ def main():
 
         if args.batch == "boards-eu":
             from concurrent.futures import ThreadPoolExecutor, as_completed
-            heavy_names = {"SAPOEmprego", "Bundesagentur", "WorkInLux"}
-            # Pull Adzuna out — runs in its own dedicated thread with 5s
-            # inter-query delay so it doesn't waste a pool slot while sleeping
-            pool_board_scrapers = [(n, f) for n, f in board_scrapers if n != "Adzuna"]
+            # Playwright sync_api is NOT thread-safe. Keep Playwright scrapers out of the thread pool.
+            pw_names = {
+                "SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", 
+                "IndeedNL", "StepStone", "Freelancermap", "Intermediair", 
+                "NationaleVacaturebank"
+            }
+            # Separate HTTP-based scrapers (thread pool safe) and Playwright-based scrapers
+            pool_board_scrapers = [(n, f) for n, f in board_scrapers if n != "Adzuna" and n not in pw_names]
+            playwright_scrapers = [(n, f) for n, f in board_scrapers if n in pw_names]
             adzuna_entry = next(((n, f) for n, f in board_scrapers if n == "Adzuna"), None)
-            fast_scrapers = [(n, f) for n, f in pool_board_scrapers if n not in heavy_names]
-            heavy_scrapers = [(n, f) for n, f in pool_board_scrapers if n in heavy_names]
 
             # Start Adzuna in dedicated thread (5s rate-limited between queries)
             adzuna_results = []
@@ -7031,10 +7034,10 @@ def main():
             adzuna_thread.start()
             print("  [adzuna] Started in dedicated thread (5s inter-query delay)")
 
+            # Execute HTTP scrapers in thread pool (safe and fast)
             with ThreadPoolExecutor(max_workers=4) as pool:
                 futures = {}
-                # Submit each scraper as its own task (pool schedules 4 at a time)
-                for name, fn in fast_scrapers + heavy_scrapers:
+                for name, fn in pool_board_scrapers:
                     futures[pool.submit(_process_board, name, fn)] = name
                 for f in as_completed(futures):
                     board = futures[f]
@@ -7043,11 +7046,19 @@ def main():
                     except Exception as e:
                         print(f"  [thread-error] {board}: {e}")
 
-            # Wait for Adzuna dedicated thread to finish after pool completes
+            # Wait for Adzuna dedicated thread to finish
             adzuna_thread.join(timeout=300)
             all_matches.extend(adzuna_results)
             if adzuna_thread.is_alive():
                 print("  [adzuna] Warning: dedicated thread still running after 5min timeout")
+
+            # Execute Playwright scrapers sequentially in the main thread (thread safety guaranteed)
+            for name, fn in playwright_scrapers:
+                print(f"  [{name.lower()}] Running Playwright scraper sequentially in main thread")
+                try:
+                    all_matches.extend(_process_board(name, fn))
+                except Exception as e:
+                    print(f"  [{name.lower()}] Error: {e}")
 
             # --- Paginated company scrapers (run once, not per query) ---
             for pw_name, pw_fn in [("Philips", search_philips), ("Liebherr", search_liebherr)]:
