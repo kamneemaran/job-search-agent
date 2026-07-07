@@ -6505,6 +6505,13 @@ def main():
         sync_tracker_to_gsheet(tracker)
         return
 
+    # Inline dedup set — prevents duplicate [match] prints and duplicate entries
+    # in all_matches. Checked at insert time in _score_collect, _score_collect_ats,
+    # and the board scraper loop. Uses (title, company) key, same as global dedup.
+    # Lock protects against race conditions in threaded board scrapers.
+    _seen_match_keys = set()
+    _seen_match_lock = threading.Lock()
+
     # Helper to check tracker before adding a match
     def should_include(job):
         if tracker.is_known(job["title"], job["company"]):
@@ -6529,6 +6536,11 @@ def main():
             score, rn = score_job(job["title"], job["description"], job["company"])
             score, rn = _title_only_bypass(job, score, rn, args.threshold)
             if score >= args.threshold:
+                dedup_key = (job["title"].strip().lower(), job["company"].strip().lower())
+                with _seen_match_lock:
+                    if dedup_key in _seen_match_keys:
+                        continue
+                    _seen_match_keys.add(dedup_key)
                 print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                 matches.append({**job, "score": score, "resume": pick_resume(job["company"]),
                     "company_url": company_url(job["company"], src_url),
@@ -6552,6 +6564,11 @@ def main():
                 sd["top_score"] = score
                 sd["top_title"] = f"{job['title']} @ {job['company']}"
         if score >= args.threshold:
+            dedup_key = (job["title"].strip().lower(), job["company"].strip().lower())
+            with _seen_match_lock:
+                if dedup_key in _seen_match_keys:
+                    return
+                _seen_match_keys.add(dedup_key)
             print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
             matches.append({**job, "score": score, "resume": pick_resume(job["company"]),
                 "company_url": company_url(job["company"], src_url),
@@ -6694,6 +6711,11 @@ def main():
                         score, relocation_note = score_job(job["title"], job["description"], job["company"])
                         score, relocation_note = _title_only_bypass(job, score, relocation_note, args.threshold)
                         if score >= args.threshold:
+                            dedup_key = (job["title"].strip().lower(), job["company"].strip().lower())
+                            with _seen_match_lock:
+                                if dedup_key in _seen_match_keys:
+                                    continue
+                                _seen_match_keys.add(dedup_key)
                             print(f"  [match] {job['title'][:60]} @ {job['company']} (score {score})")
                             resume = pick_resume(job["company"])
                             suggestions = tailoring_suggestion(job["title"], job["description"], job["company"])
