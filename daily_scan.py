@@ -4423,12 +4423,27 @@ COMMON_TECH_KEYWORDS = [
     # SAP / ERP
     "sap", "abap", "sap s/4hana", "sap fico", "sap mm", "sap sd", "sap hana",
     "sap basis", "sap bw", "sap pi", "sap po", "sap successfactors",
+    "sap ewm", "sap wm", "sap qm", "sap pm", "sap pp", "sap hr", "sap hcm",
+    "sap ariba", "sap concur", "sap mdg", "sap grc", "sap solman",
+    "sap activate", "sap fiori",
     "fico", "fi module", "controlling", "cost center accounting",
     "procurement", "inventory management", "material management",
     "sap implementation", "sap support", "idoc", "bapi", "rfc",
     "oracle", "oracle erp", "oracle fusion", "peoplesoft",
     "salesforce", "microsoft dynamics", "erp",
+    # SAP tools & processes
+    "servicenow", "solman", "solution manager", "panaya",
+    "ltmc", "lsmw", "data migration",
+    "p2p", "procure to pay", "procure-to-pay",
+    "configuration", "customizing", "master data",
+    "cutover", "hypercare", "go-live",
+    "fiori", "sap gui",
 ]
+
+# Keywords that are too short / ambiguous for substring matching in resumes.
+# These require word-boundary regex to avoid false positives
+# (e.g. "go" matching "go-live", "r" matching "your", "ai" matching "said").
+_AMBIGUOUS_TECH_KEYWORDS = {"r", "go", "ai", "api", "c#", "c++", "vue", "git", "sql"}
 
 def extract_text_from_pdf(path):
     """Extract all text from a PDF file using PyPDF2."""
@@ -4520,8 +4535,29 @@ def parse_resume_pdf(path):
     found_skills = set()
     text_lower = skill_section_text.lower()
     for kw in COMMON_TECH_KEYWORDS:
-        if kw in text_lower:
+        # Use word-boundary regex for all keywords to avoid substring false positives
+        # (e.g. "go" in "go-live", "r" in "your", "ai" in "said")
+        if re.search(r'\b' + re.escape(kw) + r'\b', text_lower):
+            # Extra guard for ambiguous short keywords: require they appear in
+            # an explicit skills/tools section, not just the general resume text
+            if kw in _AMBIGUOUS_TECH_KEYWORDS and skill_section_text == raw:
+                continue  # skip — only found in full-text fallback, too risky
             found_skills.add(kw)
+
+    # SAP module inference: if "sap" is detected, scan for standalone SAP module
+    # abbreviations (e.g. "EWM" in "SAP MM / EWM") and add combined "sap ewm" etc.
+    if "sap" in found_skills:
+        _SAP_MODULE_ABBREVS = {
+            "ewm": "sap ewm", "wm": "sap wm", "qm": "sap qm",
+            "pm": "sap pm", "pp": "sap pp", "hr": "sap hr", "hcm": "sap hcm",
+            "bw": "sap bw", "grc": "sap grc", "mdg": "sap mdg",
+            "ariba": "sap ariba", "concur": "sap concur",
+            "fiori": "sap fiori",
+        }
+        for abbrev, full_skill in _SAP_MODULE_ABBREVS.items():
+            if full_skill not in found_skills and re.search(r'\b' + re.escape(abbrev) + r'\b', text_lower):
+                found_skills.add(full_skill)
+
     profile["core_skills"] = sorted(found_skills)
 
     # --- Extract years of experience ---
