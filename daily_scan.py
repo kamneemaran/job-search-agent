@@ -855,25 +855,57 @@ def score_job(title, description, company, location=""):
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
-    # --- SAP roles: only filter if title specifies a non-matching SAP module ---
-    title_lower = title.lower().replace("-", " ").replace("/", " ")  # normalize separators for matching
-    title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)  # strip brackets
+    # --- Industry detection: auto-bias scoring for SAP vs non-SAP ---
+    is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
+    text_has_sap = "sap" in text or "erp" in text or "s/4hana" in text or "s4hana" in text
+    if is_sap_profile and not text_has_sap and len(text) > 50:
+        pass  # non-SAP role for an SAP profile — don't hard-reject, just let skills decide
+
+    # --- SAP module matching (relaxed: standalone module names count too) ---
+    title_lower = title.lower().replace("-", " ").replace("/", " ")
+    title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)
     title_lower = re.sub(r'\s+', ' ', title_lower).strip()
     has_sap_in_title = "sap" in title_lower or "abap" in title_lower
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
+    _known_modules = [
+        "sap mm", "sap sd", "sap fi", "sap co", "sap hr", "sap hcm",
+        "sap payroll", "sap successfactors", "sap s/4hana", "sap s4hana",
+        "sap abap", "sap basis", "sap bi", "sap bw", "sap fiori",
+        "sap hana", "sap payroll", "sap pp", "sap qm", "sap pm",
+        "sap fico",  # common portmanteau — treat as both FI+CO
+    ]
+    # Also match standalone module keywords when profile is SAP
+    _standalone_modules = {
+        "mm": "sap mm", "ewm": "sap ewm", "sd": "sap sd",
+        "fi": "sap fi", "co": "sap co", "fico": "sap fico",
+        "hr": "sap hr", "hcm": "sap hcm", "pp": "sap pp",
+        "qm": "sap qm", "pm": "sap pm", "abap": "sap abap",
+        "basis": "sap basis", "s/4hana": "sap s/4hana", "s4hana": "sap s4hana",
+        "fiori": "sap fiori", "hana": "sap hana", "bi": "sap bi", "bw": "sap bw",
+        "successfactors": "sap successfactors", "payroll": "sap payroll",
+    }
     if has_sap_in_title and has_sap_skills:
         profile_sap_modules = {s.lower() for s in PROFILE["core_skills"] if "sap" in s}
-        _known_modules = ["sap mm", "sap sd", "sap fi", "sap co", "sap hr", "sap hcm",
-                          "sap payroll", "sap successfactors", "sap s/4hana", "sap s4hana",
-                          "sap abap", "sap basis", "sap bi", "sap bw", "sap fiori",
-                          "sap hana", "sap payroll", "sap pp", "sap qm", "sap pm"]
         title_modules = {m for m in _known_modules if re.search(r'\b' + re.escape(m) + r'\b', title_lower)}
+        # Also check standalone module names
+        for standalone, mapped in _standalone_modules.items():
+            if re.search(r'\b' + re.escape(standalone) + r'\b', title_lower):
+                title_modules.add(mapped)
         if title_modules and not title_modules & profile_sap_modules:
             return 0, f"Filtered: title specifies non-matching SAP module"
 
     # --- Skill scoring (word-boundary matching; up to 50 points) ---
     skill_hits = sum(1 for skill in PROFILE["core_skills"]
                      if re.search(r'\b' + re.escape(skill) + r'\b', text))
+    # Relaxed SAP module matching: if profile has "sap mm", also count standalone "mm" in text
+    if has_sap_skills:
+        for sap_skill in PROFILE["core_skills"]:
+            if "sap " in sap_skill.lower():
+                module_part = sap_skill.lower().replace("sap ", "", 1).strip()
+                if module_part and module_part not in ("s/4hana", "s4hana"):
+                    if re.search(r'\b' + re.escape(module_part) + r'\b', text):
+                        skill_hits += 1
+                        break  # at most one extra point from this relaxation
     total_skills = len(PROFILE["core_skills"])
     # Need 40% of resume skills to appear in JD for full score (min 5 hits)
     skill_denominator = max(int(total_skills * 0.4), 5)
@@ -4077,7 +4109,7 @@ def build_email_html(matches, failed_parse=None):
     """
 
     return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:700px;">
+    <html><body style="font-family:Arial,sans-serif;max-width:900px;">
       {body}
       {failed_html}
     </body></html>
@@ -5879,6 +5911,7 @@ def main():
     parser.add_argument("--skills", help="Comma-separated core skills (overrides PROFILE)")
     parser.add_argument("--exp", type=int, help="Years of experience (overrides PROFILE)")
     parser.add_argument("--resume", help="Path to resume PDF - auto-extracts profile")
+    parser.add_argument("--profile", help="Load profile from profiles/<name>.json (e.g. pradeep, kamnee)")
     parser.add_argument("--email-to", help="Email recipient (overrides .env EMAIL_TO)")
     parser.add_argument("--gmail-user", help="Gmail address (overrides .env GMAIL_ADDRESS)")
     parser.add_argument("--gmail-pass", help="Gmail App Password (overrides .env)")
@@ -5890,10 +5923,37 @@ def main():
                              "or all (default: all)")
     parser.add_argument("--email-scan-only", action="store_true",
                         help="Only scan Gmail for rejection emails (skip job scanning)")
-    parser.add_argument("--batch", type=str, choices=["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"], default="",
-                        help="Run in batches: ats=company ATS APIs, boards-major=LinkedIn/Indeed/Glassdoor etc, boards-AU-NZ=Seek+Jora+regional boards, boards-eu=EU country job boards, boards-remote=remote-only job boards, playwright=JS-rendered pages, eu/global/apac/us-canada/middle-east=region companies. Run sequentially.")
+    _BATCH_CHOICES = ["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
+    parser.add_argument("--batch", type=str, default="",
+                        help=f"Batch(es) to run: comma-separated ({', '.join(_BATCH_CHOICES)}) or 'all'. Examples: --batch boards-major or --batch boards-major,boards-eu")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
     args = parser.parse_args()
+
+    # --- If --profile is provided, load profile from JSON ---
+    if args.profile:
+        profile_path = os.path.join(os.path.dirname(__file__) or ".", "profiles", f"{args.profile}.json")
+        if not os.path.exists(profile_path):
+            print(f"Error: profile not found at {profile_path}")
+            print(f"Available profiles: {', '.join(sorted(f.replace('.json','') for f in os.listdir(os.path.join(os.path.dirname(__file__) or '.', 'profiles')) if f.endswith('.json')))}")
+            sys.exit(1)
+        with open(profile_path) as f:
+            loaded = json.load(f)
+        PROFILE["name"] = loaded.get("name", PROFILE["name"])
+        PROFILE["years_experience"] = loaded.get("years_experience", PROFILE["years_experience"])
+        PROFILE["current_role"] = loaded.get("current_role", PROFILE.get("current_role", ""))
+        if loaded.get("core_skills"):
+            PROFILE["core_skills"] = loaded["core_skills"]
+        if loaded.get("seniority_keywords"):
+            PROFILE["seniority_keywords"] = loaded["seniority_keywords"]
+        if loaded.get("junior_red_flags"):
+            PROFILE["junior_red_flags"] = loaded["junior_red_flags"]
+        if loaded.get("title_red_flags"):
+            PROFILE["title_red_flags"] = loaded["title_red_flags"]
+        print(f"  Loaded profile: {PROFILE['name']} | {PROFILE['years_experience']}yr | role: {PROFILE.get('current_role', 'N/A')}")
+        print(f"  Skills ({len(PROFILE['core_skills'])}): {', '.join(PROFILE['core_skills'][:10])}...")
+        # Auto-set recipient email from profile name if no --email-to given
+        if not args.email_to and not os.environ.get("EMAIL_TO"):
+            os.environ["EMAIL_TO"] = os.environ.get("GMAIL_ADDRESS", "")
 
     # --- If --resume is provided, auto-build profile from PDF ---
     if args.resume:
@@ -5977,6 +6037,30 @@ def main():
     print(f"Profile: {PROFILE['name']}, {PROFILE['years_experience']}yr, {len(PROFILE['core_skills'])} skills")
     all_matches = []
     failed_parse = []  # companies where no jobs could be parsed (for email report)
+
+    # --- If --batch is comma-separated, run each batch as a subprocess ---
+    if args.batch and "," in args.batch:
+        batches = [b.strip() for b in args.batch.split(",")]
+        for b in batches:
+            print(f"\n{'='*60}\nBatch: {b}\n{'='*60}")
+            new_argv = [sys.argv[0]]
+            skip_next = False
+            for a in sys.argv[1:]:
+                if skip_next:
+                    skip_next = False
+                    continue
+                if a == "--batch":
+                    skip_next = True
+                    continue
+                if a.startswith("--batch="):
+                    continue
+                new_argv.append(a)
+            new_argv += ["--batch", b]
+            import subprocess as _sp
+            result = _sp.run([sys.executable] + new_argv)
+            if result.returncode != 0:
+                print(f"  Batch '{b}' failed with exit code {result.returncode}")
+        return
 
     # --- Load job tracker ---
     tracker = JobTracker()

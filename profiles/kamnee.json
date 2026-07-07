@@ -1,0 +1,43 @@
+{
+  "name": "Kamnee Maran",
+  "years_experience": 10,
+  "current_role": "Senior Software Engineer",
+  "core_skills": [
+    "java", "python", "node.js", "golang", "microservices", "distributed systems",
+    "event-driven", "kafka", "redis", "mysql", "postgresql", "mongodb",
+    "elasticsearch", "aws", "azure", "gcp", "docker", "kubernetes", "rest api",
+    "api development", "system design", "high availability", "scalable",
+    "spring boot", "backend", "cloud infrastructure", "devops",
+    "fintech", "payments", "compliance", "incident management",
+    "ci/cd", "terraform", "architecture", "soa", "data pipelines",
+    "fastapi", "grpc", "helm", "prometheus", "grafana", "gpu"
+  ],
+  "seniority_keywords": ["senior", "staff", "lead", "principal", "sde-3", "sde 3"],
+  "junior_red_flags": ["junior", "intern", "entry level", "graduate", "0-2 years"],
+  "title_red_flags": [
+    "network engineer", "network architect", "network administrator", "network security",
+    "devops engineer", "devops", "site reliability engineer", "sre",
+    "network infrastructure",
+    "account executive", "account manager", "account director",
+    "sales engineer", "sales representative", "sales development",
+    "business development", "business development representative",
+    "customer success", "customer support", "customer experience",
+    "technical account manager", "solutions engineer", "solutions architect",
+    "technical account management",
+    "ui engineer", "web engineer", "ux engineer", "ux designer",
+    "frontend", "front-end", "front end", "react developer",
+    "android", "ios", "swift", "kotlin", "mobile developer",
+    "qa", "qa engineer", "quality assurance", "quality engineer",
+    "test engineer", "sdet", "automation engineer",
+    "data scientist", "data analyst", "data engineer", "machine learning engineer",
+    "ml engineer", "ai engineer", "research scientist",
+    "marketing", "marketing manager", "product marketing",
+    "hr", "human resources", "recruiter", "talent acquisition",
+    "financial analyst", "accountant", "controller",
+    "operations", "operations manager", "program manager",
+    "sap", "sap consultant", "sap mm", "sap sd", "sap fico", "sap ewm",
+    "oracle", "oracle consultant", "oracle ebs", "oracle fusion",
+    "salesforce", "salesforce developer", "salesforce consultant",
+    "servicenow"
+  ]
+}

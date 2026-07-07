@@ -1,0 +1,20 @@
+{
+  "name": "Pradeep Meena",
+  "years_experience": 7,
+  "current_role": "SAP MM/EWM Consultant",
+  "core_skills": [
+    "sap", "sap mm", "sap s/4hana", "sap ewm",
+    "procurement", "inventory management", "idoc", "rfc", "erp"
+  ],
+  "seniority_keywords": ["senior", "lead", "consultant", "team lead"],
+  "junior_red_flags": ["junior", "intern", "entry level", "graduate"],
+  "title_red_flags": [
+    "android", "ios", "swift", "kotlin",
+    "frontend", "front-end", "front end", "ui engineer", "web engineer",
+    "qa", "qa engineer", "quality assurance", "quality engineer",
+    "test engineer", "sdet", "automation engineer",
+    "network infrastructure", "network engineer", "network architect",
+    "sre", "site reliability engineer", "devops", "devops engineer",
+    "data scientist", "marketing", "sales"
+  ]
+}
