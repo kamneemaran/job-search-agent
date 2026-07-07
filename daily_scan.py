@@ -3696,18 +3696,16 @@ def search_englishjobsearch(query, location="Remote", max_results=500):
     q = query.replace(" ", "+")
     max_pages = 3
     try:
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
         for page_num in range(1, max_pages + 1):
             page_url = f"https://englishjobsearch.ch/jobs/{q}?page={page_num}" if page_num > 1 else f"https://englishjobsearch.ch/jobs/{q}"
-            resp = requests.get(
-                page_url,
-                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"},
-                timeout=15,
-            )
+            resp = scraper.get(page_url, timeout=15)
             if resp.status_code != 200:
                 if page_num == 1:
                     print(f"  [englishjobsearch] HTTP {resp.status_code}")
                 break
+            if page_num > 1:
+                time.sleep(1)  # polite delay between pages
 
             html = resp.text
             # Each job is a div with class "job js-job"
@@ -3972,8 +3970,16 @@ def search_monsterde(query, location="Germany", max_results=500):
     return jobs
 
 
+_adzuna_last_call = 0.0  # rate limiter for Adzuna queries
+
 def search_adzuna(query, location="Remote", max_results=500):
     """Search Adzuna UK for jobs using cloudscraper (paginated, bypasses Cloudflare)."""
+    global _adzuna_last_call
+    # Enforce minimum 3s gap between Adzuna calls to avoid 429
+    elapsed = time.time() - _adzuna_last_call
+    if elapsed < 3.0:
+        time.sleep(3.0 - elapsed)
+    _adzuna_last_call = time.time()
     jobs = []
     q = query.replace(" ", "+")
     max_pages = 3
@@ -3982,10 +3988,16 @@ def search_adzuna(query, location="Remote", max_results=500):
         for page_num in range(1, max_pages + 1):
             url = f"https://www.adzuna.co.uk/search?q={q}&page={page_num}" if page_num > 1 else f"https://www.adzuna.co.uk/search?q={q}"
             resp = scraper.get(url, timeout=20)
+            if resp.status_code == 429:
+                print(f"  [adzuna] HTTP 429 — rate limited, backing off")
+                time.sleep(10)
+                resp = scraper.get(url, timeout=20)
             if resp.status_code != 200:
                 if page_num == 1:
                     print(f"  [adzuna] HTTP {resp.status_code}")
                 break
+            if page_num > 1:
+                time.sleep(2)  # polite delay between pages
             html = resp.text
             # Extract job articles
             article_pattern = r'<article[^>]*data-aid="(\d+)"[^>]*>(.*?)</article>'
