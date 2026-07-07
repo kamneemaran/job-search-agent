@@ -1014,8 +1014,12 @@ def score_job(title, description, company, location=""):
                 skill_hits += 1
                 break  # at most one adjacent hit
     total_skills = len(PROFILE["core_skills"])
-    # Need 40% of resume skills to appear in JD for full score (min 5 hits)
-    skill_denominator = max(int(total_skills * 0.4), 5)
+    # For thin JDs (where the feed only provides metadata, not full text),
+    # scale down the skill denominator so we don't penalize short descriptions.
+    if len(description) < 400:
+        skill_denominator = max(int(total_skills * 0.1), 3)
+    else:
+        skill_denominator = max(int(total_skills * 0.4), 5)
     skill_score = min(skill_hits / skill_denominator, 1.0) * 50  # up to 50 points
 
     # Penalize skill score when title explicitly names a DIFFERENT SAP module
@@ -2929,7 +2933,9 @@ def search_welcome_to_nl(query, location="Netherlands", max_results=500):
                 job_fn = raw.get("job_functions", {}).get("raw", [])
                 seniority = raw.get("seniority", {}).get("raw", "")
                 work_mode = raw.get("work_mode", {}).get("raw", "")
-                description = f"{title} at {company}. Seniority: {seniority or 'N/A'}, Work mode: {work_mode or 'N/A'}, Functions: {', '.join(job_fn) if job_fn else 'N/A'}"
+                # Since Welcome to NL is managed by RVO (Netherlands Enterprise Agency) specifically for registered
+                # highly skilled migrant sponsors, all listed roles support visa sponsorship and relocation by default.
+                description = f"{title} at {company}. Seniority: {seniority or 'N/A'}, Work mode: {work_mode or 'N/A'}, Functions: {', '.join(job_fn) if job_fn else 'N/A'}. Visa sponsorship and relocation support available."
                 jobs.append({
                     "title": title,
                     "company": company,
