@@ -777,8 +777,11 @@ def _derive_title_keywords(current_role, years_experience):
         "devops": ["platform engineer", "infrastructure engineer"],
         "system design": ["systems architect"],
         "sap mm": ["sap mm consultant", "sap mm lead", "sap materials management consultant"],
-        "sap s/4hana": ["sap s/4hana consultant", "sap s/4hana lead", "sap s4hana consultant", "sap s4hana lead", "sap consultant"],
-        "sap": ["sap consultant", "sap lead"],
+        "sap ewm": ["sap ewm consultant", "sap ewm lead", "sap warehouse management consultant"],
+        "sap wm": ["sap wm consultant", "sap wm lead"],
+        "sap s/4hana": ["sap s/4hana consultant", "sap s/4hana lead", "sap s4hana consultant", "sap s4hana lead"],
+        # NOTE: generic "sap" deliberately does NOT map to "sap consultant" — too broad,
+        # would bypass any SAP module (Ariba, EHS, FICO, etc.) to 72 via _title_only_bypass.
         "erp": ["erp consultant", "erp lead"],
         "procurement": ["procurement consultant", "procurement lead"],
     }
@@ -1061,6 +1064,26 @@ def _title_only_bypass(job, score, relocation_note, threshold):
     title_lower = job["title"].lower().replace("-", " ").replace("/", " ")
     title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)
     title_lower = re.sub(r'\s+', ' ', title_lower).strip()
+
+    # SAP module guard: for SAP profiles, only bypass when the title explicitly
+    # contains one of the profile's SAP modules (mm, ewm, etc.). There are 100+
+    # SAP modules/products so a blocklist is impractical. Instead, require a
+    # positive match. Generic "SAP Consultant" with no JD is also skipped —
+    # too risky when we can't verify the module from description.
+    has_sap_skills = any(s.startswith("sap ") for s in PROFILE.get("core_skills", []))
+    if has_sap_skills and "sap" in title_lower.split():
+        profile_sap_modules = {s.replace("sap ", "") for s in PROFILE.get("core_skills", [])
+                               if s.startswith("sap ") and s != "sap"}
+        # Check if any profile module word appears in the title
+        title_has_profile_module = any(
+            re.search(r'\b' + re.escape(mod) + r'\b', title_lower)
+            for mod in profile_sap_modules
+        )
+        if not title_has_profile_module:
+            # Title is either generic "SAP Consultant" or names a different module
+            # Either way, without a JD we can't confirm it's a match — skip bypass
+            return score, relocation_note
+
     title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), PROFILE["years_experience"])
     if title_keywords:
         # Check multi-word role variants (e.g. "software engineer", "platform engineer",
