@@ -435,7 +435,8 @@ NON_ENGLISH_LANGUAGE_KEYWORDS = [
 # Companies known to NOT support relocation from outside the EU / no India hiring
 # (update this list as you learn more - e.g. after Mollie's rejection)
 NO_RELOCATION_FLAGS = {
-    "mollie": "No relocation support outside Europe (confirmed - application rejected screening)",
+    # REMOVED: Mollie - was auto-scoring ALL jobs to 0; user can manually reject if needed
+    # "mollie": "No relocation support outside Europe (confirmed - application rejected screening)",
 }
 
 # Companies confirmed to support relocation / sponsor visas / have India presence
@@ -529,7 +530,8 @@ JOB_SOURCES = [
     {"name": "Elastic", "url": "https://jobs.elastic.co/jobs/department/engineering?size=n_20_n", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "elastic"},
     {"name": "Stripe", "url": "https://stripe.com/jobs", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "stripe"},
     {"name": "Airbnb", "url": "https://careers.airbnb.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "airbnb"},
-    {"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "anthropic"},
+    # REMOVED: Anthropic duplicate - kept in us_canada_companies.py:14
+    # {"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "anthropic"},
     {"name": "Dropbox", "url": "https://www.dropbox.com/jobs", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "dropbox"},
     {"name": "Datadog", "url": "https://www.datadoghq.com/careers/", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "datadog"},
     {"name": "Discord", "url": "https://discord.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "discord"},
@@ -546,10 +548,11 @@ JOB_SOURCES = [
     {"name": "Upwork", "url": "https://www.upwork.com/careers", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "upwork"},
     {"name": "Betterment", "url": "https://www.betterment.com/careers", "region": "US", "type": "company", "ats": "greenhouse", "ats_slug": "betterment"},
     {"name": "GoDaddy", "url": "https://careers.godaddy.com", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "godaddy"},
-    {"name": "Vercel", "url": "https://vercel.com/careers", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "vercel"},
-    {"name": "Meta (Facebook)", "url": "https://linkedin.com/company/meta", "region": "Global", "type": "company", "playwright": True},
+    # REMOVED: Vercel duplicate - kept in us_canada_companies.py:27
+    # {"name": "Vercel", "url": "https://vercel.com/careers", "region": "Remote", "type": "company", "ats": "greenhouse", "ats_slug": "vercel"},
+    {"name": "Meta (Facebook)", "url": "https://www.metacareers.com/", "region": "Global", "type": "company", "playwright": True},
     # --- IT Services / Enterprise (some SAP/ERP relevance) ---
-    {"name": "TCS", "url": "https://www.tcs.com/careers", "region": "IN", "type": "company", "ats": "greenhouse", "ats_slug": "tcs"},
+    {"name": "TCS", "url": "https://www.tcs.com/careers", "region": "IN", "type": "company", "playwright": True},
     # --- EU / NL / DE ---
     {"name": "Mollie", "url": "https://jobs.mollie.com/vacancies", "region": "NL", "type": "company", "playwright": True},
     {"name": "Booking.com", "url": "https://jobs.booking.com/booking/jobs?keywords=engineer", "region": "NL", "type": "company", "playwright": True},
@@ -557,11 +560,11 @@ JOB_SOURCES = [
     {"name": "Personio", "url": "https://www.personio.com/about-personio/careers/#see-our-open-roles", "region": "DE", "type": "company", "playwright": True},
     # --- Germany (61 English-speaking companies with visa sponsorship) ---
     {"name": "3D Spark", "url": "https://www.3dspark.de/career#Job-Offers", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Aampere", "url": "https://linkedin.com/company/ampere-computing", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Aampere", "url": "https://amperecomputing.com/careers", "region": "DE", "type": "company", "playwright": True},
     {"name": "Ada", "url": "https://adaglobal.darwinbox.com/ms/candidatev2/main/careers/allJobs", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adevinta", "url": "https://adevinta.com/careers/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Aeyde", "url": "https://aeyde.jobs.personio.de/", "region": "DE", "type": "company", "ats": "personio"},
-    {"name": "Adidas", "url": "https://linkedin.com/company/adidas", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Adidas", "url": "https://careers.adidas-group.com/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Adjoe", "url": "https://adjoe.io/careers/open-positions/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Akeneo", "url": "https://careers.akeneo.com/jobs", "region": "DE", "type": "company", "ats": "teamtailor"},
     {"name": "Amazon", "url": "https://www.amazon.jobs/content/en/job-categories", "region": "DE", "type": "company", "playwright": True},
@@ -625,7 +628,8 @@ JOB_SOURCES = [
 
 RECRUITER_AGENCIES = [
     {"name": "Hays Europe", "url": "https://www.hays.nl"},
-    {"name": "Spring Professional", "url": "https://linkedin.com/company/springprofessional"},
+    # REMOVED: Spring Professional - LinkedIn URL always skipped at runtime
+    # {"name": "Spring Professional", "url": "https://linkedin.com/company/springprofessional"},
     {"name": "Michael Page", "url": "https://www.michaelpage.nl"},
     {"name": "Randstad", "url": "https://www.randstad.nl"},
     {"name": "Robert Half", "url": "https://www.roberthalf.nl"},
@@ -1418,10 +1422,11 @@ LEVELS_STATIC_SALARIES = {
         {"level": "E", "total": "€69,490"}, {"level": "F", "total": "€114,583"},
         {"level": "G", "total": "€208,345"}, {"level": "H", "total": "€225,726"},
     ], "url": "https://www.levels.fyi/companies/bookingcom/salaries/software-engineer"},
-    "cruise": {"median_tc": "$411,000", "currency": "USD", "levels": [
-        {"level": "L3", "total": "$211,426"}, {"level": "L4", "total": "$314,025"},
-        {"level": "L5", "total": "$403,434"}, {"level": "L6", "total": "$641,107"},
-    ], "url": "https://www.levels.fyi/companies/cruise/salaries/software-engineer"},
+    # REMOVED: Cruise - company shut down Dec 2024; salary data no longer relevant
+    # "cruise": {"median_tc": "$411,000", "currency": "USD", "levels": [
+    #     {"level": "L3", "total": "$211,426"}, {"level": "L4", "total": "$314,025"},
+    #     {"level": "L5", "total": "$403,434"}, {"level": "L6", "total": "$641,107"},
+    # ], "url": "https://www.levels.fyi/companies/cruise/salaries/software-engineer"},
     "airbnb": {"median_tc": "$318,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/airbnb/salaries/software-engineer"},
     "amazon": {"median_tc": "$350,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/amazon/salaries/software-engineer"},
     "apple": {"median_tc": "$320,000", "currency": "USD", "levels": [], "url": "https://www.levels.fyi/companies/apple/salaries/software-engineer"},
@@ -3975,10 +3980,10 @@ _adzuna_last_call = 0.0  # rate limiter for Adzuna queries
 def search_adzuna(query, location="Remote", max_results=500):
     """Search Adzuna UK for jobs using cloudscraper (paginated, bypasses Cloudflare)."""
     global _adzuna_last_call
-    # Enforce minimum 3s gap between Adzuna calls to avoid 429
+    # Enforce minimum 5s gap between Adzuna calls to avoid 429
     elapsed = time.time() - _adzuna_last_call
-    if elapsed < 3.0:
-        time.sleep(3.0 - elapsed)
+    if elapsed < 5.0:
+        time.sleep(5.0 - elapsed)
     _adzuna_last_call = time.time()
     jobs = []
     q = query.replace(" ", "+")
@@ -4234,6 +4239,172 @@ def search_nationalevacaturebank(query, location="Netherlands", max_results=500)
             print(f"  [nationalevacaturebank] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [nationalevacaturebank] Error: {e}")
+    return jobs
+
+
+def search_philips(query="", location="Remote", max_results=500):
+    """Search Philips careers for Software Dev + IT jobs using Playwright (Phenom ATS, paginated).
+
+    Pagination: ?s=1 (page 1), ?from=10&s=1 (page 2), ?from=20&s=1 (page 3), etc.
+    Two category pages: software-development and IT.
+    """
+    jobs = []
+    categories = [
+        ("software-development", "https://www.careers.philips.com/global/en/c/software-development-jobs"),
+        ("it", "https://www.careers.philips.com/global/en/c/it-jobs"),
+    ]
+    max_pages = 5  # 10 jobs per page
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        for cat_name, base_url in categories:
+            for pg in range(max_pages):
+                offset = pg * 10
+                if pg == 0:
+                    url = f"{base_url}?s=1"
+                else:
+                    url = f"{base_url}?from={offset}&s=1"
+                page.goto(url, timeout=30000, wait_until="domcontentloaded")
+                page.wait_for_timeout(4000)  # Phenom widget needs time to render
+                cards = page.evaluate("""() => {
+                    const links = document.querySelectorAll('a[data-ph-at-id="job-link"]');
+                    const results = [];
+                    for (const link of links) {
+                        const title = (link.getAttribute('data-ph-at-job-title-text') || '').trim();
+                        if (!title || title.length < 3) continue;
+                        const location = (link.getAttribute('data-ph-at-job-location-text') || '').trim();
+                        const href = link.getAttribute('href') || '';
+                        const descEl = link.closest('li') ? link.closest('li').querySelector('p.job-description') : null;
+                        const desc = descEl ? descEl.innerText.trim() : '';
+                        results.push({ title, location, url: href, description: desc });
+                    }
+                    return results;
+                }""")
+                if not cards:
+                    break
+                for card in cards:
+                    if len(jobs) >= max_results:
+                        break
+                    href = card["url"]
+                    if href and not href.startswith("http"):
+                        href = f"https://www.careers.philips.com{href}"
+                    jobs.append({
+                        "title": card["title"],
+                        "company": "Philips",
+                        "location": card["location"] if card["location"] else "Global",
+                        "url": href,
+                        "description": card["description"] if card["description"] else f"Philips: {card['title']}",
+                    })
+                if len(jobs) >= max_results:
+                    break
+                page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [philips] {len(jobs)} jobs across {len(categories)} categories")
+    except Exception as e:
+        print(f"  [philips] Error: {e}")
+    return jobs
+
+
+def search_liebherr(query="", location="Remote", max_results=500):
+    """Search Liebherr IT/Software vacancies using Playwright (paginated, &p=N).
+
+    Pagination: base URL (page 1), &p=2 (page 2), &p=3, etc.
+    Filtered to Information technology / Software category.
+    """
+    jobs = []
+    base_url = "https://www.liebherr.com/en-int/careers/job-vacancies-5370609"
+    filter_param = "filter=1557062143"
+    max_pages = 5  # 10 jobs per page, up to 50
+    try:
+        browser = _get_browser()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = context.new_page()
+        _with_stealth(page)
+        for pg in range(1, max_pages + 1):
+            if pg == 1:
+                url = f"{base_url}?{filter_param}"
+            else:
+                url = f"{base_url}?{filter_param}&p={pg}"
+            page.goto(url, timeout=30000, wait_until="domcontentloaded")
+            page.wait_for_timeout(3000)
+            # Dismiss cookie banner if present
+            try:
+                btn = page.query_selector('button:has-text("Accept all")')
+                if not btn:
+                    btn = page.query_selector('button:has-text("Accept All")')
+                if btn:
+                    btn.click()
+                    page.wait_for_timeout(1000)
+            except Exception:
+                pass
+            cards = page.evaluate("""() => {
+                const items = document.querySelectorAll('li[data-testid="jlp-item"]');
+                const results = [];
+                for (const item of items) {
+                    const titleLink = item.querySelector('p.font-text-bold a');
+                    if (!titleLink) continue;
+                    const title = titleLink.innerText.trim();
+                    if (!title || title.length < 3) continue;
+                    const href = titleLink.getAttribute('href') || '';
+                    // Location + dept + company in a comma-separated <p>
+                    const infoParagraphs = item.querySelectorAll('p');
+                    let location = '', company = 'Liebherr';
+                    for (const p of infoParagraphs) {
+                        if (p.classList.contains('font-text-bold')) continue;
+                        const text = p.innerText.trim();
+                        if (text && text.includes(',')) {
+                            const parts = text.split(',').map(s => s.trim());
+                            location = parts[0] || '';
+                            company = parts.length >= 3 ? parts[parts.length - 1] : 'Liebherr';
+                            break;
+                        }
+                    }
+                    results.push({ title, location, company, url: href });
+                }
+                return results;
+            }""")
+            if not cards:
+                break
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                href = card["url"]
+                if href and not href.startswith("http"):
+                    href = f"https://www.liebherr.com{href}"
+                jobs.append({
+                    "title": card["title"],
+                    "company": card["company"] if card["company"] else "Liebherr",
+                    "location": card["location"] if card["location"] else "Germany",
+                    "url": href,
+                    "description": f"Liebherr: {card['title']}",
+                })
+            if len(jobs) >= max_results:
+                break
+            # Check if there's a next page
+            has_next = page.evaluate("""() => {
+                const pag = document.querySelector('patternlib-pagination');
+                if (!pag) return false;
+                const current = parseInt(pag.getAttribute('current-page') || '0');
+                const last = parseInt(pag.getAttribute('last-page') || '0');
+                return current < last;
+            }""")
+            if not has_next:
+                break
+            page.wait_for_timeout(2000)
+        context.close()
+        if jobs:
+            print(f"  [liebherr] {len(jobs)} IT/Software vacancies")
+    except Exception as e:
+        print(f"  [liebherr] Error: {e}")
     return jobs
 
 
@@ -4604,6 +4775,45 @@ _REQUIRED_RESUME_FIELDS = {
 }
 
 
+_MONTH_RE = re.compile(
+    r'\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|'
+    r'Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|'
+    r'Dec(?:ember)?)[,.]?\s*\d{4}\b', re.IGNORECASE)
+_PRESENT_RE = re.compile(r'\b(?:Present|Current|Till\s+Date|Ongoing)\b', re.IGNORECASE)
+_YEAR_RANGE_RE = re.compile(r'\(?\d{4}\s*[-–—]\s*\d{4}\)?')
+_TRAILING_DASH_RE = re.compile(r'\s*[–—]\s*$')
+
+def _clean_role_title(raw_line, role_keywords):
+    """Extract clean role title from a verbose resume experience line.
+
+    Handles formats like:
+      "Accenture (ATCI) — SAP MM/EWM Consultant - Team Lead Sep 2024 – Present"
+      "Senior Software Engineer | Company Name | Jan 2020 - Present"
+      "Company Name — Backend Engineer Sep 2020 – Dec 2023"
+    Returns only the role portion (e.g. "SAP MM/EWM Consultant - Team Lead").
+    """
+    text = raw_line.strip()
+    # 1. Strip date patterns: "Sep 2024", "January 2020", "Present", year ranges
+    text = _MONTH_RE.sub('', text)
+    text = _PRESENT_RE.sub('', text)
+    text = _YEAR_RANGE_RE.sub('', text)
+    text = _TRAILING_DASH_RE.sub('', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    # 2. Split on em-dash (—) or pipe (|) — common company/role separators
+    segments = re.split(r'\s*[—|]\s*', text)
+
+    # 3. Pick the segment containing a role keyword
+    for seg in segments:
+        seg_clean = seg.strip(' -–,.')
+        if any(kw in seg_clean.lower() for kw in role_keywords) and len(seg_clean) > 3:
+            return re.sub(r'\s+', ' ', seg_clean).strip()
+
+    # 4. Fallback: longest non-trivial segment
+    segments = [s.strip(' -–,.') for s in segments if len(s.strip()) > 3]
+    return max(segments, key=len) if segments else raw_line.strip()
+
+
 def parse_resume_pdf(path):
     """
     Given a PDF resume path, extract name, email, current role, skills,
@@ -4649,7 +4859,7 @@ def parse_resume_pdf(path):
             continue
         if in_experience and not profile["current_role"]:
             if any(kw in stripped for kw in role_keywords) and len(stripped) > 5:
-                profile["current_role"] = line.strip()
+                profile["current_role"] = _clean_role_title(line.strip(), role_keywords)
         if in_experience and profile["current_role"] and any(
             kw in stripped for kw in ["education", "skills", "projects", "certifications"]
         ):
@@ -6805,8 +7015,21 @@ def main():
         if args.batch == "boards-eu":
             from concurrent.futures import ThreadPoolExecutor, as_completed
             heavy_names = {"SAPOEmprego", "Bundesagentur", "WorkInLux"}
-            fast_scrapers = [(n, f) for n, f in board_scrapers if n not in heavy_names]
-            heavy_scrapers = [(n, f) for n, f in board_scrapers if n in heavy_names]
+            # Pull Adzuna out — runs in its own dedicated thread with 5s
+            # inter-query delay so it doesn't waste a pool slot while sleeping
+            pool_board_scrapers = [(n, f) for n, f in board_scrapers if n != "Adzuna"]
+            adzuna_entry = next(((n, f) for n, f in board_scrapers if n == "Adzuna"), None)
+            fast_scrapers = [(n, f) for n, f in pool_board_scrapers if n not in heavy_names]
+            heavy_scrapers = [(n, f) for n, f in pool_board_scrapers if n in heavy_names]
+
+            # Start Adzuna in dedicated thread (5s rate-limited between queries)
+            adzuna_results = []
+            def _adzuna_dedicated():
+                if adzuna_entry:
+                    adzuna_results.extend(_process_board(*adzuna_entry))
+            adzuna_thread = threading.Thread(target=_adzuna_dedicated, name="adzuna-dedicated", daemon=True)
+            adzuna_thread.start()
+            print("  [adzuna] Started in dedicated thread (5s inter-query delay)")
 
             with ThreadPoolExecutor(max_workers=4) as pool:
                 futures = {}
@@ -6819,6 +7042,24 @@ def main():
                         all_matches.extend(f.result())
                     except Exception as e:
                         print(f"  [thread-error] {board}: {e}")
+
+            # Wait for Adzuna dedicated thread to finish after pool completes
+            adzuna_thread.join(timeout=300)
+            all_matches.extend(adzuna_results)
+            if adzuna_thread.is_alive():
+                print("  [adzuna] Warning: dedicated thread still running after 5min timeout")
+
+            # --- Paginated company scrapers (run once, not per query) ---
+            for pw_name, pw_fn in [("Philips", search_philips), ("Liebherr", search_liebherr)]:
+                print(f"  [{pw_name.lower()}] Scraping with pagination")
+                t0 = datetime.now()
+                try:
+                    jobs = pw_fn()
+                    _score_collect(jobs, pw_name, None, all_matches)
+                except Exception as e:
+                    print(f"  [{pw_name.lower()}] Error: {e}")
+                elapsed = (datetime.now() - t0).total_seconds()
+                print(f"    [{pw_name.lower()}] Done ({elapsed:.1f}s)")
         else:
             for board_name, board_fn in board_scrapers:
                 all_matches.extend(_process_board(board_name, board_fn))

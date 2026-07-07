@@ -14,7 +14,7 @@ US_CANADA_JOB_SOURCES = [
     {"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "region": "US/Canada", "type": "company", "ats": "greenhouse", "ats_slug": "anthropic"},
     {"name": "Cohere", "url": "https://jobs.ashbyhq.com/cohere", "region": "US/Canada", "type": "company", "ats": "ashby", "ats_slug": "cohere"},
     {"name": "Perplexity", "url": "https://jobs.ashbyhq.com/perplexity", "region": "US/Canada", "type": "company", "ats": "ashby", "ats_slug": "perplexity"},
-    {"name": "Weights & Biases (CoreWeave)", "url": "https://job-boards.greenhouse.io/coreweave", "region": "US/Canada", "type": "company", "ats": "greenhouse", "ats_slug": "coreweave"},
+    {"name": "CoreWeave", "url": "https://job-boards.greenhouse.io/coreweave", "region": "US/Canada", "type": "company", "ats": "greenhouse", "ats_slug": "coreweave"},
 
     # Voice AI & Conversational AI
     {"name": "Hume AI", "url": "https://job-boards.greenhouse.io/humeai", "region": "US/Canada", "type": "company", "ats": "greenhouse", "ats_slug": "humeai"},
