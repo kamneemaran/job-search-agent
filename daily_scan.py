@@ -1024,6 +1024,19 @@ def score_job(title, description, company, location=""):
         senior_in_title = any(k in title_lower for k in ["senior", "staff", "lead", "principal"])
         seniority_score = 10 if not senior_in_title else 0
 
+    # --- Skill-match inference bonus ---
+    # When the JD strongly matches the profile's skills but the title is generic
+    # (e.g. "SAP Consultant" instead of "SAP MM Consultant", or "Software Engineer"
+    # instead of "Backend Engineer"), infer partial title relevance from skill overlap.
+    # This avoids penalizing roles that match on substance but use broad titles.
+    skill_match_ratio = skill_hits / total_skills if total_skills > 0 else 0
+    if title_relevance == 0 and skill_match_ratio >= 0.7:
+        # 70%+ of profile skills found in JD — strong evidence of relevance
+        title_relevance = 15
+    if skill_match_ratio >= 0.85:
+        # 85%+ — very strong evidence; boost even if partial title match (10) already set
+        title_relevance = max(title_relevance, 20)
+
     # --- International opportunity bonuses (visa & relocation scored independently) ---
     # For jobs outside India with a relevant match (title OR skills), visa sponsorship
     # and relocation support each contribute points independently.
