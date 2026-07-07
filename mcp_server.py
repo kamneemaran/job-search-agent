@@ -578,8 +578,9 @@ def _search_jobs(
         if not require_visa:
             desc += " visa sponsorship relocation support"
         score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
-        # If score is 0 because of visa check, try career page fallback
-        if score == 0 and "no mention of visa sponsorship" in note:
+        # If score is low and visa info is missing, try career page fallback
+        # to see if the company sponsors visas (can boost score via visa/relo bonus)
+        if score > 0 and score < threshold and "Visa sponsorship details not mentioned" in note:
             career_url = job.get("url", "") or None
             has_visa = _check_career_page_visa(job["company"], career_url)
             if has_visa:

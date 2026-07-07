@@ -43,6 +43,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # Lazy import for Playwright (headless browser for JS-rendered sites)
+# WARNING: Playwright sync_api is NOT thread-safe. The browser must be created
+# in the main thread (pre-warm with _get_browser() before spawning threads).
+# Thread pool workers must NOT use Playwright concurrently — only HTTP scrapers
+# should run in the thread pool. Playwright scrapers run sequentially in main thread.
 _playwright_browser = None
 _playwright_pw = None
 _browser_lock = threading.Lock()
@@ -654,6 +658,45 @@ COMPANY_RESUME_MAP = {
 # Seniority prefixes to strip when extracting base role
 _SENIORITY_PREFIXES = ["senior ", "sr. ", "sr ", "lead ", "staff ", "principal ", "junior ", "associate ", "chief "]
 
+# --- Precompiled regex patterns (avoid re-compiling per job in score_job) ---
+_JUNIOR_RE = [re.compile(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])')
+              for flag in PROFILE["junior_red_flags"]]
+_TITLE_RED_FLAG_RE = [(flag.strip(), re.compile(r'(?<![a-z])' + re.escape(flag.strip()) + r'(?![a-z])'))
+                      for flag in PROFILE["title_red_flags"]]
+_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+             for skill in PROFILE["core_skills"]]
+_EXP_PATTERNS = [
+    (re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'min'),
+    (re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'min'),
+    (re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'max'),
+    (re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)'), 'range'),
+    (re.compile(r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:exp|experience|professional|relevant|work)'), 'range'),
+]
+_TRAVEL_HEAVY_RE = re.compile(r'(\d+)\s*%\s*travel')
+_TRAVEL_MANDATORY_RE = [re.compile(p) for p in [
+    r'must be willing to travel', r'overnight travel',
+    r'require[sd]?\s+travel\s+(?:extensively|frequently|regularly)',
+    r'extensive\s+travel', r'frequent\s+travel',
+]]
+# Cache title keywords and seniority keywords (PROFILE is constant during a scan)
+_CACHED_TITLE_KEYWORDS = None
+_CACHED_SENIORITY_KEYWORDS = None
+
+
+def _get_cached_title_keywords():
+    global _CACHED_TITLE_KEYWORDS
+    if _CACHED_TITLE_KEYWORDS is None:
+        _CACHED_TITLE_KEYWORDS = _derive_title_keywords(
+            PROFILE.get("current_role", ""), PROFILE["years_experience"])
+    return _CACHED_TITLE_KEYWORDS
+
+
+def _get_cached_seniority_keywords():
+    global _CACHED_SENIORITY_KEYWORDS
+    if _CACHED_SENIORITY_KEYWORDS is None:
+        _CACHED_SENIORITY_KEYWORDS = _get_seniority_keywords(PROFILE["years_experience"])
+    return _CACHED_SENIORITY_KEYWORDS
+
 
 def _derive_title_keywords(current_role, years_experience):
     """
@@ -755,12 +798,12 @@ def score_job(title, description, company, location=""):
     title_lower = title.lower()
     loc_lower = location.lower()
 
-    if any(re.search(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])', text) for flag in PROFILE["junior_red_flags"]):
+    if any(pat.search(text) for pat in _JUNIOR_RE):
         return 0, "Filtered: junior/entry-level role detected"
 
-    # Reject roles whose titles match red-flag career tracks
-    for red_flag in PROFILE["title_red_flags"]:
-        if red_flag in title_lower:
+    # Reject roles whose titles match red-flag career tracks (word-boundary matching)
+    for red_flag, pat in _TITLE_RED_FLAG_RE:
+        if pat.search(title_lower):
             return 0, f"Filtered: title matches non-relevant track ({red_flag})"
 
     # --- Seniority filter: reject roles too senior for candidate's experience ---
@@ -783,15 +826,8 @@ def score_job(title, description, company, location=""):
     # If resume says X years, consider jobs requiring X-4 to X+3 years
     max_allowed = exp_years + 3
     min_allowed = max(0, exp_years - 4)
-    exp_patterns = [
-        (r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'min'),
-        (r'(?:min|minimum|at least|≥)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'min'),
-        (r'(?:max|maximum|up to|≤)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'max'),
-        (r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of)?\s*(?:exp|experience)', 'range'),
-        (r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:exp|experience|professional|relevant|work)', 'range'),
-    ]
-    for pattern, ptype in exp_patterns:
-        matches = re.findall(pattern, text)
+    for pattern, ptype in _EXP_PATTERNS:
+        matches = pattern.findall(text)
         for m in matches:
             if ptype == 'min':
                 req = int(m)
@@ -806,15 +842,18 @@ def score_job(title, description, company, location=""):
                 if lo > max_allowed or hi < min_allowed:
                     return 0, f"Filtered: requires {lo}-{hi}yr, candidate range {min_allowed}-{max_allowed}"
 
-    # --- Reject roles requiring travel (not relevant for remote/backend roles) ---
-    travel_patterns = [r'\d+%\s*travel', r'travel\s+up\s+to\s+\d+', r'willingness to travel',
-                       r'require[sd]?\s+travel', r'must be willing to travel', r'overnight travel',
-                       r'travel\s+\d+\s*-\s*\d+', r'able to travel']
-    if any(re.search(p, text) for p in travel_patterns):
-        return 0, "Filtered: role requires travel"
+    # --- Reject roles requiring significant travel (>25%) or mandatory travel ---
+    travel_pct_match = _TRAVEL_HEAVY_RE.search(text)
+    if travel_pct_match and int(travel_pct_match.group(1)) > 25:
+        return 0, f"Filtered: role requires {travel_pct_match.group(1)}% travel"
+    if any(p.search(text) for p in _TRAVEL_MANDATORY_RE):
+        return 0, "Filtered: role requires significant travel"
 
     # --- For roles outside India / Remote: visa & relocation assessment ---
-    is_outside_india = "india" not in loc_lower and "india" not in text
+    _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                      "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                      "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
+    is_outside_india = not any(m in loc_lower or m in text for m in _INDIA_MARKERS)
     is_remote = "remote" in loc_lower or "remote" in text
     visa_note = ""
     has_visa_relo = False
@@ -862,10 +901,12 @@ def score_job(title, description, company, location=""):
         pass  # non-SAP role for an SAP profile — don't hard-reject, just let skills decide
 
     # --- SAP module matching (relaxed: standalone module names count too) ---
-    title_lower = title.lower().replace("-", " ").replace("/", " ")
-    title_lower = re.sub(r'[()\[\]{}]', ' ', title_lower)
-    title_lower = re.sub(r'\s+', ' ', title_lower).strip()
-    has_sap_in_title = "sap" in title_lower or "abap" in title_lower
+    # Use a separate variable for SAP-normalized title to avoid mutating title_lower
+    # (which is needed unmodified for title relevance scoring later)
+    sap_title = title.lower().replace("-", " ").replace("/", " ")
+    sap_title = re.sub(r'[()\[\]{}]', ' ', sap_title)
+    sap_title = re.sub(r'\s+', ' ', sap_title).strip()
+    has_sap_in_title = "sap" in sap_title or "abap" in sap_title
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
     _known_modules = [
         "sap mm", "sap sd", "sap fi", "sap co", "sap hr", "sap hcm",
@@ -886,10 +927,10 @@ def score_job(title, description, company, location=""):
     }
     if has_sap_in_title and has_sap_skills:
         profile_sap_modules = {s.lower() for s in PROFILE["core_skills"] if "sap" in s}
-        title_modules = {m for m in _known_modules if re.search(r'\b' + re.escape(m) + r'\b', title_lower)}
+        title_modules = {m for m in _known_modules if re.search(r'\b' + re.escape(m) + r'\b', sap_title)}
         # Also check standalone module names
         for standalone, mapped in _standalone_modules.items():
-            if re.search(r'\b' + re.escape(standalone) + r'\b', title_lower):
+            if re.search(r'\b' + re.escape(standalone) + r'\b', sap_title):
                 title_modules.add(mapped)
         if title_modules and not title_modules & profile_sap_modules:
             # Don't hard-reject — let JD content decide (cross-module roles exist)
@@ -900,8 +941,7 @@ def score_job(title, description, company, location=""):
         sap_module_mismatch = False
 
     # --- Skill scoring (word-boundary matching; up to 50 points) ---
-    skill_hits = sum(1 for skill in PROFILE["core_skills"]
-                     if re.search(r'\b' + re.escape(skill) + r'\b', text))
+    skill_hits = sum(1 for _, pat in _SKILL_RE if pat.search(text))
     # Relaxed SAP module matching: if profile has "sap mm", also count standalone "mm" in text
     if has_sap_skills:
         for sap_skill in PROFILE["core_skills"]:
@@ -916,10 +956,15 @@ def score_job(title, description, company, location=""):
     skill_denominator = max(int(total_skills * 0.4), 5)
     skill_score = min(skill_hits / skill_denominator, 1.0) * 50  # up to 50 points
 
+    # Penalize skill score when title explicitly names a DIFFERENT SAP module
+    # Generic SAP skills (sap, erp, configuration) inflate the score even though
+    # the candidate doesn't have the specific module expertise (e.g. FICO vs MM)
+    if sap_module_mismatch:
+        skill_score *= 0.4  # 60% penalty — generic SAP overlap shouldn't dominate
+
     # --- Title relevance scoring (derived from resume's current_role) ---
     title_relevance = 0
-    exp_years = PROFILE["years_experience"]
-    title_keywords = _derive_title_keywords(PROFILE.get("current_role", ""), exp_years)
+    title_keywords = _get_cached_title_keywords()
     # Full role match = 30 (base role or skill-derived variant), partial word match = 10
     if title_keywords:
         base_role = title_keywords[0]  # first entry is always the base role
@@ -937,21 +982,25 @@ def score_job(title, description, company, location=""):
             title_relevance = 10
 
     # --- Seniority scoring (experience-appropriate) ---
-    seniority_keywords = _get_seniority_keywords(exp_years)
-    if seniority_keywords and any(k in text for k in seniority_keywords):
-        seniority_score = 15
-    elif not seniority_keywords:
-        # Junior profiles (<3 yrs): give 10 points if role doesn't demand seniority
-        senior_in_text = any(k in text for k in ["senior", "staff", "lead", "principal"])
-        seniority_score = 10 if not senior_in_text else 0
+    # Prioritize title match over full-text match to avoid false positives
+    # (e.g. "mentor senior engineers" in JD body shouldn't count)
+    seniority_keywords = _get_cached_seniority_keywords()
+    if seniority_keywords:
+        if any(k in title_lower for k in seniority_keywords):
+            seniority_score = 15  # seniority keyword in title = full points
+        elif any(k in text for k in seniority_keywords):
+            seniority_score = 10  # seniority keyword in body only = partial credit
+        else:
+            # Experienced profiles: many roles don't explicitly say "senior" but target 5-10yr candidates
+            seniority_score = 10 if exp_years >= 5 else 5
     else:
-        # Experienced profiles: many roles don't explicitly say "senior" but target 5-10yr candidates
-        seniority_score = 10 if exp_years >= 5 else 5
+        # Junior profiles (<3 yrs): give 10 points if role doesn't demand seniority
+        senior_in_title = any(k in title_lower for k in ["senior", "staff", "lead", "principal"])
+        seniority_score = 10 if not senior_in_title else 0
 
     # --- International opportunity bonuses (visa & relocation scored independently) ---
-    # For jobs outside India with a title match, visa sponsorship and relocation
-    # support each contribute points independently. This relaxes skill requirements
-    # for international opportunities worth pursuing.
+    # For jobs outside India with a relevant match (title OR skills), visa sponsorship
+    # and relocation support each contribute points independently.
     # Relocation-friendly companies count as both visa + relocation signals.
     visa_bonus = 0
     relo_bonus = 0
@@ -961,7 +1010,7 @@ def score_job(title, description, company, location=""):
         if friendly_co in company_lower:
             relocation_note = note
             break
-    if is_outside_india and title_relevance >= 10:
+    if is_outside_india and (title_relevance >= 10 or skill_score >= 20):
         # +5 if JD mentions visa sponsorship or company is known to sponsor
         if has_visa_sponsor or relocation_note:
             visa_bonus = 5
@@ -1006,6 +1055,7 @@ def _title_only_bypass(job, score, relocation_note, threshold):
 
 
 _translation_cache = {}
+_translation_lock = threading.Lock()
 
 
 def _detect_total_count(soup, default=500):
@@ -1039,30 +1089,35 @@ def _detect_total_count(soup, default=500):
 
 
 def _translate_to_english(text):
-    """Translate non-English text to English. Caches results.
+    """Translate non-English text to English. Caches results (thread-safe).
     Skips translation only if text contains English stop words (strong signal it's already English).
     Tech keywords alone (Java, Docker, AWS) don't block — they appear in many languages."""
     if not text or len(text.strip()) < 5:
         return text
     text = text.strip()
     key = text[:200]
-    if key in _translation_cache:
-        return _translation_cache[key]
+    # Fast path: check cache without lock (dict reads are atomic in CPython)
+    cached = _translation_cache.get(key)
+    if cached is not None:
+        return cached
     # English stop words — strong signal text is already English
     if re.search(r'\b(the|is|at|and|for|with|this|that|from|are|was|were|has|have|been|will|would|could|should|about|than|then|also|its|into|more|some|such|than|they|what|when|which|your|being|been|both|each|most|other|over|their|there|these|where|while|after|before|between|during|without|through|under|above|along|around|because|before|behind|below|beneath|beside|beyond|upon|within)\b', text, re.I):
-        _translation_cache[key] = text
+        with _translation_lock:
+            _translation_cache[key] = text
         return text
     try:
         from deep_translator import GoogleTranslator
         translated = GoogleTranslator(source='auto', target='en').translate(text[:300])
         if translated:
-            _translation_cache[key] = translated
+            with _translation_lock:
+                _translation_cache[key] = translated
             if translated != text:
                 print(f"  [translate] \"{text[:50]}...\" -> \"{translated[:50]}...\"")
             return translated
     except Exception:
         pass
-    _translation_cache[key] = text
+    with _translation_lock:
+        _translation_cache[key] = text
     return text
 
 
@@ -3825,30 +3880,43 @@ def search_freelancermap(query, location="Germany", max_results=100):
     from bs4 import BeautifulSoup
     q = query.replace(" ", "+")
     jobs = []
+    seen = set()
+    max_pages = 3
     try:
-        html = _playwright_html(f"https://www.freelancermap.com/projects?search={q}")
-        if not html:
-            return jobs
-        soup = BeautifulSoup(html, "html.parser")
-        for card in soup.select("[class*=project-card]"):
-            if len(jobs) >= max_results:
+        for page_num in range(1, max_pages + 1):
+            page_url = f"https://www.freelancermap.com/projects?search={q}&page={page_num}"
+            html = _playwright_html(page_url)
+            if not html:
                 break
-            text = card.get_text(separator=" | ", strip=True)
-            parts = [p.strip() for p in text.split(" | ") if p.strip()]
-            if len(parts) < 2:
-                continue
-            company = parts[0]
-            title = parts[1] if len(parts) > 1 else ""
-            loc = next((p for p in parts[2:] if any(c in p for c in [",", "Remote", "On-site"])), "")
-            link = card.find("a", href=re.compile(r"^/project/"))
-            url = f"https://www.freelancermap.com{link['href']}" if link and link.get("href") else ""
-            if title:
-                jobs.append({
-                    "title": title, "company": company, "location": loc,
-                    "url": url, "description": text,
-                })
+            soup = BeautifulSoup(html, "html.parser")
+            cards = soup.select("[class*=project-card]")
+            if not cards:
+                break
+            page_jobs = 0
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                text = card.get_text(separator=" | ", strip=True)
+                parts = [p.strip() for p in text.split(" | ") if p.strip()]
+                if len(parts) < 2:
+                    continue
+                company = parts[0]
+                title = parts[1] if len(parts) > 1 else ""
+                loc = next((p for p in parts[2:] if any(c in p for c in [",", "Remote", "On-site"])), "")
+                link = card.find("a", href=re.compile(r"^/project/"))
+                url = f"https://www.freelancermap.com{link['href']}" if link and link.get("href") else ""
+                dedup_key = url or f"{title}|{company}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append({
+                        "title": title, "company": company, "location": loc,
+                        "url": url, "description": text,
+                    })
+                    page_jobs += 1
+            if page_jobs == 0 or len(jobs) >= max_results:
+                break
         if jobs:
-            print(f"  [freelancermap] {len(jobs)} jobs for '{query}'")
+            print(f"  [freelancermap] {len(jobs)} jobs for '{query}' ({page_num} pages)")
     except Exception as e:
         print(f"  [freelancermap] Error: {e}")
     return jobs
@@ -5362,7 +5430,7 @@ def _enrich_descriptions(jobs, max_workers=8):
                 text = re.sub(r'\s+', ' ', text)
                 if len(text) > 100:
                     job["description"] = text[:3000]
-        except:
+        except Exception:
             pass
         return job
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
@@ -5536,16 +5604,26 @@ def search_bundesagentur(query, location="Germany", max_results=500):
 
 
 def search_iamexpat(query, location="Netherlands", max_results=500):
-    """Search IamExpat (Netherlands) for English-friendly jobs."""
+    """Search IamExpat (Netherlands) for English-friendly jobs with pagination."""
     from bs4 import BeautifulSoup
-    url = "https://www.iamexpat.nl/career/jobs-netherlands?category=it-technology,engineering&language=english"
+    base_url = "https://www.iamexpat.nl/career/jobs-netherlands?category=it-technology,engineering&language=english"
     jobs = []
+    seen = set()
+    max_pages = 3
     try:
-        html = _playwright_html(url)
-        if html:
+        for page_num in range(0, max_pages):
+            page_url = f"{base_url}&page={page_num}" if page_num > 0 else base_url
+            html = _playwright_html(page_url)
+            if not html:
+                break
             soup = BeautifulSoup(html, 'html.parser')
             cards = soup.select('a[class*=cardWrapper]')
-            for card in cards[:max_results]:
+            if not cards:
+                break
+            page_jobs = 0
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
                 title_el = card.select_one('.title-7')
                 title = title_el.get_text().strip() if title_el else ""
                 href = card.get("href", "")
@@ -5562,15 +5640,18 @@ def search_iamexpat(query, location="Netherlands", max_results=500):
                         if city in txt:
                             loc = city
                             break
-                # Company logo alt (usually empty) — skip, use empty
-                if title:
+                dedup_key = url_full or title
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
                     jobs.append({"title": title, "company": "", "location": loc,
                                  "url": url_full, "description": title})
-            if jobs: print(f"  [iamexpat] {len(jobs)} jobs for '{query}'")
-            return jobs
+                    page_jobs += 1
+            if page_jobs == 0 or len(jobs) >= max_results:
+                break
+        if jobs: print(f"  [iamexpat] {len(jobs)} jobs for '{query}' ({page_num + 1} pages)")
     except Exception as e:
         print(f"  [iamexpat] Error: {e}")
-    return []
+    return jobs
 
 
 def search_workinlux(query, location="Luxembourg", max_results=500):
@@ -5737,20 +5818,29 @@ def search_himalayas(query, location="Remote", max_results=500):
 
 
 def search_infojobs(query, location="Spain", max_results=500):
-    """Search InfoJobs (Spain) for jobs."""
+    """Search InfoJobs (Spain) for jobs with pagination."""
     from bs4 import BeautifulSoup
     q = query.replace(" ", "+")
-    url = f"https://www.infojobs.net/jobsearch/search-results/list?query={q}"
     jobs = []
+    seen = set()
+    max_pages = 3
     try:
-        html = _playwright_html(url)
-        if html and len(html) > 2000:
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.infojobs.net/jobsearch/search-results/list?query={q}&page={page_num}"
+            html = _playwright_html(url)
+            if not html or len(html) < 2000:
+                break
             soup = BeautifulSoup(html, 'html.parser')
             # Look for job cards with h2 or specific classes
             links = soup.select('a[href*="of_oferta-empleo"]')
             if not links:
                 links = soup.select('h2 a')
-            for a in links[:max_results]:
+            if not links:
+                break
+            page_jobs = 0
+            for a in links:
+                if len(jobs) >= max_results:
+                    break
                 title = a.get_text().strip()
                 href = a.get("href", "")
                 url_full = href if href.startswith("http") else f"https://www.infojobs.net{href}"
@@ -5763,44 +5853,88 @@ def search_infojobs(query, location="Spain", max_results=500):
                         if txt:
                             company = txt
                             break
-                if title:
+                dedup_key = url_full or title
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
                     jobs.append({"title": title, "company": company, "location": "Spain",
                                  "url": url_full, "description": title})
-            if jobs: print(f"  [infojobs] {len(jobs)} jobs for '{query}'")
-            return jobs
+                    page_jobs += 1
+            if page_jobs == 0 or len(jobs) >= max_results:
+                break
+        if jobs: print(f"  [infojobs] {len(jobs)} jobs for '{query}' ({page_num} pages)")
     except Exception as e:
         print(f"  [infojobs] Error: {e}")
-    return []
+    return jobs
 
 
 def search_monsterlu(query, location="Luxembourg", max_results=500):
-    """Search Monster.lu for jobs."""
+    """Search Monster.lu for jobs (paginated, max 3 pages)."""
+    import time
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
+    jobs = []
+    seen = set()
+    max_pages = 3
     try:
-        resp = requests.get(f"https://www.monster.lu/jobs/search/?q={q}", headers=h, timeout=15)
-        if resp.status_code == 200:
-            jobs = _extract_monster_jobs(resp.text, "/job/", "https://www.monster.lu", "Luxembourg", max_results)
-            if jobs: print(f"  [monsterlu] {len(jobs)} jobs for '{query}'")
-            return jobs
+        for page in range(1, max_pages + 1):
+            url = f"https://www.monster.lu/jobs/search/?q={q}&page={page}"
+            resp = requests.get(url, headers=h, timeout=15)
+            if resp.status_code != 200:
+                break
+            page_jobs = _extract_monster_jobs(resp.text, "/job/", "https://www.monster.lu", "Luxembourg", max_results)
+            if not page_jobs:
+                break
+            new_count = 0
+            for j in page_jobs:
+                dedup_key = j.get("url") or f"{j['title']}|{j['company']}"
+                if dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append(j)
+                    new_count += 1
+            if new_count == 0 or len(jobs) >= max_results:
+                break
+            if page < max_pages:
+                time.sleep(0.5)
+        if jobs:
+            print(f"  [monsterlu] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [monsterlu] Error: {e}")
-    return []
+    return jobs
 
 
 def search_monsterboardnl(query, location="Netherlands", max_results=500):
-    """Search Monsterboard.nl for jobs."""
+    """Search Monsterboard.nl for jobs (paginated, max 3 pages)."""
+    import time
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     q = query.replace(" ", "+")
+    jobs = []
+    seen = set()
+    max_pages = 3
     try:
-        resp = requests.get(f"https://www.monsterboard.nl/vacatures/zoeken/?q={q}", headers=h, timeout=15)
-        if resp.status_code == 200:
-            jobs = _extract_monster_jobs(resp.text, "/vacatures/", "https://www.monsterboard.nl", "Netherlands", max_results)
-            if jobs: print(f"  [monsterboardnl] {len(jobs)} jobs for '{query}'")
-            return jobs
+        for page in range(1, max_pages + 1):
+            url = f"https://www.monsterboard.nl/vacatures/zoeken/?q={q}&page={page}"
+            resp = requests.get(url, headers=h, timeout=15)
+            if resp.status_code != 200:
+                break
+            page_jobs = _extract_monster_jobs(resp.text, "/vacatures/", "https://www.monsterboard.nl", "Netherlands", max_results)
+            if not page_jobs:
+                break
+            new_count = 0
+            for j in page_jobs:
+                dedup_key = j.get("url") or f"{j['title']}|{j['company']}"
+                if dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append(j)
+                    new_count += 1
+            if new_count == 0 or len(jobs) >= max_results:
+                break
+            if page < max_pages:
+                time.sleep(0.5)
+        if jobs:
+            print(f"  [monsterboardnl] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [monsterboardnl] Error: {e}")
-    return []
+    return jobs
 
 
 def search_infoempleo(query, location="Spain", max_results=500):
@@ -5980,22 +6114,30 @@ def search_kelly(query, location="Remote", max_results=500):
 
 
 def search_workew(query, location="Remote", max_results=500):
-    """Search Workew.com for remote jobs using Playwright."""
+    """Search Workew.com for remote jobs using Playwright (paginated, max 3 pages)."""
     from bs4 import BeautifulSoup
     q = query.replace(" ", "+")
-    url = f"https://workew.com/remote-jobs/?search_keywords={q}&search_region=&search_categories%5B%5D=5"
+    base_url = f"https://workew.com/remote-jobs/?search_keywords={q}&search_region=&search_categories%5B%5D=5"
     jobs = []
     seen = set()
+    max_pages = 3
     try:
-        html = _playwright_html(url, wait_ms=6000)
-        if html and len(html) > 2000:
+        for page in range(1, max_pages + 1):
+            url = base_url if page == 1 else f"{base_url}&paged={page}"
+            html = _playwright_html(url, wait_ms=6000)
+            if not html or len(html) <= 2000:
+                break
             soup = BeautifulSoup(html, 'html.parser')
-            total_count = _detect_total_count(soup)
             cards = soup.select('li.w-job-card')
             if not cards:
                 cards = soup.select('[class*=card]')
                 cards = [c for c in cards if c.name == 'li']
-            for card in cards[:max_results]:
+            if not cards:
+                break
+            new_count = 0
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
                 title_el = card.select_one('h3.w-job-card__title') or card.select_one('h2')
                 title = title_el.get_text().strip() if title_el else ""
                 link_el = card.select_one('a.w-job-card__link')
@@ -6014,12 +6156,15 @@ def search_workew(query, location="Remote", max_results=500):
                     seen.add(dedup_key)
                     jobs.append({"title": title, "company": company, "location": "Remote",
                                  "url": href, "description": title})
-            if jobs:
-                print(f"  [workew] {len(jobs)} jobs for '{query}'")
-            return jobs
+                    new_count += 1
+            if new_count == 0 or len(jobs) >= max_results:
+                break
+        if jobs:
+            print(f"  [workew] {len(jobs)} jobs for '{query}'")
+        return jobs
     except Exception as e:
         print(f"  [workew] Error: {e}")
-    return []
+    return jobs if jobs else []
 
 
 # ---------------------------------------------------------------------------
@@ -6257,6 +6402,7 @@ def main():
         if not should_include(job):
             return
         score, rn = score_job(job["title"], job["description"], job["company"])
+        score, rn = _title_only_bypass(job, score, rn, args.threshold)
         if score == 0:
             sd["filtered"] += 1
         elif score < args.threshold:
@@ -6427,12 +6573,16 @@ def main():
             heavy_scrapers = [(n, f) for n, f in board_scrapers if n in heavy_names]
 
             with ThreadPoolExecutor(max_workers=4) as pool:
-                futures = []
-                futures.append(pool.submit(lambda: [r for n, f in fast_scrapers for r in _process_board(n, f)]))
-                for name, fn in heavy_scrapers:
-                    futures.append(pool.submit(_process_board, name, fn))
+                futures = {}
+                # Submit each scraper as its own task (pool schedules 4 at a time)
+                for name, fn in fast_scrapers + heavy_scrapers:
+                    futures[pool.submit(_process_board, name, fn)] = name
                 for f in as_completed(futures):
-                    all_matches.extend(f.result())
+                    board = futures[f]
+                    try:
+                        all_matches.extend(f.result())
+                    except Exception as e:
+                        print(f"  [thread-error] {board}: {e}")
         else:
             for board_name, board_fn in board_scrapers:
                 all_matches.extend(_process_board(board_name, board_fn))
@@ -6487,11 +6637,13 @@ def main():
     # --- EU companies (batch: eu) ---
     if args.batch == "eu":
         import multiprocessing as _mp
-        _mp.set_start_method("spawn", force=True)
+        # Use get_context instead of set_start_method to avoid polluting
+        # the global multiprocessing state for the rest of the process
+        _ctx = _mp.get_context("spawn")
 
         sources = list(_interleave_sources(EU_JOB_SOURCES))
 
-        with _mp.Pool(processes=4) as pool:
+        with _ctx.Pool(processes=4) as pool:
             results = pool.map(_fetch_source_jobs, sources)
 
         for source, jobs, error in results:
