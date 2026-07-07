@@ -1851,7 +1851,7 @@ def _scrape_company_career_page(source):
 
     try:
         browser = _get_browser()
-        page = browser.new_page()
+        page = browser.new_page(ignore_https_errors=True)
         _with_stealth(page)
         pw_timeout = source.get("timeout", 20000)
         page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
@@ -2021,8 +2021,8 @@ def _scrape_company_career_page(source):
             headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
             try:
                 import requests as req
-                http_timeout = max(5, source.get("timeout", 10) // 3)
-                resp = req.get(source["url"], headers=headers, timeout=http_timeout)
+                http_timeout = max(10, source.get("timeout", 10) // 2)
+                resp = req.get(source["url"], headers=headers, timeout=http_timeout, verify=False)
                 if resp.status_code == 200:
                     import re
                     html = resp.text
@@ -2088,7 +2088,7 @@ def _scrape_company_career_page(source):
 # Personio rate-limit throttle & source interleaving
 # ---------------------------------------------------------------------------
 _personio_last_call = 0.0  # timestamp of last Personio API call
-_PERSONIO_MIN_DELAY = 3.0  # minimum seconds between Personio requests
+_PERSONIO_MIN_DELAY = 5.0  # minimum seconds between Personio requests (was 3s, increased to reduce 429s)
 _personio_backoff = 1.0  # multiplier that increases when 429s are hit
 
 
@@ -3425,6 +3425,7 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
             viewport={"width": 1920, "height": 1080},
+            ignore_https_errors=True,
         )
         page = context.new_page()
         page.set_default_timeout(timeout)
