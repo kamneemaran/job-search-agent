@@ -71,16 +71,16 @@ jobs:
       - id: matrix
         run: |
           MATRIX='{"include":[]}'
-          [[ "${{ github.event.inputs.batch-ats }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"ats"}]')
-          [[ "${{ github.event.inputs.batch-boards-major }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-major"}]')
-          [[ "${{ github.event.inputs.batch-boards-AU-NZ }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-AU-NZ"}]')
-          [[ "${{ github.event.inputs.batch-boards-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"boards-eu"}]')
-          [[ "${{ github.event.inputs.batch-playwright }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"playwright"}]')
-          [[ "${{ github.event.inputs.batch-global }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"global"}]')
-          [[ "${{ github.event.inputs.batch-apac }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"apac"}]')
-          [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"us-canada"}]')
-          [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"middle-east"}]')
-          [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq '.include += [{"batch":"eu"}]')
+          [[ "${{ github.event.inputs.batch-ats }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"ats"}]')
+          [[ "${{ github.event.inputs.batch-boards-major }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-major"}]')
+          [[ "${{ github.event.inputs.batch-boards-AU-NZ }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-AU-NZ"}]')
+          [[ "${{ github.event.inputs.batch-boards-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-eu"}]')
+          [[ "${{ github.event.inputs.batch-playwright }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"playwright"}]')
+          [[ "${{ github.event.inputs.batch-global }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"global"}]')
+          [[ "${{ github.event.inputs.batch-apac }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"apac"}]')
+          [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"us-canada"}]')
+          [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"middle-east"}]')
+          [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"eu"}]')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   setup:
