@@ -1751,7 +1751,14 @@ def build_domain_queries(skills=None, exp_years=None, prefer_role=None):
     queries = set()
     queries.add("+".join(skills[:3]))
 
-    for title in config["titles"]:
+    titles_to_use = list(config["titles"])
+    if domain == "sap":
+        # Extract actual sap modules from candidate's skills
+        profile_sap_titles = [s.upper() for s in skills if s.lower().startswith("sap ") and s.lower() != "sap"]
+        # Add generic SAP consultant and SAP if not present
+        titles_to_use = profile_sap_titles + ["SAP consultant", "SAP"]
+
+    for title in titles_to_use:
         queries.add(title)
         for prefix in prefixes:
             queries.add(f"{prefix} {title}")
