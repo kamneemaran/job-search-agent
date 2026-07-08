@@ -442,51 +442,70 @@ NO_RELOCATION_FLAGS = {
 # IND recognised sponsors (Netherlands) — populated at startup from the official IND register
 # Covers all organisations authorised to sponsor highly skilled migrants in the Netherlands
 _IND_SPONSORS: set[str] = set()
+_IND_SPONSORS_CACHE_FILE = "ind_sponsors_cache.json"
 
 
-def _load_ind_sponsors() -> set[str]:
-    """Fetch and parse the official IND public register of recognised sponsors.
-
-    Source: https://ind.nl/en/public-register-recognised-sponsors/
-            public-register-regular-labour-and-highly-skilled-migrants
-
-    The IND publishes a monthly-updated HTML table with all organisations
-    authorised to sponsor highly skilled migrants. Returns a set of company
-    names (lowered) for O(1) lookup.
-    """
+def _fetch_ind_sponsors() -> set[str]:
+    """Fetch IND register from the official website and derive lookup keys."""
     from bs4 import BeautifulSoup
     url = ("https://ind.nl/en/public-register-recognised-sponsors/"
            "public-register-regular-labour-and-highly-skilled-migrants")
-    try:
-        resp = requests.get(url, timeout=30)
-        if resp.status_code != 200:
-            print(f"  [ind] HTTP {resp.status_code} loading IND register")
-            return set()
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        full_names: set[str] = set()
-        for th in soup.select('table th[scope="row"]'):
-            name = th.get_text(strip=True)
-            if name:
-                full_names.add(name.lower())
-        # Derive short/base names for matching
-        # e.g. "ASML Netherlands B.V." → {"asml", "asml netherlands"}
-        # so job feed's "ASML" still matches
-        base_names: set[str] = set()
-        for name in full_names:
-            words = name.split()
-            if words:
-                clean = words[0].rstrip(',.')
-                if len(clean) > 1:
-                    base_names.add(clean)
-                if len(words) >= 2:
-                    clean2 = f"{words[0]} {words[1].rstrip(',.')}".lower()
-                    base_names.add(clean2)
-        result = full_names | base_names
-        print(f"  [ind] Loaded {len(full_names)} IND recognised sponsors ({len(result)} lookup keys)")
-        return result
-    except Exception as e:
-        print(f"  [ind] Failed to load IND sponsor list: {e}")
+    resp = requests.get(url, timeout=30)
+    if resp.status_code != 200:
+        print(f"  [ind] HTTP {resp.status_code} loading IND register")
         return set()
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    full_names: set[str] = set()
+    for th in soup.select('table th[scope="row"]'):
+        name = th.get_text(strip=True)
+        if name:
+            full_names.add(name.lower())
+    # Derive short/base names for matching
+    # e.g. "ASML Netherlands B.V." → {"asml", "asml netherlands"}
+    # so job feed's "ASML" still matches
+    base_names: set[str] = set()
+    for name in full_names:
+        words = name.split()
+        if words:
+            clean = words[0].rstrip(',.')
+            if len(clean) > 1:
+                base_names.add(clean)
+            if len(words) >= 2:
+                clean2 = f"{words[0]} {words[1].rstrip(',.')}".lower()
+                base_names.add(clean2)
+    result = full_names | base_names
+    print(f"  [ind] Loaded {len(full_names)} IND recognised sponsors ({len(result)} lookup keys)")
+    return result
+
+
+def _load_ind_sponsors() -> set[str]:
+    """Load IND sponsor list from cache file, falling back to live fetch.
+
+    Checks _IND_SPONSORS_CACHE_FILE first for fast startup. If not found
+    (first run or cache cleared), fetches from the official IND register
+    and writes the cache file so subsequent runs/processes reuse it.
+    """
+    # Try cache file first
+    if os.path.exists(_IND_SPONSORS_CACHE_FILE):
+        try:
+            with open(_IND_SPONSORS_CACHE_FILE) as f:
+                data = json.load(f)
+            result = set(data)
+            print(f"  [ind] Loaded {len(result)} IND sponsors from cache")
+            return result
+        except Exception as e:
+            print(f"  [ind] Cache read failed ({e}), fetching live...")
+
+    # Fall back to live fetch
+    result = _fetch_ind_sponsors()
+    if result:
+        try:
+            with open(_IND_SPONSORS_CACHE_FILE, "w") as f:
+                json.dump(list(result), f)
+            print(f"  [ind] Cached {len(result)} sponsors to {_IND_SPONSORS_CACHE_FILE}")
+        except Exception as e:
+            print(f"  [ind] Failed to write cache: {e}")
+    return result
 
 
 # Companies confirmed to support relocation / sponsor visas / have India presence
