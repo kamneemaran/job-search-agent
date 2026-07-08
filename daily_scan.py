@@ -943,8 +943,8 @@ def score_job(title, description, company, location=""):
     # --- Industry detection: auto-bias scoring for SAP vs non-SAP ---
     is_sap_profile = any("sap" in s.lower() or "erp" in s.lower() for s in PROFILE["core_skills"][:5])
     text_has_sap = "sap" in text or "erp" in text or "s/4hana" in text or "s4hana" in text
-    if is_sap_profile and not text_has_sap and len(text) > 50:
-        pass  # non-SAP role for an SAP profile — don't hard-reject, just let skills decide
+    if is_sap_profile and not text_has_sap:
+        return 0, "Filtered: non-SAP/ERP role for SAP profile"
 
     # --- SAP module matching (relaxed: standalone module names count too) ---
     # Use a separate variable for SAP-normalized title to avoid mutating title_lower
@@ -952,39 +952,89 @@ def score_job(title, description, company, location=""):
     sap_title = title.lower().replace("-", " ").replace("/", " ")
     sap_title = re.sub(r'[()\[\]{}]', ' ', sap_title)
     sap_title = re.sub(r'\s+', ' ', sap_title).strip()
-    has_sap_in_title = "sap" in sap_title or "abap" in sap_title
     has_sap_skills = any("sap" in s or "abap" in s for s in PROFILE["core_skills"])
+
+    _SAP_MODULE_ALIASES = {
+        "sap mm": [
+            r"materials?\s+management", r"material\s+management",
+            r"procurement", r"sourcing\s+(?:and|&)\s+procurement",
+            r"sourcing\s+and\s+procurement", r"sap\s+procurement",
+            r"supply\s+chain", r"scm", r"logistics"
+        ],
+        "sap ewm": [r"extended\s+warehouse\s+management", r"ewm"],
+        "sap wm": [r"warehouse\s+management", r"wm"],
+        "sap qm": [r"quality\s+management", r"qm"],
+        "sap pp": [r"production\s+planning", r"pp", r"manufacturing"],
+        "sap sd": [r"sales\s+(?:and|&)\s+distribution", r"sales\s+and\s+distribution", r"sd", r"order\s+to\s+cash", r"otc"],
+        "sap pm": [r"plant\s+maintenance", r"pm", r"asset\s+management", r"eam"],
+        "sap fi": [r"financial\s+accounting", r"fi", r"finance", r"financials"],
+        "sap co": [r"controlling", r"co"],
+        "sap hcm": [r"human\s+capital\s+management", r"hcm", r"hr", r"human\s+resources"],
+        "sap successfactors": [r"successfactors", r"success\s+factors"],
+        "sap trm": [r"treasury", r"trm", r"treasury\s+and\s+risk", r"treasury\s+(?:and|&)\s+risk", r"treasury\s+risk\s+management"],
+        "sap ps": [r"project\s+system", r"ps"],
+        "sap mdg": [r"master\s+data\s+governance", r"mdg"],
+        "sap integration": [r"integration", r"cpi", r"pi/po", r"po/pi", r"btp"],
+        "sap tm": [r"transportation\s+management", r"tm"],
+        "sap ariba": [r"ariba"],
+        "sap data migration": [r"data\s+migration"]
+    }
+
     _known_modules = [
         "sap mm", "sap sd", "sap fi", "sap co", "sap hr", "sap hcm",
         "sap payroll", "sap successfactors", "sap s/4hana", "sap s4hana",
         "sap abap", "sap basis", "sap bi", "sap bw", "sap fiori",
-        "sap hana", "sap payroll", "sap pp", "sap qm", "sap pm",
-        "sap fico",  # common portmanteau — treat as both FI+CO
+        "sap hana", "sap pp", "sap qm", "sap pm", "sap fico",
+        "sap ewm", "sap wm", "sap trm", "sap eam", "sap ps", "sap mdg",
+        "sap integration", "sap pi", "sap po", "sap cpi", "sap btp",
+        "sap security", "sap grc", "sap ariba", "sap tm", "sap data migration"
     ]
-    # Also match standalone module keywords when profile is SAP
+
     _standalone_modules = {
-        "mm": "sap mm", "ewm": "sap ewm", "sd": "sap sd",
+        "mm": "sap mm", "ewm": "sap ewm", "wm": "sap wm", "sd": "sap sd",
         "fi": "sap fi", "co": "sap co", "fico": "sap fico",
         "hr": "sap hr", "hcm": "sap hcm", "pp": "sap pp",
         "qm": "sap qm", "pm": "sap pm", "abap": "sap abap",
         "basis": "sap basis", "s/4hana": "sap s/4hana", "s4hana": "sap s4hana",
         "fiori": "sap fiori", "hana": "sap hana", "bi": "sap bi", "bw": "sap bw",
         "successfactors": "sap successfactors", "payroll": "sap payroll",
+        "trm": "sap trm", "treasury": "sap trm", "eam": "sap eam", "ps": "sap ps",
+        "mdg": "sap mdg", "ariba": "sap ariba", "tm": "sap tm",
+        "cpi": "sap cpi", "btp": "sap btp", "data migration": "sap data migration"
     }
-    if has_sap_in_title and has_sap_skills:
-        profile_sap_modules = {s.lower() for s in PROFILE["core_skills"] if "sap" in s}
+
+    sap_module_mismatch = False
+    if has_sap_skills:
+        profile_sap_modules = {s.lower() for s in PROFILE["core_skills"] if "sap" in s or s.lower() in ("materials management", "warehouse management", "extended warehouse management", "procurement", "sourcing", "logistics", "supply chain")}
+        # Map our profile skills properly to standardized module names
+        for skill in list(profile_sap_modules):
+            if skill in ("materials management", "procurement", "sourcing"):
+                profile_sap_modules.add("sap mm")
+            elif skill in ("warehouse management",):
+                profile_sap_modules.add("sap wm")
+            elif skill in ("extended warehouse management",):
+                profile_sap_modules.add("sap ewm")
+            elif skill in ("logistics", "supply chain"):
+                profile_sap_modules.add("sap mm")
+                profile_sap_modules.add("sap ewm")
+
+        # Now extract modules from the title using aliases, known modules, and standalone modules
         title_modules = {m for m in _known_modules if re.search(r'\b' + re.escape(m) + r'\b', sap_title)}
-        # Also check standalone module names
         for standalone, mapped in _standalone_modules.items():
             if re.search(r'\b' + re.escape(standalone) + r'\b', sap_title):
                 title_modules.add(mapped)
-        if title_modules and not title_modules & profile_sap_modules:
-            # Don't hard-reject — let JD content decide (cross-module roles exist)
-            sap_module_mismatch = True
-        else:
-            sap_module_mismatch = False
-    else:
-        sap_module_mismatch = False
+        for mod, aliases in _SAP_MODULE_ALIASES.items():
+            for alias_pat in aliases:
+                if re.search(alias_pat, sap_title, re.IGNORECASE):
+                    title_modules.add(mod)
+                    break
+
+        if title_modules:
+            # Generic/platform keywords should not override a mismatch
+            specific_title_modules = title_modules - {"sap s/4hana", "sap s4hana", "sap hana", "sap"}
+            profile_specific = profile_sap_modules - {"sap s/4hana", "sap s4hana", "sap hana", "sap"}
+            if specific_title_modules and not (specific_title_modules & profile_specific):
+                return 0, f"Filtered: title matches non-relevant SAP module ({', '.join(sorted(specific_title_modules))})"
 
     # --- Skill scoring (word-boundary matching; up to 50 points) ---
     skill_hits = sum(1 for _, pat in _SKILL_RE if pat.search(text))
@@ -997,20 +1047,6 @@ def score_job(title, description, company, location=""):
                     if re.search(r'\b' + re.escape(module_part) + r'\b', text):
                         skill_hits += 1
                         break  # at most one extra point from this relaxation
-    # SAP module full-name aliases: "Materials Management" → sap mm hit, etc.
-    # JDs and titles often use full module names instead of abbreviations.
-    _SAP_MODULE_ALIASES = {
-        "sap mm": [r"materials?\s+management", r"material\s+management"],
-        "sap ewm": [r"extended\s+warehouse\s+management"],
-        "sap wm": [r"warehouse\s+management"],
-        "sap qm": [r"quality\s+management"],
-        "sap pp": [r"production\s+planning"],
-        "sap sd": [r"sales\s+(?:and|&)\s+distribution"],
-        "sap pm": [r"plant\s+maintenance"],
-        "sap fi": [r"financial\s+accounting"],
-        "sap co": [r"controlling"],
-        "sap hcm": [r"human\s+capital\s+management"],
-    }
     if has_sap_skills:
         for sap_skill in PROFILE["core_skills"]:
             sk = sap_skill.lower()

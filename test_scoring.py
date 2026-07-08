@@ -126,9 +126,53 @@ def run_tests():
             "description": "SAP FICO Consultant with Financial Accounting experience.",
             "location": "Netherlands",
             "min_score": 0,
-            "max_score": 35,
+            "max_score": 0,
             "expect_match": False,
             "label": "Pradeep - SAP Module Mismatch (FICO vs MM/EWM)"
+        },
+        {
+            "profile": "Pradeep",
+            "title": "SAP Treasury Risk Management",
+            "company": "Accenture",
+            "description": "SAP Treasury Risk Management Consultant with TRM experience. Visa sponsorship and relocation support available.",
+            "location": "Netherlands",
+            "min_score": 0,
+            "max_score": 0,
+            "expect_match": False,
+            "label": "Pradeep - SAP Module Mismatch (Treasury/TRM)"
+        },
+        {
+            "profile": "Pradeep",
+            "title": "SAP S/4HANA (Senior) Manager Order to Cash",
+            "company": "EY",
+            "description": "SAP S/4HANA (Senior) Manager Order to Cash (SD) Consultant. Visa sponsorship and relocation support available.",
+            "location": "Netherlands",
+            "min_score": 0,
+            "max_score": 0,
+            "expect_match": False,
+            "label": "Pradeep - SAP Module Mismatch (Order to Cash/SD on S/4HANA)"
+        },
+        {
+            "profile": "Pradeep",
+            "title": "Team Lead Freight Forwarder",
+            "company": "DSV",
+            "description": "Freight forwarding team lead. Logistics and warehouse operations.",
+            "location": "Netherlands",
+            "min_score": 0,
+            "max_score": 0,
+            "expect_match": False,
+            "label": "Pradeep - Non-SAP Role Filter (Freight Forwarder Logistics)"
+        },
+        {
+            "profile": "Pradeep",
+            "title": "(Senior) Manager SAP Procurement",
+            "company": "Deloitte",
+            "description": "(Senior) Manager SAP Procurement. Must have SAP MM / Sourcing & Procurement experience. Visa sponsorship and relocation support available.",
+            "location": "Netherlands",
+            "min_score": 75,
+            "max_score": 100,
+            "expect_match": True,
+            "label": "Pradeep - SAP Procurement Match (SAP MM)"
         }
     ]
 
