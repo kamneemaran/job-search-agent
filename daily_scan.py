@@ -439,6 +439,56 @@ NO_RELOCATION_FLAGS = {
     # "mollie": "No relocation support outside Europe (confirmed - application rejected screening)",
 }
 
+# IND recognised sponsors (Netherlands) — populated at startup from the official IND register
+# Covers all organisations authorised to sponsor highly skilled migrants in the Netherlands
+_IND_SPONSORS: set[str] = set()
+
+
+def _load_ind_sponsors() -> set[str]:
+    """Fetch and parse the official IND public register of recognised sponsors.
+
+    Source: https://ind.nl/en/public-register-recognised-sponsors/
+            public-register-regular-labour-and-highly-skilled-migrants
+
+    The IND publishes a monthly-updated HTML table with all organisations
+    authorised to sponsor highly skilled migrants. Returns a set of company
+    names (lowered) for O(1) lookup.
+    """
+    from bs4 import BeautifulSoup
+    url = ("https://ind.nl/en/public-register-recognised-sponsors/"
+           "public-register-regular-labour-and-highly-skilled-migrants")
+    try:
+        resp = requests.get(url, timeout=30)
+        if resp.status_code != 200:
+            print(f"  [ind] HTTP {resp.status_code} loading IND register")
+            return set()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        full_names: set[str] = set()
+        for th in soup.select('table th[scope="row"]'):
+            name = th.get_text(strip=True)
+            if name:
+                full_names.add(name.lower())
+        # Derive short/base names for matching
+        # e.g. "ASML Netherlands B.V." → {"asml", "asml netherlands"}
+        # so job feed's "ASML" still matches
+        base_names: set[str] = set()
+        for name in full_names:
+            words = name.split()
+            if words:
+                clean = words[0].rstrip(',.')
+                if len(clean) > 1:
+                    base_names.add(clean)
+                if len(words) >= 2:
+                    clean2 = f"{words[0]} {words[1].rstrip(',.')}".lower()
+                    base_names.add(clean2)
+        result = full_names | base_names
+        print(f"  [ind] Loaded {len(full_names)} IND recognised sponsors ({len(result)} lookup keys)")
+        return result
+    except Exception as e:
+        print(f"  [ind] Failed to load IND sponsor list: {e}")
+        return set()
+
+
 # Companies confirmed to support relocation / sponsor visas / have India presence
 RELOCATION_FRIENDLY = {
     "guerrilla games": "Explicit relocation + immigration support",
@@ -930,13 +980,28 @@ def score_job(title, description, company, location=""):
         has_relo_support = any(kw in text for kw in RELOCATION_SUPPORT_KEYWORDS)
         has_visa_relo = has_visa_sponsor or has_relo_support
         in_friendly_list = any(co in company_lower for co in RELOCATION_FRIENDLY)
-        if has_visa_relo or in_friendly_list:
+        # Check IND registered sponsors (Netherlands)
+        in_ind_sponsor = company_lower in _IND_SPONSORS
+        if not in_ind_sponsor:
+            fw = company_lower.split()[0] if company_lower.split() else ""
+            in_ind_sponsor = fw in _IND_SPONSORS
+        has_sponsor_signal = has_visa_sponsor or in_friendly_list or in_ind_sponsor
+        has_relo_signal = has_relo_support or in_friendly_list or in_ind_sponsor
+        if has_visa_relo or in_friendly_list or in_ind_sponsor:
             parts = []
-            if has_visa_sponsor or in_friendly_list:
-                parts.append("Visa sponsorship")
-            if has_relo_support or in_friendly_list:
-                parts.append("Relocation support")
-            visa_note = " + ".join(parts) + " mentioned"
+            if has_sponsor_signal:
+                src = []
+                if has_visa_sponsor: src.append("JD")
+                if in_friendly_list: src.append("known list")
+                if in_ind_sponsor: src.append("IND register")
+                parts.append(f"Visa sponsorship ({'+'.join(src)})")
+            if has_relo_signal:
+                src = []
+                if has_relo_support: src.append("JD")
+                if in_friendly_list: src.append("known list")
+                if in_ind_sponsor: src.append("IND register")
+                parts.append(f"Relocation support ({'+'.join(src)})")
+            visa_note = " + ".join(parts)
         else:
             visa_note = "Visa sponsorship details not mentioned"
 
@@ -1169,6 +1234,8 @@ def score_job(title, description, company, location=""):
         if friendly_co in company_lower:
             relocation_note = note
             break
+    if not relocation_note and in_ind_sponsor:
+        relocation_note = "IND recognised sponsor (Netherlands)"
     if is_outside_india and (title_relevance >= 10 or skill_score >= 20):
         # +5 if JD mentions visa sponsorship or company is known to sponsor
         if has_visa_sponsor or relocation_note:
@@ -6809,6 +6876,11 @@ def main():
         os.environ["GMAIL_ADDRESS"] = args.gmail_user
     if args.gmail_pass:
         os.environ["GMAIL_APP_PASSWORD"] = args.gmail_pass
+
+    # Load IND recognised sponsors (one-time, shared across all batches)
+    global _IND_SPONSORS
+    if not _IND_SPONSORS:
+        _IND_SPONSORS = _load_ind_sponsors()
 
     print(f"=== Daily job scan started: {datetime.now().isoformat()} ===")
     print(f"Profile: {PROFILE['name']}, {PROFILE['years_experience']}yr, {len(PROFILE['core_skills'])} skills")

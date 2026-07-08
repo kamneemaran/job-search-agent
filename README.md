@@ -9,6 +9,7 @@ Automated job scanner that discovers, scores, and tracks job opportunities from 
 - **Scans** company ATS APIs (Greenhouse, Lever, Ashby) + 15+ job boards (LinkedIn, Indeed, Naukri, Glassdoor, Instahyre, WeWorkRemotely, RemoteOK, etc.)
 - **Scores** each job 0–100 against your profile (skills, seniority, location, visa/relocation support)
 - **Visa Sponsor Discovery**: Scans visa-friendly job sources to build and maintain a sponsor database (~80+ companies). Sources include:
+  - **IND register** (`ind.nl`) — official Dutch IND public register of ~12,900 recognised sponsors, scraped at startup; adds base name + full legal name for O(1) lookup
   - **Welcome to NL** (`welcome-to-nl.nl`) — managed by RVO (Netherlands Enterprise Agency); all listed jobs come from IND pre-approved highly skilled migrant sponsors
   - **VisaSponsor.Jobs** (`visasponsor.jobs`) — third-party aggregator of explicitly visa-sponsored roles
   - **Bundesagentur für Arbeit** (`arbeitsagentur.de`) — German Federal Employment Agency; IT roles typically qualify for EU Blue Card
