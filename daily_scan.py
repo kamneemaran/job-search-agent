@@ -519,6 +519,15 @@ RELOCATION_FRIENDLY = {
     "yenlo": "Germany visa sponsorship + English-friendly",
     "zalando": "Germany visa sponsorship + English-friendly",
     "monzo": "UK visa sponsorship available",
+    "datasnipper": "Netherlands visa sponsorship + relocation support",
+    "fastned": "Netherlands visa sponsorship + relocation support",
+    "fixico": "Netherlands visa sponsorship + relocation support",
+    "polarsteps": "Netherlands visa sponsorship + relocation support",
+    "channable": "Netherlands visa sponsorship + relocation support",
+    "picnic": "Netherlands visa sponsorship + relocation support",
+    "coolblue": "Netherlands visa sponsorship + relocation support",
+    "asml": "Netherlands visa sponsorship + relocation support",
+    "tiqets": "Netherlands visa sponsorship + relocation support",
     "adyen": "Netherlands visa sponsorship + relocation support",
 }
 
