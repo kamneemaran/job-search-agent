@@ -8,7 +8,13 @@ Automated job scanner that discovers, scores, and tracks job opportunities from 
 
 - **Scans** company ATS APIs (Greenhouse, Lever, Ashby) + 15+ job boards (LinkedIn, Indeed, Naukri, Glassdoor, Instahyre, WeWorkRemotely, RemoteOK, etc.)
 - **Scores** each job 0–100 against your profile (skills, seniority, location, visa/relocation support)
-- **Auto-checks Licensed Sponsors**: Programmatically checks company names against official government registers (such as the Dutch IND Pre-Approved Sponsors list and UK Skilled Worker registry). Automatically grants visa/relocation bonus points and tags them as verified sponsors in your email digest, even if the job description itself is silent on visa details.
+- **Visa Sponsor Discovery**: Scans visa-friendly job sources to build and maintain a sponsor database (~80+ companies). Sources include:
+  - **Welcome to NL** (`welcome-to-nl.nl`) — managed by RVO (Netherlands Enterprise Agency); all listed jobs come from IND pre-approved highly skilled migrant sponsors
+  - **VisaSponsor.Jobs** (`visasponsor.jobs`) — third-party aggregator of explicitly visa-sponsored roles
+  - **Bundesagentur für Arbeit** (`arbeitsagentur.de`) — German Federal Employment Agency; IT roles typically qualify for EU Blue Card
+  - **Career page scraping** — on-the-fly checks of company career pages for visa/relocation keywords via MCP server
+  - **Manual research** — companies added/removed based on application feedback and research
+  Companies in the sponsor database get automatic visa/relocation bonus points even when the JD itself is silent.
 - **Filters** out irrelevant roles (mobile, frontend, QA, SRE, network, non-engineering tracks)
 - **Tracks** applications with statuses: `new` → `applied` → `rejected` → `offer`
 - **Emails** daily digest of top matches
