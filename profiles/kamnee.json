@@ -38,6 +38,12 @@
     "sap", "sap consultant", "sap mm", "sap sd", "sap fico", "sap ewm",
     "oracle", "oracle consultant", "oracle ebs", "oracle fusion",
     "salesforce", "salesforce developer", "salesforce consultant",
-    "servicenow"
+    "servicenow",
+    "aerospace", "space systems", "satellite", "avionics", "propulsion",
+    "mechanical engineer", "electrical engineer", "hardware engineer",
+    "civil engineer", "chemical engineer", "rf engineer", "pcb engineer",
+    "biomedical", "control systems", "pointing systems", "aocs", "gnc",
+    "guidance, navigation", "embedded engineer", "firmware engineer",
+    "systems administrator", "sysadmin", "it systems engineer"
   ]
 }
