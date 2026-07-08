@@ -771,6 +771,9 @@ def _derive_title_keywords(current_role, years_experience):
     # Add related role variants derived from core_skills
     # Maps skill keywords → additional title variants to match
     _skill_role_map = {
+        "java": ["java engineer", "java developer", "java software engineer", "java developer engineer"],
+        "python": ["python engineer", "python developer", "python software engineer"],
+        "golang": ["go engineer", "go developer", "golang engineer", "golang developer"],
         "backend": ["backend engineer", "backend developer", "back end engineer", "back-end engineer"],
         "platform": ["platform engineer"],
         "cloud infrastructure": ["cloud engineer", "infrastructure engineer"],
