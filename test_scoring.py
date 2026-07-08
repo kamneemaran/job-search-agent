@@ -165,6 +165,28 @@ def run_tests():
         },
         {
             "profile": "Pradeep",
+            "title": "Manager SAP S/4HANA Service",
+            "company": "Deloitte",
+            "description": "Manager SAP S/4HANA Customer Service consultant. Visa sponsorship and relocation support available.",
+            "location": "Netherlands",
+            "min_score": 0,
+            "max_score": 0,
+            "expect_match": False,
+            "label": "Pradeep - SAP Module Mismatch (Service)"
+        },
+        {
+            "profile": "Pradeep",
+            "title": "SAP S/4HANA - Cloud Public Edition Manager",
+            "company": "EY",
+            "description": "SAP S/4HANA - Cloud Public Edition Manager. Visa sponsorship and relocation support available.",
+            "location": "Netherlands",
+            "min_score": 0,
+            "max_score": 0,
+            "expect_match": False,
+            "label": "Pradeep - SAP Module Mismatch (Cloud Public Edition)"
+        },
+        {
+            "profile": "Pradeep",
             "title": "(Senior) Manager SAP Procurement",
             "company": "Deloitte",
             "description": "(Senior) Manager SAP Procurement. Must have SAP MM / Sourcing & Procurement experience. Visa sponsorship and relocation support available.",

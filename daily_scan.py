@@ -977,7 +977,9 @@ def score_job(title, description, company, location=""):
         "sap integration": [r"integration", r"cpi", r"pi/po", r"po/pi", r"btp"],
         "sap tm": [r"transportation\s+management", r"tm"],
         "sap ariba": [r"ariba"],
-        "sap data migration": [r"data\s+migration"]
+        "sap data migration": [r"data\s+migration"],
+        "sap service": [r"\bservice\b", r"\bcs\b"],
+        "sap cloud platform": [r"\bcloud\s+public\b", r"\bpublic\s+edition\b"]
     }
 
     _known_modules = [
@@ -987,7 +989,8 @@ def score_job(title, description, company, location=""):
         "sap hana", "sap pp", "sap qm", "sap pm", "sap fico",
         "sap ewm", "sap wm", "sap trm", "sap eam", "sap ps", "sap mdg",
         "sap integration", "sap pi", "sap po", "sap cpi", "sap btp",
-        "sap security", "sap grc", "sap ariba", "sap tm", "sap data migration"
+        "sap security", "sap grc", "sap ariba", "sap tm", "sap data migration",
+        "sap service", "sap cloud platform"
     ]
 
     _standalone_modules = {
@@ -1000,7 +1003,8 @@ def score_job(title, description, company, location=""):
         "successfactors": "sap successfactors", "payroll": "sap payroll",
         "trm": "sap trm", "treasury": "sap trm", "eam": "sap eam", "ps": "sap ps",
         "mdg": "sap mdg", "ariba": "sap ariba", "tm": "sap tm",
-        "cpi": "sap cpi", "btp": "sap btp", "data migration": "sap data migration"
+        "cpi": "sap cpi", "btp": "sap btp", "data migration": "sap data migration",
+        "service": "sap service", "cloud public": "sap cloud platform", "public edition": "sap cloud platform"
     }
 
     sap_module_mismatch = False
