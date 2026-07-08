@@ -8,6 +8,7 @@ Automated job scanner that discovers, scores, and tracks job opportunities from 
 
 - **Scans** company ATS APIs (Greenhouse, Lever, Ashby) + 15+ job boards (LinkedIn, Indeed, Naukri, Glassdoor, Instahyre, WeWorkRemotely, RemoteOK, etc.)
 - **Scores** each job 0–100 against your profile (skills, seniority, location, visa/relocation support)
+- **Auto-checks Licensed Sponsors**: Programmatically checks company names against official government registers (such as the Dutch IND Pre-Approved Sponsors list and UK Skilled Worker registry). Automatically grants visa/relocation bonus points and tags them as verified sponsors in your email digest, even if the job description itself is silent on visa details.
 - **Filters** out irrelevant roles (mobile, frontend, QA, SRE, network, non-engineering tracks)
 - **Tracks** applications with statuses: `new` → `applied` → `rejected` → `offer`
 - **Emails** daily digest of top matches
