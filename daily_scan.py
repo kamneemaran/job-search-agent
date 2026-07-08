@@ -1039,7 +1039,10 @@ def score_job(title, description, company, location=""):
         # Single words are partial matches only
         partial_words = [kw for kw in title_keywords if " " not in kw]
         # Word-level match: check if all words of a variant appear in title (any order)
-        title_words = set(title_lower.split())
+        # Normalize hyphens/slashes and strip punctuation to avoid comma/punctuation split issues
+        clean_title_words = title_lower.replace("-", " ").replace("/", " ")
+        clean_title_words = re.sub(r'[^a-z0-9\s]', ' ', clean_title_words)
+        title_words = set(clean_title_words.split())
         def _words_in_title(variant):
             return set(variant.split()).issubset(title_words)
         if any(_words_in_title(v) for v in full_role_variants):
