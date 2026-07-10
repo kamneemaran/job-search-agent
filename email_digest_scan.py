@@ -12,8 +12,8 @@ import imaplib, email, re, json, sys, os
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
-GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "kamneemaran45@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "bttjcludverlbmnr")
+GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "")
+GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 # ── Glassdoor HTML parsing ────────────────────────────────────────────────
 

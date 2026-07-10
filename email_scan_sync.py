@@ -2,8 +2,8 @@
 import imaplib, email, json, re, sys, os
 from datetime import datetime, timedelta
 
-GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "kamneemaran45@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "bttjcludverlbmnr")
+GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "")
+GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "")
 GSHEET_ID = os.environ.get("GSHEET_ID", "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg")
 profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
 TRACKER_FILE = os.environ.get("TRACKER_FILE", f"job_tracker_{profile_slug}.json")
