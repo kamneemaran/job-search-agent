@@ -12,6 +12,9 @@ import sys
 import os
 import json
 import re
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime
 from typing import Any
 
@@ -99,6 +102,64 @@ from middle_east_companies import MIDDLE_EAST_JOB_SOURCES
 # ---------------------------------------------------------------------------
 server = Server("job-search-agent")
 
+# ---------------------------------------------------------------------------
+# Exception tracking & notification
+# ---------------------------------------------------------------------------
+_EXCEPTION_NOTIFY_EMAIL = "kamneemaran45@gmail.com"
+_skipped_sources: list[dict] = []  # Collects exceptions during a search run
+
+
+def _send_exception_email(skipped: list[dict], batch_label: str = "MCP Search"):
+    """Send an email with details of skipped sources/boards due to exceptions."""
+    if not skipped:
+        return
+    gmail_address = os.environ.get("GMAIL_ADDRESS")
+    gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
+    if not gmail_address or not gmail_app_password:
+        print("Exception email not sent - GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set.")
+        return
+
+    rows = []
+    for entry in skipped:
+        rows.append(f"""
+        <tr>
+            <td style="padding:6px;border:1px solid #ddd;">{entry.get('source', 'N/A')}</td>
+            <td style="padding:6px;border:1px solid #ddd;">{entry.get('url', 'N/A')}</td>
+            <td style="padding:6px;border:1px solid #ddd;">{entry.get('resume', 'N/A')}</td>
+            <td style="padding:6px;border:1px solid #ddd;color:red;">{entry.get('error', 'Unknown')}</td>
+        </tr>""")
+
+    html = f"""
+    <html><body>
+    <h2>⚠️ Skipped Sources During: {batch_label}</h2>
+    <p>{len(skipped)} source(s) were skipped due to exceptions at {datetime.now().strftime('%Y-%m-%d %H:%M')}.</p>
+    <table style="border-collapse:collapse;width:100%;font-family:monospace;font-size:13px;">
+        <tr style="background:#f44336;color:white;">
+            <th style="padding:8px;border:1px solid #ddd;">Source / Board</th>
+            <th style="padding:8px;border:1px solid #ddd;">URL / Link</th>
+            <th style="padding:8px;border:1px solid #ddd;">Resume / Profile</th>
+            <th style="padding:8px;border:1px solid #ddd;">Exception</th>
+        </tr>
+        {''.join(rows)}
+    </table>
+    <p style="color:#666;font-size:12px;">Automated alert from Job Search Agent MCP Server.</p>
+    </body></html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"[Job Agent] {len(skipped)} source(s) skipped — {batch_label}"
+    msg["From"] = gmail_address
+    msg["To"] = _EXCEPTION_NOTIFY_EMAIL
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as srv:
+            srv.login(gmail_address, gmail_app_password)
+            srv.sendmail(gmail_address, _EXCEPTION_NOTIFY_EMAIL, msg.as_string())
+        print(f"Exception notification sent to {_EXCEPTION_NOTIFY_EMAIL}")
+    except Exception as e:
+        print(f"Failed to send exception email: {e}")
+
 tracker = JobTracker()
 
 # Cache for company career page visa checks: {company_lower: True/False/None}
@@ -140,9 +201,9 @@ def _check_career_page_visa(company: str, career_url: str | None = None) -> bool
                "relocation assistance", "work authorization", "immigration support",
                "visa provided", "we sponsor", "global mobility"]
 
-    for url in urls_to_try:
+    for url in urls_to_try[:3]:  # Limit to 3 URLs to avoid long blocking
         try:
-            resp = requests.get(url, headers=headers, timeout=8)
+            resp = requests.get(url, headers=headers, timeout=5)
             if resp.status_code == 200:
                 text = resp.text.lower()
                 if any(kw in text for kw in visa_kw):
@@ -507,7 +568,7 @@ You're now talking to the interactive MCP interface, which lets you search, scor
 def _search_jobs(
     query: str,
     location: str = "Remote",
-    threshold: int = 70,
+    threshold: int = 65,
     require_visa: bool = True,
     exclude_companies: list[str] | None = None,
     focus_role: str = "",
@@ -565,6 +626,7 @@ def _search_jobs(
     if query and query not in expanded_queries:
         expanded_queries.insert(0, query)
     all_jobs = []
+    skipped = []
 
     def _score(job):
         """Score job, with career page fallback for visa check."""
@@ -593,12 +655,19 @@ def _search_jobs(
     all_sources = JOB_SOURCES + EU_JOB_SOURCES + GLOBAL_JOB_SOURCES + APAC_JOB_SOURCES + US_CANADA_JOB_SOURCES + MIDDLE_EAST_JOB_SOURCES
     for source in all_sources:
         sname = source["name"].lower()
-        if sources_lower and not any(s in sname for s in sources_lower):
+        ats_type = source.get("ats", "").lower()
+        if sources_lower and not any(s in sname or s in ats_type for s in sources_lower):
             continue
-        if sources_lower and not any(s in source.get("ats", "").lower() for s in sources_lower):
-            if not any(s in sname for s in sources_lower):
-                continue
-        jobs = fetch_jobs_from_source(source)
+        try:
+            jobs = fetch_jobs_from_source(source)
+        except Exception as e:
+            skipped.append({
+                "source": source["name"],
+                "url": source.get("url", "N/A"),
+                "resume": PROFILE.get("name", "N/A"),
+                "error": str(e)[:200],
+            })
+            continue
         for job in jobs:
             company_lower = job["company"].lower().strip()
             if exclude_lower and any(c in company_lower for c in exclude_lower):
@@ -625,8 +694,13 @@ def _search_jobs(
                         salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
                         resume = pick_resume(job["company"])
                         all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
-            except Exception:
-                pass
+            except Exception as e:
+                skipped.append({
+                    "source": f"{board_name} (query: {q})",
+                    "url": "N/A",
+                    "resume": PROFILE.get("name", "N/A"),
+                    "error": str(e)[:200],
+                })
 
     # Playwright scrapers
     for pw_name, pw_fn in pw_scrapers:
@@ -644,8 +718,17 @@ def _search_jobs(
                         salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
                         resume = pick_resume(job["company"])
                         all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
-            except Exception:
-                pass
+            except Exception as e:
+                skipped.append({
+                    "source": f"{pw_name} (query: {q})",
+                    "url": "N/A",
+                    "resume": PROFILE.get("name", "N/A"),
+                    "error": str(e)[:200],
+                })
+
+    # Send exception notification email if any sources were skipped
+    if skipped:
+        _send_exception_email(skipped, batch_label=f"search_jobs({query})")
 
     # Deduplicate by (title, company)
     seen = set()
@@ -1088,8 +1171,6 @@ def _prepare_application(
     resume: str = "",
 ) -> str:
     """Return structured context for an LLM to generate cover letter, STAR+R stories, and gap mitigation."""
-    from daily_scan import PROFILE, score_job, pick_resume, company_url, tailoring_suggestion, get_salary_info
-
     score, note = score_job(title, description, company, location)
     resume_pdf = resume or pick_resume(company)
     c_url = company_url(company)
@@ -1112,7 +1193,7 @@ def _prepare_application(
         r'\b(?:api|graphql|grpc|rest|microservice|event.?driven|streaming)\b',
     ]
     for pat in tech_patterns:
-        for m in __import__('re').finditer(pat, desc_lower):
+        for m in re.finditer(pat, desc_lower):
             kw = m.group(0).replace('.', '-').replace('_', '')
             if kw not in skill_set and kw not in gap_keywords:
                 gap_keywords.add(kw)
