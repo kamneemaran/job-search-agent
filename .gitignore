@@ -10,8 +10,9 @@ credentials.json
 .venv/
 last_scan_results.json
 last_scan_results_batch_*.json
-job_tracker.json
+job_tracker*.json
+last_email_scan*.json
+ind_sponsors_cache.json
 *.pdf
 *.log
-last_email_scan.json
 session-*.md

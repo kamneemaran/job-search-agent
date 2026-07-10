@@ -1,8 +1,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-os.environ.setdefault("GMAIL_ADDRESS", "kamneemaran45@gmail.com")
-os.environ.setdefault("GMAIL_APP_PASSWORD", "bttjcludverlbmnr")
+# Required: set GMAIL_ADDRESS, GMAIL_APP_PASSWORD, EMAIL_TO via env or .env
 os.environ.setdefault("EMAIL_TO", "pradeepmeena13@gmail.com")
 
 from daily_scan import send_email
