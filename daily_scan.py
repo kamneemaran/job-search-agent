@@ -1033,6 +1033,7 @@ def score_job(title, description, company, location=""):
     has_visa_sponsor = False
     has_relo_support = False
     in_friendly_list = False
+    in_ind_sponsor = False
 
     if is_outside_india or is_remote:
         company_lower = company.lower()
@@ -6872,6 +6873,8 @@ def main():
                         help="Only scan Gmail for rejection emails (skip job scanning)")
     parser.add_argument("--digest", action="store_true",
                         help="Also scan Gmail for Glassdoor/Indeed job digest emails")
+    parser.add_argument("--digest-label", default=None,
+                        help="Gmail label for digest emails (default: INBOX or GMAIL_DIGEST_LABEL env)")
     _BATCH_CHOICES = ["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
     parser.add_argument("--batch", type=str, default="",
                         help=f"Batch(es) to run: comma-separated ({', '.join(_BATCH_CHOICES)}) or 'all'. Examples: --batch boards-major or --batch boards-major,boards-eu")
@@ -7498,7 +7501,7 @@ def main():
         print(f"\n  [digest] Scanning Gmail for job digest emails...")
         try:
             from email_digest_scan import parse_all_digests
-            digest_jobs = parse_all_digests(days=7)
+            digest_jobs = parse_all_digests(days=7, label=args.digest_label)
             print(f"  [digest] {len(digest_jobs)} jobs parsed, scoring...")
             for dj in digest_jobs:
                 if not should_include(dj):

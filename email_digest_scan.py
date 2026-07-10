@@ -143,11 +143,13 @@ def parse_indeed_email(body):
 
 # ── Gmail fetching ─────────────────────────────────────────────────────────
 
-def fetch_glassdoor_emails(days=7):
+DIGEST_LABEL = os.environ.get("GMAIL_DIGEST_LABEL", "INBOX")
+
+def fetch_glassdoor_emails(days=7, label=None):
     """Fetch Glassdoor digest emails and parse jobs."""
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
     mail.login(GMAIL_USER, GMAIL_PASS)
-    mail.select("INBOX")
+    mail.select(label or DIGEST_LABEL)
 
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
     r, d = mail.search(None, f'(FROM "noreply@glassdoor.com" SINCE {since})')
@@ -176,11 +178,11 @@ def fetch_glassdoor_emails(days=7):
     return jobs
 
 
-def fetch_indeed_emails(days=7):
+def fetch_indeed_emails(days=7, label=None):
     """Fetch Indeed job recommendation emails and parse jobs."""
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
     mail.login(GMAIL_USER, GMAIL_PASS)
-    mail.select("INBOX")
+    mail.select(label or DIGEST_LABEL)
 
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
     r, d = mail.search(None, f'(FROM "donotreply@match.indeed.com" SINCE {since})')
@@ -211,18 +213,18 @@ def fetch_indeed_emails(days=7):
 
 # ── Main entry ─────────────────────────────────────────────────────────────
 
-def parse_all_digests(days=7):
+def parse_all_digests(days=7, label=None):
     """Fetch and parse all job digest emails. Returns list of job dicts."""
     jobs = []
     try:
-        gd = fetch_glassdoor_emails(days)
+        gd = fetch_glassdoor_emails(days, label)
         jobs.extend(gd)
         print(f"  [glassdoor] parsed {len(gd)} jobs", flush=True)
     except Exception as e:
         print(f"  [glassdoor] ERROR: {e}", flush=True)
 
     try:
-        ind = fetch_indeed_emails(days)
+        ind = fetch_indeed_emails(days, label)
         jobs.extend(ind)
         print(f"  [indeed] parsed {len(ind)} jobs", flush=True)
     except Exception as e:
@@ -236,10 +238,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scan Gmail for job digest emails")
     parser.add_argument("--days", type=int, default=7, help="How many days back to scan")
     parser.add_argument("--output", default="", help="Output JSON file path")
+    parser.add_argument("--digest-label", default=None, help="Gmail label to scan (default: INBOX or GMAIL_DIGEST_LABEL env)")
     args = parser.parse_args()
 
     print(f"=== Scanning job digests (past {args.days}d) ===", flush=True)
-    jobs = parse_all_digests(args.days)
+    jobs = parse_all_digests(args.days, args.digest_label)
     print(f"Total: {len(jobs)} jobs parsed", flush=True)
 
     if args.output:
