@@ -16,3 +16,4 @@ ind_sponsors_cache.json
 *.pdf
 *.log
 session-*.md
+.browser_state/

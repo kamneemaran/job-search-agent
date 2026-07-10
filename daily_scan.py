@@ -80,6 +80,64 @@ def _with_stealth(page):
     except Exception:
         pass
 
+_BLOCKED_RESOURCE_TYPES = {"image", "stylesheet", "media", "font"}
+_BLOCKED_URL_KEYWORDS = ("analytics", "googletagmanager", "google-analytics", "hubspot",
+                         "hotjar", "doubleclick", "facebook.net", "adservice",
+                         "tracking", "pixel", "advertisement")
+
+def _block_unnecessary_resources(page):
+    """Intercept and abort requests for images, stylesheets, fonts, media, and tracking scripts."""
+    def _route_handler(route):
+        if route.request.resource_type in _BLOCKED_RESOURCE_TYPES:
+            route.abort()
+        elif any(kw in route.request.url for kw in _BLOCKED_URL_KEYWORDS):
+            route.abort()
+        else:
+            route.continue_()
+    page.route("**/*", _route_handler)
+
+import hashlib as _hashlib
+_STORAGE_STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".browser_state")
+os.makedirs(_STORAGE_STATE_DIR, exist_ok=True)
+
+def _storage_state_path(domain):
+    """Get storage state file path for a given domain."""
+    safe = _hashlib.md5(domain.encode()).hexdigest()[:12]
+    return os.path.join(_STORAGE_STATE_DIR, f"{safe}.json")
+
+def _get_domain(url):
+    """Extract domain from URL."""
+    try:
+        from urllib.parse import urlparse
+        return urlparse(url).netloc
+    except Exception:
+        return "default"
+
+def _create_context(browser, url=None):
+    """Create a browser context with persisted storage state if available."""
+    domain = _get_domain(url) if url else "default"
+    state_path = _storage_state_path(domain)
+    kwargs = dict(
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        viewport={"width": 1920, "height": 1080},
+        ignore_https_errors=True,
+    )
+    if os.path.exists(state_path):
+        try:
+            kwargs["storage_state"] = state_path
+        except Exception:
+            pass
+    return browser.new_context(**kwargs)
+
+def _save_context_state(context, url=None):
+    """Save browser context storage state for future reuse."""
+    try:
+        domain = _get_domain(url) if url else "default"
+        state_path = _storage_state_path(domain)
+        context.storage_state(path=state_path)
+    except Exception:
+        pass
+
 load_dotenv()
 
 
@@ -3472,17 +3530,16 @@ def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
     """Generic helper to scrape JS-rendered pages using Playwright + stealth."""
     try:
         browser = _get_browser()
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            viewport={"width": 1920, "height": 1080},
-        )
+        context = _create_context(browser, url)
         page = context.new_page()
+        _block_unnecessary_resources(page)
         _with_stealth(page)
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
         if wait_selector:
             page.wait_for_selector(wait_selector, timeout=10000)
         results = page.eval_on_selector_all(selector, extract_fn)
+        _save_context_state(context, url)
         context.close()
         return results
     except Exception as e:
@@ -3499,11 +3556,9 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
     """
     try:
         browser = _get_browser()
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            viewport={"width": 1920, "height": 1080},
-        )
+        context = _create_context(browser, url)
         page = context.new_page()
+        _block_unnecessary_resources(page)
         _with_stealth(page)
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
@@ -3571,6 +3626,7 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
                 break  # No new content loaded
 
         html = page.content()
+        _save_context_state(context, url)
         context.close()
         return html
     except Exception as e:
@@ -3581,17 +3637,15 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
     context = None
     try:
         browser = _get_browser()
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            viewport={"width": 1920, "height": 1080},
-            ignore_https_errors=True,
-        )
+        context = _create_context(browser, url)
         page = context.new_page()
         page.set_default_timeout(timeout)
+        _block_unnecessary_resources(page)
         _with_stealth(page)
         page.goto(url, timeout=timeout, wait_until="domcontentloaded")
         page.wait_for_timeout(wait_ms)
         html = page.content()
+        _save_context_state(context, url)
         return html
     except Exception as e:
         return ""
@@ -7283,7 +7337,10 @@ def main():
                 print("  [adzuna] Warning: dedicated thread still running after 5min timeout")
 
             # Execute Playwright scrapers sequentially in the main thread (thread safety guaranteed)
+            pw_filter = os.environ.get("PLAYWRIGHT_SCRAPER_FILTER", "")
             for name, fn in playwright_scrapers:
+                if pw_filter and name != pw_filter:
+                    continue  # Skip scrapers not matching the matrix filter
                 print(f"  [{name.lower()}] Running Playwright scraper sequentially in main thread")
                 try:
                     all_matches.extend(_process_board(name, fn))
