@@ -51,11 +51,32 @@ on:
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
         required: true
+      gmail_user:
+        description: "Gmail address (defaults to secrets.GMAIL_ADDRESS)"
+        required: false
+        default: ""
+      gmail_pass:
+        description: "Gmail App Password (defaults to secrets.GMAIL_APP_PASSWORD)"
+        required: false
+        default: ""
+      gsheet_id:
+        description: "Google Sheet ID for tracker (defaults to secrets.GSHEET_ID)"
+        required: false
+        default: ""
+      profile:
+        description: "Profile name to use (e.g. kamnee, pradeep). Defaults to auto-detect from resume."
+        required: false
+        default: ""
+      gmail_label:
+        description: "Gmail label for email scan (defaults to 'Interview')"
+        required: false
+        default: ""
 
 env:
-  GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-  GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-  GSHEET_ID: ${{ secrets.GSHEET_ID }}
+  GMAIL_ADDRESS: ${{ inputs.gmail_user || secrets.GMAIL_ADDRESS }}
+  GMAIL_APP_PASSWORD: ${{ inputs.gmail_pass || secrets.GMAIL_APP_PASSWORD }}
+  GSHEET_ID: ${{ inputs.gsheet_id || secrets.GSHEET_ID }}
+  GMAIL_LABEL: ${{ inputs.gmail_label || 'Interview' }}
 
 jobs:
   scan:
@@ -117,39 +138,66 @@ jobs:
 
       - name: Batch 1 - Company ATS
         if: ${{ github.event.inputs.batch-ats == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch ats 2>&1 | tee scan_batch1.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch ats 2>&1 | tee scan_batch1.log
 
       - name: Batch 2 - Major Job Boards
         if: ${{ github.event.inputs.batch-boards-major == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-major 2>&1 | tee scan_batch2.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch boards-major 2>&1 | tee scan_batch2.log
 
       - name: Batch 3 - AU/NZ Regional Boards
         if: ${{ github.event.inputs.batch-boards-AU-NZ == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch boards-AU-NZ 2>&1 | tee scan_batch3.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch boards-AU-NZ 2>&1 | tee scan_batch3.log
 
       - name: Batch 4 - Playwright Scrape
         if: ${{ github.event.inputs.batch-playwright == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch playwright 2>&1 | tee scan_batch4.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch playwright 2>&1 | tee scan_batch4.log
 
       - name: Batch 5 - Global Companies
         if: ${{ github.event.inputs.batch-global == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch global 2>&1 | tee scan_batch5.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch global 2>&1 | tee scan_batch5.log
 
       - name: Batch 6 - APAC Companies
         if: ${{ github.event.inputs.batch-apac == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch apac 2>&1 | tee scan_batch6.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch apac 2>&1 | tee scan_batch6.log
 
       - name: Batch 7 - US/Canada Companies
         if: ${{ github.event.inputs.batch-us-canada == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch us-canada 2>&1 | tee scan_batch7.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch us-canada 2>&1 | tee scan_batch7.log
 
       - name: Batch 8 - Middle East Companies
         if: ${{ github.event.inputs.batch-middle-east == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch middle-east 2>&1 | tee scan_batch8.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch middle-east 2>&1 | tee scan_batch8.log
 
       - name: Batch 9 - EU Companies (terminal - merges all previous)
         if: ${{ github.event.inputs.batch-eu == 'true' }}
-        run: python daily_scan.py --resume "$RESUME" --batch eu 2>&1 | tee scan_batch9.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume "$RESUME" $PROFILE_FLAG --batch eu 2>&1 | tee scan_batch9.log
 
       - uses: actions/upload-artifact@v5
         if: always()

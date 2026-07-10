@@ -1,0 +1,88 @@
+{
+  "jobs": {
+    "gea|unknown role": {
+      "title": "Unknown Role",
+      "company": "Gea",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733696",
+      "date_updated": "2026-07-10T22:22:20.733696",
+      "date_applied": "2026-07-10T22:22:20.733696",
+      "notes": "Email scan: applied"
+    },
+    "hydro|unknown role": {
+      "title": "Unknown Role",
+      "company": "Hydro",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733706",
+      "date_updated": "2026-07-10T22:22:20.733706",
+      "date_applied": "2026-07-10T22:22:20.733706",
+      "notes": "Email scan: applied"
+    },
+    "deloitte|unknown role": {
+      "title": "Unknown Role",
+      "company": "Deloitte",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733712",
+      "date_updated": "2026-07-10T22:22:20.733712",
+      "date_applied": "2026-07-10T22:22:20.733712",
+      "notes": "Email scan: applied"
+    },
+    "ey|unknown role": {
+      "title": "Unknown Role",
+      "company": "Ey",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733716",
+      "date_updated": "2026-07-10T22:22:20.733716",
+      "date_applied": "2026-07-10T22:22:20.733716",
+      "notes": "Email scan: applied"
+    },
+    "avery dennison|unknown role": {
+      "title": "Unknown Role",
+      "company": "Avery Dennison",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733720",
+      "date_updated": "2026-07-10T22:22:20.733720",
+      "date_applied": "2026-07-10T22:22:20.733720",
+      "notes": "Email scan: applied"
+    },
+    "atos|unknown role": {
+      "title": "Unknown Role",
+      "company": "Atos",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733729",
+      "date_updated": "2026-07-10T22:22:20.733729",
+      "date_applied": "2026-07-10T22:22:20.733729",
+      "notes": "Email scan: applied"
+    },
+    "adams|unknown role": {
+      "title": "Unknown Role",
+      "company": "Adams",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-10T22:22:20.733732",
+      "date_updated": "2026-07-10T22:22:20.733732",
+      "date_applied": "2026-07-10T22:22:20.733732",
+      "notes": "Email scan: applied"
+    }
+  }
+}

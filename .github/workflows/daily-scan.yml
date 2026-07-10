@@ -56,11 +56,32 @@ on:
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
         required: true
+      gmail_user:
+        description: "Gmail address (defaults to secrets.GMAIL_ADDRESS)"
+        required: false
+        default: ""
+      gmail_pass:
+        description: "Gmail App Password (defaults to secrets.GMAIL_APP_PASSWORD)"
+        required: false
+        default: ""
+      gsheet_id:
+        description: "Google Sheet ID for tracker (defaults to secrets.GSHEET_ID)"
+        required: false
+        default: ""
+      profile:
+        description: "Profile name to use (e.g. kamnee, pradeep). Defaults to auto-detect from resume."
+        required: false
+        default: ""
+      gmail_label:
+        description: "Gmail label for email scan (defaults to 'Interview')"
+        required: false
+        default: ""
 
 env:
-  GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-  GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-  GSHEET_ID: ${{ secrets.GSHEET_ID }}
+  GMAIL_ADDRESS: ${{ inputs.gmail_user || secrets.GMAIL_ADDRESS }}
+  GMAIL_APP_PASSWORD: ${{ inputs.gmail_pass || secrets.GMAIL_APP_PASSWORD }}
+  GSHEET_ID: ${{ inputs.gsheet_id || secrets.GSHEET_ID }}
+  GMAIL_LABEL: ${{ inputs.gmail_label || 'Interview' }}
 
 jobs:
   resolve:
@@ -185,7 +206,10 @@ jobs:
           "
 
       - name: Run batch
-        run: python daily_scan.py --resume resume.pdf --batch ${{ matrix.batch }} 2>&1 | tee scan_batch_${{ matrix.batch }}.log
+        run: |
+          PROFILE_FLAG=""
+          [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
+          python daily_scan.py --resume resume.pdf $PROFILE_FLAG --batch ${{ matrix.batch }} 2>&1 | tee scan_batch_${{ matrix.batch }}.log
 
       - uses: actions/upload-artifact@v5
         if: always()

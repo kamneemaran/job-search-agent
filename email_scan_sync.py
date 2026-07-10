@@ -1,25 +1,34 @@
 """Daily email scan: check Interview label for applied/rejected/offer, sync to sheet."""
-import imaplib, email, json, re, sys
+import imaplib, email, json, re, sys, os
 from datetime import datetime, timedelta
 
-GMAIL_USER = "kamneemaran45@gmail.com"
-GMAIL_PASS = "bttjcludverlbmnr"
-TRACKER_FILE = "job_tracker.json"
-STATE_FILE = "last_email_scan.json"
-GSHEET_ID = "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
-LABELS = ["Interview"]
+GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "kamneemaran45@gmail.com")
+GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "bttjcludverlbmnr")
+GSHEET_ID = os.environ.get("GSHEET_ID", "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg")
+profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
+TRACKER_FILE = os.environ.get("TRACKER_FILE", f"job_tracker_{profile_slug}.json")
+STATE_FILE = os.environ.get("STATE_FILE", f"last_email_scan_{profile_slug}.json")
+LABELS = [os.environ.get("GMAIL_LABEL", "Interview")]
 
 KNOWN_COMPANIES = [
-    "coinbase", "databricks", "datadog", "elastic", "airbnb", "stripe",
+    # Major tech
     "google", "microsoft", "amazon", "meta", "apple", "netflix", "spotify",
+    "coinbase", "databricks", "datadog", "elastic", "airbnb", "stripe",
     "linkedin", "twitter", "uber", "lyft", "pinterest", "reddit", "dropbox",
-    "gitlab", "vercel", "webflow", "upwork", "instacart", "discord", "monzo",
-    "adyen", "anthropic", "atlassian", "intuit", "wise", "postman",
-    "nutanix", "browserstack", "confluent", "snowflake", "canva", "mollie",
-    "n26", "bol", "join", "algolia", "bloomreach", "tide", "zscaler", "stream",
-    "olo", "signifyd", "workable", "grafana", "canonical", "freetrade",
-    "optiver", "coolblue", "kaufland", "airwallex", "headout", "about you",
-    "agoda", "re-leased", "privy", "salento", "justeat", "bonial",
+    "gitlab", "vercel", "webflow", "upwork", "instacart", "discord",
+    "adyen", "anthropic", "atlassian", "intuit", "postman",
+    "nutanix", "browserstack", "confluent", "snowflake", "canva",
+    # Consulting / enterprise
+    "deloitte", "ey", "atos", "ibm", "accenture", "capgemini", "infosys",
+    "tcs", "wipro", "cognizant", "genpact",
+    # SAP / ERP domain
+    "sap", "norsk hydro", "hydro", "avery dennison", "austro control",
+    # Other
+    "algolia", "bloomreach", "zscaler",
+    "signifyd", "workable", "grafana", "canonical", "freetrade",
+    "optiver", "coolblue", "kaufland", "airwallex", "headout",
+    "agoda", "re-leased", "privy", "justeat", "bonial",
+    "gea", "adams",
 ]
 
 def load_json(path, default):
@@ -36,24 +45,116 @@ def save_json(path, data):
 def job_key(title, company):
     return f"{company.lower()}|{title.lower()}"
 
-def extract_company(full_text, tracker_companies):
-    """Find which company appears in the email text — check tracker companies first."""
+def _parse_display_name(sender):
+    """Extract the display name from a From header, e.g. 'Deloitte Netherlands <x@y.com>' -> 'deloitte netherlands'."""
+    m = re.match(r'^"?([^"<]*?)"?\s*<', sender)
+    if m:
+        return m.group(1).strip().lower()
+    return sender.split("@")[0].replace(".", " ").strip().lower() if "@" in sender else sender.lower()
+
+def _extract_from_subject(subject, tracker_companies):
+    """Try to find company in subject line — e.g. 'at Deloitte', 'Deloitte -', 'Deloitte Netherlands'."""
+    s_lower = subject.lower()
+    # "at CompanyName" pattern
+    m = re.search(r'\bat\s+([a-zA-Z0-9\s&]+?)(?:\s*[–—-]|\s*$|\(|\))', s_lower)
+    if m:
+        candidate = m.group(1).strip()
+        if len(candidate) > 2:
+            return candidate.title()
+    # "CompanyName -" or "CompanyName |" pattern  
+    m = re.search(r'^([a-zA-Z0-9\s&]+?)\s*[–—\-|]', s_lower)
+    if m:
+        candidate = m.group(1).strip()
+        if len(candidate) > 2:
+            return candidate.title()
+    return None
+
+def _clean_display(raw):
+    """Remove common qualifiers from a sender display name."""
+    name = raw.lower()
+    for q in ["recruiting", "recruitment", "talent acquisition", "talent",
+              "noreply", "careers", "notification", "hiring", "nl"]:
+        name = name.replace(q, "").strip()
+    return name.strip(" ,-–—|")
+
+def extract_company(subject, sender, full_text, tracker_companies):
+    """Find which company appears in the email text.
+    
+    Priority:
+      1. Sender display name (e.g. 'Deloitte Netherlands <x@y.com>' -> 'Deloitte')
+      2. Subject line (e.g. 'at Deloitte', 'Deloitte -')
+      3. KNOWN_COMPANIES (min 4 chars)
+      4. Tracker companies
+      5. Domain extraction (@company.com -> Company)
+    """
     full_lower = full_text.lower()
-    # Check known companies that are in the tracker first
+
+    # 1. Sender display name
+    # Parse: "Display Name <email>" or "<email>" or just "email"
+    sm = re.match(r'^"?([^"<]*?)"?\s*<[^>]+@[^>]+>', sender)
+    if sm:
+        display = _clean_display(sm.group(1))
+    elif "@" in sender:
+        display = _clean_display(sender.split("@")[0].replace(".", " "))
+    else:
+        display = _clean_display(sender)
+    
+    if display:
+        display_words = display.split()
+        # Check known companies first (word-boundary match in display name)
+        for c in KNOWN_COMPANIES:
+            if len(c) >= 4:
+                if c in display:
+                    return c.title() if c.islower() else c
+            elif len(c) >= 2:
+                # 2-3 char names: exact word match to avoid substring false positives
+                if re.search(rf'\b{re.escape(c)}\b', display):
+                    return c.title() if c.islower() else c
+        # Filter out common person first names and generic roles
+        _common_names = {"kalimi", "mohini", "agnes", "monika", "csorba",
+                         "pradeep", "kamnee", "maran", "john", "jane",
+                         "michael", "david", "sarah", "lisa", "thomas"}
+        significant = [w for w in display_words if len(w) >= 4
+                       and w not in _common_names
+                       and w not in ("human", "resources", "department",
+                                     "information", "technology")]
+        if significant:
+            return max(significant, key=len).title()
+        # All display words are known names — fall through to subject/domain
+        if not all(w in _common_names or len(w) < 4 for w in display_words):
+            # Some non-name word exists (like "ey"), use the longest
+            longest = max(display_words, key=len)
+            if len(longest) >= 2:
+                return longest.title()
+
+    # 2. Subject line — check known companies (word-boundary)
+    s_lower = subject.lower()
+    for c in KNOWN_COMPANIES:
+        if len(c) >= 2 and re.search(rf'\b{re.escape(c)}\b', s_lower):
+            return c.title() if c.islower() else c
+    # "Thank you for applying to EY" -> skip "thank you for applying" etc
+    # Match: "at Deloitte", "with Deloitte", "bei Austro Control"
+    m = re.search(r'\b(?:at|with|bei)\s+([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)', subject)
+    if m:
+        return m.group(1).strip()
+
+    # 3. KNOWN_COMPANIES in subject+sender (first 300 chars to avoid footer false matches)
+    for c in KNOWN_COMPANIES:
+        if len(c) >= 4 and re.search(rf'\b{re.escape(c)}\b', full_lower[:300]):
+            return c.title() if c.islower() else c
+
+    # 4. Tracker companies
     for c in tracker_companies:
         cl = c.lower()
         if cl in full_lower and len(cl) > 2:
             return c
-    # Then check broader known companies
-    for c in KNOWN_COMPANIES:
-        if c in full_lower and len(c) > 2:
-            return c.title() if c.islower() else c
-    # Try domain-based extraction as fallback
+
+    # 5. Domain extraction (@company.com -> Company)
     m = re.search(r'@([a-zA-Z0-9-]+)\.(com|io|ai|co|de|nl|uk)', full_text[:500])
     if m:
         domain = m.group(1).lower()
         if domain not in ("gmail", "outlook", "yahoo", "hotmail", "icloud", "protonmail"):
-            return domain.title()
+            return domain.title() if domain.islower() else domain
     return None
 
 def main():
@@ -63,7 +164,7 @@ def main():
     state = load_json(STATE_FILE, {"last_scan": None})
 
     days = 90 if (full_scan or state.get("last_scan") is None) else max(1, (datetime.now() - datetime.fromisoformat(state["last_scan"])).days + 2)
-    print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of Interview label ===", flush=True)
+    print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {LABELS} label(s) ===", flush=True)
 
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
     mail.login(GMAIL_USER, GMAIL_PASS)
@@ -71,7 +172,9 @@ def main():
     results = []
     for label in LABELS:
         try:
-            mail.select(label)
+            # Quote if containing spaces to satisfy IMAP parser
+            imap_label = f'"{label}"' if " " in label else label
+            mail.select(imap_label)
         except:
             print(f"  [!] Cannot select '{label}'", flush=True)
             continue
@@ -112,22 +215,29 @@ def main():
     for subject, sender, body, date in results:
         full = f"{subject} {sender} {body}".lower()
 
-        if any(kw in full for kw in ["offer", "offer letter", "congratulations", "we are pleased to inform"]):
+        # Determine status — check NEW email only (body without quoted reply)
+        body_clean = body.split("-----Original Message-----")[0]
+        body_clean = body_clean.split("From:")[0]
+        body_clean = body_clean.split("Sent:")[0]
+        body_clean = body_clean.split("________________________________")[0]
+        full_clean = f"{subject} {sender} {body_clean}".lower()
+
+        if any(kw in full_clean for kw in ["offer letter", "congratulations", "we are pleased to inform"]):
             status = "offer"
-        elif any(kw in full for kw in ["unfortunately", "not moving forward", "regret to inform",
-                                        "not selected", "position has been filled",
-                                        "update about your application", "status of your application",
-                                        "application status", "update on your application"]):
+        elif any(kw in full_clean for kw in ["not moving forward", "regret to inform",
+                                              "not selected", "position has been filled"]):
             status = "rejected"
-        elif any(kw in full for kw in ["application received", "thank you for applying",
-                                        "received your application", "we have received",
-                                        "application submitted", "application confirmation",
-                                        "thank you for your interest", "your application has been received"]):
+        elif any(kw in full_clean for kw in ["application received", "thank you for applying",
+                                              "thank you for your application",
+                                              "received your application", "we have received",
+                                              "application submitted", "application confirmation",
+                                              "thank you for your interest", "your application has been received",
+                                              "thank you for submitting", "your application for"]):
             status = "applied"
         else:
             continue
 
-        company = extract_company(full, tracker_companies)
+        company = extract_company(subject, sender, full, tracker_companies)
         if company:
             updated_companies[company] = status
 

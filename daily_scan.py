@@ -4723,6 +4723,15 @@ def _card_rows(matches):
         jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
         ea = _easy_apply_ats(m.get("company", ""))
         ea_html = f"""<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ Easy Apply ({ea})</span>""" if ea and ea in EASY_APPLY_ATS else ""
+        tr_status = m.get("tracker_status")
+        tr_html = ""
+        if tr_status:
+            tr_date = m.get("tracker_date", "")
+            tr_icon = "✅" if tr_status == "applied" else "❌" if tr_status == "rejected" else "⚠️"
+            tr_bg = "#e8f5e9" if tr_status == "applied" else "#ffebee" if tr_status == "rejected" else "#fff8e1"
+            tr_color = "#2e7d32" if tr_status == "applied" else "#c62828" if tr_status == "rejected" else "#f57f17"
+            date_label = f" on {tr_date}" if tr_date else ""
+            tr_html = f"""<br><span style="display:inline-block;background:{tr_bg};color:{tr_color};font-size:12px;padding:3px 8px;border-radius:4px;margin-top:6px;">{tr_icon} Already {tr_status}{date_label}</span>"""
         ago = m.get("ago", "") or ""
         ago_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {ago}</span>""" if ago else ""
         co_desc = _company_description(m.get("company", ""))
@@ -4742,7 +4751,7 @@ def _card_rows(matches):
         <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>
       </div>
       {salary_line}
-      <p style="margin:0 0 8px;font-size:13px;color:#444;">{m.get('relocation_note', '')}</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#444;">{m.get('relocation_note', '')}{tr_html}</p>
       <ul style="margin:0 0 8px;font-size:13px;color:#444;">
         {''.join(f'<li>{s}</li>' for s in m.get('suggestions', []))}
       </ul>
@@ -5148,6 +5157,36 @@ class JobTracker:
         key = self.job_key(title, company)
         entry = self.data["jobs"].get(key, {})
         return entry.get("status", "new")
+
+    def get_tracker_info(self, title, company):
+        """Return (status, date_updated) if this exact (title, company) is tracked, else (None, None)."""
+        key = self.job_key(title, company)
+        entry = self.data["jobs"].get(key)
+        if entry and entry.get("status") in ("applied", "rejected", "offer"):
+            return entry["status"], entry.get("date_updated", "") or entry.get("date_found", "")
+        return None, None
+
+    def get_company_status(self, company, within_months=6):
+        """Check if company has any applied/rejected/offer entry within the given months.
+        Returns (status, title, date) of the most recent entry, or (None, None, None)."""
+        best_status, best_title, best_date = None, None, None
+        now = datetime.now()
+        for entry in self.data["jobs"].values():
+            if entry.get("company", "").lower() != company.lower():
+                continue
+            status = entry.get("status", "")
+            if status not in ("applied", "rejected", "offer"):
+                continue
+            date_str = entry.get("date_updated", "") or entry.get("date_found", "")
+            if date_str:
+                try:
+                    d = datetime.fromisoformat(date_str)
+                    if (now - d).days <= within_months * 30:
+                        if best_date is None or d > datetime.fromisoformat(best_date):
+                            best_status, best_title, best_date = status, entry.get("title", ""), date_str
+                except ValueError:
+                    continue
+        return best_status, best_title, best_date
 
     def add_job(self, title, company, url="", score=0, status="new", resume=""):
         key = self.job_key(title, company)
@@ -6962,8 +7001,6 @@ def main():
 
     # Helper to check tracker before adding a match
     def should_include(job):
-        if tracker.is_known(job["title"], job["company"]):
-            return False
         # Skip jobs posted more than 6 months ago
         posted = job.get("posted_at")
         if posted is not None and not _is_within_months(posted, 6):
@@ -7399,8 +7436,8 @@ def main():
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
         _retry_empty(empty, fetch_jobs_from_source, "Middle East sources")
 
-    # --- Email digest scan (Glassdoor / Indeed) — only for own profile (Gmail creds are hardcoded) ---
-    if args.digest and "kamnee" in PROFILE.get("name", "").lower():
+    # --- Email digest scan (Glassdoor / Indeed) — set GMAIL_ADDRESS/GMAIL_APP_PASSWORD env or secrets ---
+    if args.digest:
         print(f"\n  [digest] Scanning Gmail for job digest emails...")
         try:
             from email_digest_scan import parse_all_digests
@@ -7529,6 +7566,15 @@ def main():
     # --- Save new matches to tracker (with resume info) ---
     for m in all_matches:
         tracker.add_job(m["title"], m["company"], m.get("url", ""), m["score"], resume=m.get("resume", ""))
+
+    # --- Annotate matches with previous tracker status (same company, within 6 months) ---
+    if args.profile or args.resume:
+        for m in all_matches:
+            tr_status, tr_title, tr_date = tracker.get_company_status(m["company"], within_months=6)
+            if tr_status:
+                m["tracker_status"] = tr_status
+                m["tracker_date"] = tr_date[:10] if tr_date else ""
+                print(f"  [tracked] {m['company']} — already {tr_status} ({tr_date[:10] if tr_date else '?'})")
 
     print(f"Found {len(all_matches)} matches above {args.threshold}% threshold.")
     print(f"  [tracker] {len(tracker.data['jobs'])} total jobs tracked")

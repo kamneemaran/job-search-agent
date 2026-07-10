@@ -170,9 +170,11 @@
       "company": "Deloitte",
       "url": "https://in.linkedin.com/jobs/view/software-engineer-at-deloitte-4414036083?position=10&amp;pageNum=0&amp;refId=eWxuEqgsd0nlNGZNpxBwPQ%3D%3D&amp;trackingId=xREvesRMxkNhXPL5WHzKXA%3D%3D",
       "score": 85,
-      "status": "new",
+      "status": "applied",
       "date_found": "2026-06-20T00:54:12.886114",
-      "date_updated": "2026-06-20T00:54:12.886120"
+      "date_updated": "2026-07-09T19:21:08.219493",
+      "date_applied": "2026-07-09T19:21:08.219493",
+      "notes": "Email scan: applied"
     },
     "gitlab|staff backend engineer (go), continuous delivery": {
       "title": "Staff Backend Engineer (Go), Continuous Delivery",
@@ -1379,9 +1381,11 @@
       "company": "Deloitte",
       "url": "https://in.linkedin.com/jobs/view/full-stack-developer-at-deloitte-4349600916?position=1&amp;pageNum=0&amp;refId=d1W6ZWVupZrimDwYSxYd2A%3D%3D&amp;trackingId=Dggppn45jbkYc%2FDl9u2oYg%3D%3D",
       "score": 78,
-      "status": "new",
+      "status": "applied",
       "date_found": "2026-06-20T01:21:43.284987",
-      "date_updated": "2026-06-20T01:21:43.285017"
+      "date_updated": "2026-07-09T19:21:08.219493",
+      "date_applied": "2026-07-09T19:21:08.219493",
+      "notes": "Email scan: applied"
     },
     "gitlab|intermediate backend engineer (c), tenant scale: git ": {
       "title": "Intermediate Backend Engineer (C), Tenant Scale: Git ",
@@ -1744,12 +1748,13 @@
       "company": "Linkedin",
       "url": "",
       "score": "",
-      "status": "applied",
+      "status": "rejected",
       "resume": "",
       "date_found": "2026-06-27T00:55:15.593968",
-      "date_updated": "2026-06-27T00:55:15.593968",
+      "date_updated": "2026-07-09T19:20:39.153348",
       "date_applied": "2026-06-27T00:55:15.593968",
-      "notes": "Email scan: applied"
+      "notes": "Email scan: rejected",
+      "date_rejected": "2026-07-09T19:20:39.153348"
     },
     "agoda|unknown role": {
       "title": "Unknown Role",
@@ -1798,6 +1803,18 @@
       "date_updated": "2026-06-27T00:55:15.593991",
       "date_rejected": "2026-06-27T00:55:15.593991",
       "notes": "Email scan: rejected"
+    },
+    "join|unknown role": {
+      "title": "Unknown Role",
+      "company": "Join",
+      "url": "",
+      "score": "",
+      "status": "applied",
+      "resume": "",
+      "date_found": "2026-07-09T19:21:08.219687",
+      "date_updated": "2026-07-09T19:21:08.219687",
+      "date_applied": "2026-07-09T19:21:08.219687",
+      "notes": "Email scan: applied"
     }
   }
 }
