@@ -4890,7 +4890,7 @@ def send_email(html_body, subject="Daily Job Matches"):
     msg["Subject"] = subject
     msg["From"] = gmail_address
     msg["To"] = recipient
-    msg.attach(MIMEText(html_body, "html"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
