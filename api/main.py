@@ -39,13 +39,8 @@ def _get_ds():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Try to load daily_scan at startup, but don't block if it fails."""
-    try:
-        _get_ds()
-        logger.info("daily_scan loaded successfully")
-    except Exception as e:
-        logger.warning(f"Failed to load daily_scan at startup: {e}")
     yield
+    logger.info("Shutting down")
 
 
 app = FastAPI(
