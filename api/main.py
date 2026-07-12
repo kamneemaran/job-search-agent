@@ -97,7 +97,7 @@ app.include_router(digest_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.environ.get("ALLOWED_ORIGINS", "*").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -154,7 +154,7 @@ def update_profile(
 
 
 @app.post("/api/resume/upload", response_model=ResumeUploadResponse)
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files supported")
 
@@ -166,6 +166,44 @@ async def upload_resume(file: UploadFile = File(...)):
 
     try:
         profile, missing = ds.parse_resume_pdf(tmp_path)
+
+        # Save to Supabase if authenticated
+        if authorization:
+            try:
+                sb = get_user_client(authorization)
+                user = sb.auth.get_user()
+                user_id = user.id
+                filename = file.filename
+                storage_path = f"{user_id}/{filename}"
+
+                # Upload file to storage
+                sb.storage.from_("resumes").upload(storage_path, content, {"content-type": "application/pdf", "upsert": "true"})
+
+                # Deactivate other resumes
+                sb.table("resumes").update({"is_active": False}).eq("user_id", user_id).eq("is_active", True).execute()
+
+                # Insert new resume record
+                sb.table("resumes").insert({
+                    "user_id": user_id,
+                    "filename": filename,
+                    "storage_path": storage_path,
+                    "parsed_name": profile.get("name", ""),
+                    "parsed_role": profile.get("current_role", ""),
+                    "parsed_skills": profile.get("core_skills", []),
+                    "parsed_experience": profile.get("years_experience", 0),
+                    "is_active": True,
+                }).execute()
+
+                # Update profiles table
+                sb.table("profiles").upsert({
+                    "id": user_id,
+                    "core_skills": profile.get("core_skills", []),
+                    "current_role": profile.get("current_role", ""),
+                    "years_experience": profile.get("years_experience", 0),
+                }, on_conflict="id").execute()
+            except Exception:
+                pass
+
         return ResumeUploadResponse(
             name=profile.get("name", ""),
             email=profile.get("email", ""),
@@ -274,5 +312,19 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
     all_jobs.sort(key=lambda j: j.score, reverse=True)
     all_jobs = all_jobs[:req.max_results * 2]
+
+    # Log search to searches table for rate limiting
+    if authorization:
+        try:
+            sb = get_user_client(authorization)
+            user = sb.auth.get_user()
+            sb.table("searches").insert({
+                "user_id": user.id,
+                "query": req.query,
+                "location": req.location,
+                "results_count": len(all_jobs),
+            }).execute()
+        except Exception:
+            pass
 
     return SearchResponse(jobs=all_jobs, total=len(all_jobs), query=req.query)

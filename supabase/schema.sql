@@ -170,6 +170,7 @@ create table public.email_preferences (
   enabled boolean default false,
   frequency text default 'weekly' check (frequency in ('daily', 'weekly', 'biweekly')),
   email text default '',
+  last_sent_at timestamptz default null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

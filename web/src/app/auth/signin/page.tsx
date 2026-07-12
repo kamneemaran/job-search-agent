@@ -88,6 +88,29 @@ export default function SignInPage() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
 
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-gray-900 px-2 text-gray-500">or continue with</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = getBrowserClient();
+              await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: `${window.location.origin}/auth/callback` },
+              });
+            }}
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 font-semibold text-white hover:bg-gray-700 transition-colors"
+          >
+            Sign in with Google
+          </button>
+
           <p className="text-center text-sm text-gray-500">
             Don&apos;t have an account?{" "}
             <Link
