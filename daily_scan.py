@@ -37,6 +37,7 @@ from global_companies import GLOBAL_JOB_SOURCES
 from apac_companies import APAC_JOB_SOURCES
 from us_canada_companies import US_CANADA_JOB_SOURCES
 from middle_east_companies import MIDDLE_EAST_JOB_SOURCES
+from remote_companies import REMOTE_JOB_SOURCES
 from dotenv import load_dotenv
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -6875,7 +6876,7 @@ def main():
                         help="Also scan Gmail for Glassdoor/Indeed job digest emails")
     parser.add_argument("--digest-label", default=None,
                         help="Gmail label for digest emails (default: INBOX or GMAIL_DIGEST_LABEL env)")
-    _BATCH_CHOICES = ["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east"]
+    _BATCH_CHOICES = ["ats", "boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "playwright", "eu", "global", "apac", "us-canada", "middle-east", "remote"]
     parser.add_argument("--batch", type=str, default="",
                         help=f"Batch(es) to run: comma-separated ({', '.join(_BATCH_CHOICES)}) or 'all'. Examples: --batch boards-major or --batch boards-major,boards-eu")
     parser.add_argument("--preview", action="store_true",
@@ -7229,7 +7230,7 @@ def main():
             ("Kelly", search_kelly),
         ]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote")):
+    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "remote")):
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
@@ -7496,6 +7497,23 @@ def main():
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
         _retry_empty(empty, fetch_jobs_from_source, "Middle East sources")
 
+    # --- Remote companies (batch: remote) ---
+    if args.batch == "remote":
+        import multiprocessing as _mp
+        _ctx = _mp.get_context("spawn")
+        sources = list(_interleave_sources(REMOTE_JOB_SOURCES))
+        with _ctx.Pool(processes=4) as pool:
+            results = pool.map(_fetch_source_jobs, sources)
+        for source, jobs, error in results:
+            print(f"Scanning: {source['name']} ({source.get('region','Remote')}) - {source['url']}")
+            if error:
+                print(f"  [error] {source['name']}: {error}")
+                failed_parse.append(source)
+                continue
+            if jobs:
+                _score_collect(jobs, source["name"], source.get("url"), all_matches)
+        _retry_empty(failed_parse, fetch_jobs_from_source, "Remote sources")
+
     # --- Email digest scan (Glassdoor / Indeed) — set GMAIL_ADDRESS/GMAIL_APP_PASSWORD env or secrets ---
     if args.digest:
         digest_label = args.digest_label or os.environ.get("GMAIL_DIGEST_LABEL")
@@ -7587,7 +7605,8 @@ def main():
                 "ats": "boards-major",
                 "boards-major": "boards-AU-NZ",
                 "boards-AU-NZ": "boards-remote",
-                "boards-remote": "boards-eu",
+                "boards-remote": "remote",
+                "remote": "boards-eu",
                 "boards-eu": "playwright",
                 "playwright": "global",
                 "global": "apac",

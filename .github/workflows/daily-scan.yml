@@ -53,6 +53,11 @@ on:
         required: false
         default: false
         type: boolean
+      batch-remote:
+        description: "Remote Companies + Remote Job Boards"
+        required: false
+        default: false
+        type: boolean
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
         required: true
@@ -102,6 +107,7 @@ jobs:
           [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"us-canada"}]')
           [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"middle-east"}]')
           [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"eu"}]')
+          [[ "${{ github.event.inputs.batch-remote }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"remote"}]')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   setup:
