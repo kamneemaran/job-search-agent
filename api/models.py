@@ -79,6 +79,16 @@ class TrackerUpdateRequest(BaseModel):
     notes: str = ""
 
 
+class TrackerAddRequest(BaseModel):
+    title: str
+    company: str
+    url: str = ""
+    score: int = 0
+    description: str = ""
+    salary: str = ""
+    location: str = ""
+
+
 class TrackerResponse(BaseModel):
     jobs: list[TrackerJob]
     total: int

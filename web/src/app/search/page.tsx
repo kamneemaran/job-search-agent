@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { searchJobs, type JobResult } from "@/lib/api";
+import { searchJobs, addToTracker, type JobResult } from "@/lib/api";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -11,6 +11,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<JobResult[]>([]);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
+  const [tracked, setTracked] = useState<Set<string>>(new Set());
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +32,29 @@ export default function SearchPage() {
       setResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddToTracker = async (job: JobResult) => {
+    const key = `${job.company}|${job.title}`;
+    try {
+      await addToTracker({
+        title: job.title,
+        company: job.company,
+        url: job.url,
+        score: job.score,
+        description: job.description,
+        salary: job.salary || "",
+        location: job.location,
+      });
+      setTracked((prev) => new Set(prev).add(key));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("409") || msg.includes("already")) {
+        setTracked((prev) => new Set(prev).add(key));
+      } else {
+        alert("Failed to add to tracker: " + msg);
+      }
     }
   };
 
@@ -124,56 +148,73 @@ export default function SearchPage() {
             </span>
           </div>
           <div className="space-y-3">
-            {results.map((job, i) => (
-              <div
-                key={`${job.company}-${job.title}-${i}`}
-                className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 hover:border-gray-700 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-white truncate">
-                        {job.title}
-                      </h3>
-                      <span
-                        className={`flex-shrink-0 rounded-md px-2.5 py-0.5 text-sm font-bold ${scoreColor(
-                          job.score
-                        )}`}
-                      >
-                        {job.score}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-400 mb-2">
-                      {job.company}
-                      {job.location && ` · ${job.location}`}
-                      {job.salary && (
-                        <span className="ml-2 text-emerald-400">
-                          {job.salary}
+            {results.map((job, i) => {
+              const key = `${job.company}|${job.title}`;
+              const isTracked = tracked.has(key);
+              return (
+                <div
+                  key={key + i}
+                  className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 hover:border-gray-700 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-semibold text-white truncate">
+                          {job.title}
+                        </h3>
+                        <span
+                          className={`flex-shrink-0 rounded-md px-2.5 py-0.5 text-sm font-bold ${scoreColor(
+                            job.score
+                          )}`}
+                        >
+                          {job.score}
                         </span>
+                      </div>
+                      <div className="text-sm text-gray-400 mb-2">
+                        {job.company}
+                        {job.location && ` · ${job.location}`}
+                        {job.salary && (
+                          <span className="ml-2 text-emerald-400">
+                            {job.salary}
+                          </span>
+                        )}
+                      </div>
+                      {job.note && (
+                        <p className="text-xs text-gray-500 mb-2">{job.note}</p>
+                      )}
+                      {job.description && (
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {job.description}
+                        </p>
                       )}
                     </div>
-                    {job.note && (
-                      <p className="text-xs text-gray-500 mb-2">{job.note}</p>
-                    )}
-                    {job.description && (
-                      <p className="text-xs text-gray-500 line-clamp-2">
-                        {job.description}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleAddToTracker(job)}
+                        disabled={isTracked}
+                        className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          isTracked
+                            ? "bg-emerald-600/20 border border-emerald-600/30 text-emerald-400 cursor-default"
+                            : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+                        }`}
+                      >
+                        {isTracked ? "✓ Tracked" : "+ Track"}
+                      </button>
+                      {job.url && (
+                        <a
+                          href={job.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:bg-gray-800 transition-colors"
+                        >
+                          Apply &rarr;
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  {job.url && (
-                    <a
-                      href={job.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:bg-gray-800 transition-colors"
-                    >
-                      Apply &rarr;
-                    </a>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -21,6 +21,7 @@ from api.models import (
     ResumeUploadResponse, ProfileResponse,
     TrackerJob, TrackerUpdateRequest, TrackerResponse,
 )
+from api.tracker import router as tracker_router
 
 _ds = None
 
@@ -53,6 +54,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.include_router(tracker_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -182,43 +185,3 @@ def search_jobs(req: SearchRequest):
     all_jobs = all_jobs[:req.max_results * 2]
 
     return SearchResponse(jobs=all_jobs, total=len(all_jobs), query=req.query)
-
-
-@app.get("/api/tracker", response_model=TrackerResponse)
-def get_tracker(status: str = "", limit: int = 50):
-    ds = _get_ds()
-    tracker = ds.JobTracker()
-    jobs = []
-    for key, info in tracker.data.get("jobs", {}).items():
-        if status and info.get("status", "new") != status:
-            continue
-        jobs.append(TrackerJob(
-            title=info.get("title", ""),
-            company=info.get("company", ""),
-            url=info.get("url", ""),
-            score=info.get("score", 0),
-            status=info.get("status", "new"),
-            date_found=info.get("date_found", ""),
-            date_updated=info.get("date_updated", ""),
-            notes=info.get("notes", ""),
-        ))
-    jobs.sort(key=lambda j: j.date_updated or j.date_found or "", reverse=True)
-    return TrackerResponse(jobs=jobs[:limit], total=len(jobs))
-
-
-@app.post("/api/tracker/update")
-def update_tracker(req: TrackerUpdateRequest):
-    ds = _get_ds()
-    tracker = ds.JobTracker()
-    success = tracker.update_status(req.title, req.company, req.status, req.notes)
-    if not success:
-        raise HTTPException(404, "Job not found in tracker")
-    return {"status": "updated", "title": req.title, "company": req.company, "new_status": req.status}
-
-
-@app.post("/api/tracker/add")
-def add_to_tracker(req: TrackerJob):
-    ds = _get_ds()
-    tracker = ds.JobTracker()
-    tracker.add_job(req.title, req.company, req.url, req.score, req.status)
-    return {"status": "added", "title": req.title, "company": req.company}

@@ -1,3 +1,5 @@
+import { getBrowserClient } from "@/lib/supabase/client";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface JobResult {
@@ -44,11 +46,25 @@ export interface Profile {
   seniority_keywords: string[];
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = getBrowserClient();
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const authHeaders = await getAuthHeaders();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...options?.headers,
     },
   });
@@ -104,6 +120,29 @@ export async function getProfile(): Promise<Profile> {
 export async function getTracker(status?: string): Promise<{ jobs: TrackerJob[]; total: number }> {
   const qs = status ? `?status=${status}` : "";
   return apiFetch(`/api/tracker${qs}`);
+}
+
+export async function addToTracker(params: {
+  title: string;
+  company: string;
+  url?: string;
+  score?: number;
+  description?: string;
+  salary?: string;
+  location?: string;
+}): Promise<{ status: string; id: string | null }> {
+  return apiFetch("/api/tracker/add", {
+    method: "POST",
+    body: JSON.stringify({
+      title: params.title,
+      company: params.company,
+      url: params.url || "",
+      score: params.score || 0,
+      description: params.description || "",
+      salary: params.salary || "",
+      location: params.location || "",
+    }),
+  });
 }
 
 export async function updateTracker(params: {

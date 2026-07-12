@@ -7597,6 +7597,14 @@ def main():
                 print(f"  [preview] Saved to preview.html ({len(html)} bytes) — open in browser")
             else:
                 send_email(html, subject=subject)
+            # Auto-log jobs to web tracker
+            try:
+                from api.email_tracker import log_jobs_to_tracker
+                logged = log_jobs_to_tracker(all_matches)
+                if logged:
+                    print(f"  [tracker] Logged {logged} jobs to web tracker")
+            except Exception:
+                pass
         else:
             print(f"  [email] No matches found for resume - skipping email")
 
@@ -7676,6 +7684,14 @@ def main():
         if args.digest:
             label += "+Digests"
         send_email(html, subject=f"{person_name}-Job matches-{label}")
+        # Auto-log jobs to web tracker
+        try:
+            from api.email_tracker import log_jobs_to_tracker
+            logged = log_jobs_to_tracker(all_matches)
+            if logged:
+                print(f"  [tracker] Logged {logged} jobs to web tracker")
+        except Exception:
+            pass
     else:
         print(f"  [email] No matches found for resume - skipping email")
 
