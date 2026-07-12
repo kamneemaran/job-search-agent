@@ -4877,13 +4877,13 @@ def build_email_html(matches, failed_parse=None):
 
 
 def send_email(html_body, subject="Daily Job Matches"):
-    gmail_address = os.environ.get("GMAIL_ADDRESS")
+    gmail_address = os.environ.get("GMAIL_ADDRESS") or "kamneemaran45@gmail.com"
     gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
     recipient = os.environ.get("EMAIL_TO") or gmail_address
 
-    if not gmail_address or not gmail_app_password:
-        print("Email not sent - GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set.")
-        print("See setup notes in README for how to create a Gmail App Password.")
+    if not gmail_app_password:
+        print("Email not sent - GMAIL_APP_PASSWORD not set.")
+        print("Set GMAIL_APP_PASSWORD in .env or as environment variable.")
         return False
 
     msg = MIMEMultipart("alternative")
@@ -5348,7 +5348,7 @@ class JobTracker:
     def load_from_gsheet(self):
         """Load tracked jobs from Google Sheets 'All Jobs' tab.
         Falls back to local file if sheets unavailable."""
-        gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+        gsheet_id = os.environ.get("GSHEET_ID")
         gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
         if not gsheet_id or not os.path.exists(gsheet_sa_path):
             return False
@@ -7498,36 +7498,40 @@ def main():
 
     # --- Email digest scan (Glassdoor / Indeed) — set GMAIL_ADDRESS/GMAIL_APP_PASSWORD env or secrets ---
     if args.digest:
-        print(f"\n  [digest] Scanning Gmail for job digest emails...")
-        try:
-            from email_digest_scan import parse_all_digests
-            digest_jobs = parse_all_digests(days=7, label=args.digest_label)
-            print(f"  [digest] {len(digest_jobs)} jobs parsed, scoring...")
-            for dj in digest_jobs:
-                if not should_include(dj):
-                    continue
-                score, relocation_note = score_job(dj.get("title", ""), dj.get("description", ""), dj.get("company", ""))
-                score, relocation_note = _title_only_bypass(dj, score, relocation_note, args.threshold)
-                if score >= 50:
-                    if score >= args.threshold:
-                        print(f"  [digest-match] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
-                    else:
-                        print(f"  [digest-near] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
-                    resume = pick_resume(dj.get("company", ""))
-                    suggestions = tailoring_suggestion(dj.get("title", ""), "", dj.get("company", ""))
-                    salary_info = get_salary_info(dj.get("company", ""), dj.get("title", ""), "")
-                    all_matches.append({
-                        **dj,
-                        "score": score,
-                        "resume": resume,
-                        "company_url": company_url(dj.get("company", ""), ""),
-                        "relocation_note": relocation_note,
-                        "suggestions": suggestions,
-                        "salary_info": salary_info,
-                        "source": dj.get("source", "email-digest"),
-                    })
-        except Exception as e:
-            print(f"  [digest] ERROR: {e}")
+        digest_label = args.digest_label or os.environ.get("GMAIL_DIGEST_LABEL")
+        if not digest_label:
+            print(f"\n  [digest] No GMAIL_DIGEST_LABEL set — skipping digest scan")
+        else:
+            print(f"\n  [digest] Scanning Gmail for job digest emails...")
+            try:
+                from email_digest_scan import parse_all_digests
+                digest_jobs = parse_all_digests(days=7, label=digest_label)
+                print(f"  [digest] {len(digest_jobs)} jobs parsed, scoring...")
+                for dj in digest_jobs:
+                    if not should_include(dj):
+                        continue
+                    score, relocation_note = score_job(dj.get("title", ""), dj.get("description", ""), dj.get("company", ""))
+                    score, relocation_note = _title_only_bypass(dj, score, relocation_note, args.threshold)
+                    if score >= 50:
+                        if score >= args.threshold:
+                            print(f"  [digest-match] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
+                        else:
+                            print(f"  [digest-near] {dj['title'][:60]} @ {dj.get('company','?')} (score {score})")
+                        resume = pick_resume(dj.get("company", ""))
+                        suggestions = tailoring_suggestion(dj.get("title", ""), "", dj.get("company", ""))
+                        salary_info = get_salary_info(dj.get("company", ""), dj.get("title", ""), "")
+                        all_matches.append({
+                            **dj,
+                            "score": score,
+                            "resume": resume,
+                            "company_url": company_url(dj.get("company", ""), ""),
+                            "relocation_note": relocation_note,
+                            "suggestions": suggestions,
+                            "salary_info": salary_info,
+                            "source": dj.get("source", "email-digest"),
+                        })
+            except Exception as e:
+                print(f"  [digest] ERROR: {e}")
 
     all_matches.sort(key=lambda m: m["score"], reverse=True)
 
@@ -7690,7 +7694,7 @@ def main():
         print(f"  [csv] Error saving CSV: {e}")
 
     # --- Push to Google Sheets if service account exists ---
-    gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+    gsheet_id = os.environ.get("GSHEET_ID")
     gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
     if gsheet_id and os.path.exists(gsheet_sa_path):
         try:
@@ -7748,7 +7752,7 @@ def sync_tracker_to_gsheet(tracker_instance=None):
     Can be called standalone (e.g. from MCP server after status updates).
     Returns True on success, False otherwise.
     """
-    gsheet_id = os.environ.get("GSHEET_ID") or "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg"
+    gsheet_id = os.environ.get("GSHEET_ID")
     gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
     if not gsheet_id or not os.path.exists(gsheet_sa_path):
         return False

@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 
 GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "")
 GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "")
-GSHEET_ID = os.environ.get("GSHEET_ID", "1NO-erkRi_aV7RSY8dMbZkxEZBA9jEN55IfIrK3S8WEg")
+GSHEET_ID = os.environ.get("GSHEET_ID")
 profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
 TRACKER_FILE = os.environ.get("TRACKER_FILE", f"job_tracker_{profile_slug}.json")
 STATE_FILE = os.environ.get("STATE_FILE", f"last_email_scan_{profile_slug}.json")
-LABELS = [os.environ.get("GMAIL_LABEL", "Interview")]
+LABELS = [os.environ.get("GMAIL_LABEL")] if os.environ.get("GMAIL_LABEL") else []
 
 KNOWN_COMPANIES = [
     # Major tech
@@ -165,6 +165,16 @@ def main():
 
     days = 90 if (full_scan or state.get("last_scan") is None) else max(1, (datetime.now() - datetime.fromisoformat(state["last_scan"])).days + 2)
     print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {LABELS} label(s) ===", flush=True)
+
+    if not LABELS:
+        print("  [!] No GMAIL_LABEL set — skipping label scan", flush=True)
+        print("=== Done ===", flush=True)
+        return
+
+    if not GMAIL_USER or not GMAIL_PASS:
+        print("  [!] No GMAIL_ADDRESS/GMAIL_APP_PASSWORD set — skipping email scan", flush=True)
+        print("=== Done ===", flush=True)
+        return
 
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
     mail.login(GMAIL_USER, GMAIL_PASS)
@@ -327,71 +337,74 @@ def main():
 
     # Sync to sheet
     print("  Syncing to Google Sheet...", flush=True)
-    try:
-        from google.oauth2 import service_account
-        from googleapiclient.discovery import build
-
-        creds = service_account.Credentials.from_service_account_file(
-            "gsheet_service_account.json",
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        service = build("sheets", "v4", credentials=creds)
-        sheet = service.spreadsheets()
-
+    if GSHEET_ID:
         try:
-            existing = sheet.values().get(spreadsheetId=GSHEET_ID, range="'job_matches'!A:L").execute()
-            existing_rows = existing.get("values", [])
-            existing_keys = set()
-            for row in existing_rows[1:]:
-                if len(row) >= 3:
-                    existing_keys.add((row[2].strip().lower(), row[1].strip().lower()))
-        except:
-            existing_rows = []
-            existing_keys = set()
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
 
-        header = ["Score", "Title", "Company", "Location", "URL", "Company Link",
-                   "Status", "Date Found", "Applied Date", "Rejection Date", "Offer Date", "Notes"]
-        new_rows = []
-        seen = set()
-        for entry in tracker["jobs"].values():
-            s = entry.get("status", "new")
-            if s not in ("applied", "rejected", "offer"):
-                continue
-            dedup = (entry["company"].lower(), entry.get("title", "").lower())
-            if dedup in seen or dedup in existing_keys:
-                continue
-            seen.add(dedup)
-            new_rows.append([
-                entry.get("score", ""),
-                entry.get("title", ""),
-                entry.get("company", ""),
-                "",
-                entry.get("url", ""),
-                "",
-                s,
-                (entry.get("date_found") or "")[:10],
-                (entry.get("date_applied") or "")[:10],
-                (entry.get("date_rejected") or "")[:10],
-                (entry.get("date_offer") or "")[:10],
-                (entry.get("notes") or "")[:80],
-            ])
+            creds = service_account.Credentials.from_service_account_file(
+                "gsheet_service_account.json",
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+            service = build("sheets", "v4", credentials=creds)
+            sheet = service.spreadsheets()
 
-        if not existing_rows:
-            sheet.values().update(
-                spreadsheetId=GSHEET_ID, range="'job_matches'!A1",
-                valueInputOption="RAW", body={"values": [header]}
-            ).execute()
+            try:
+                existing = sheet.values().get(spreadsheetId=GSHEET_ID, range="'job_matches'!A:L").execute()
+                existing_rows = existing.get("values", [])
+                existing_keys = set()
+                for row in existing_rows[1:]:
+                    if len(row) >= 3:
+                        existing_keys.add((row[2].strip().lower(), row[1].strip().lower()))
+            except:
+                existing_rows = []
+                existing_keys = set()
 
-        if new_rows:
-            sheet.values().append(
-                spreadsheetId=GSHEET_ID, range="'job_matches'!A:L",
-                valueInputOption="RAW", body={"values": new_rows}
-            ).execute()
-            print(f"  [gsheet] Added {len(new_rows)} rows", flush=True)
-        else:
-            print(f"  [gsheet] No new rows", flush=True)
-    except Exception as e:
-        print(f"  [gsheet] Error: {e}", flush=True)
+            header = ["Score", "Title", "Company", "Location", "URL", "Company Link",
+                       "Status", "Date Found", "Applied Date", "Rejection Date", "Offer Date", "Notes"]
+            new_rows = []
+            seen = set()
+            for entry in tracker["jobs"].values():
+                s = entry.get("status", "new")
+                if s not in ("applied", "rejected", "offer"):
+                    continue
+                dedup = (entry["company"].lower(), entry.get("title", "").lower())
+                if dedup in seen or dedup in existing_keys:
+                    continue
+                seen.add(dedup)
+                new_rows.append([
+                    entry.get("score", ""),
+                    entry.get("title", ""),
+                    entry.get("company", ""),
+                    "",
+                    entry.get("url", ""),
+                    "",
+                    s,
+                    (entry.get("date_found") or "")[:10],
+                    (entry.get("date_applied") or "")[:10],
+                    (entry.get("date_rejected") or "")[:10],
+                    (entry.get("date_offer") or "")[:10],
+                    (entry.get("notes") or "")[:80],
+                ])
+
+            if not existing_rows:
+                sheet.values().update(
+                    spreadsheetId=GSHEET_ID, range="'job_matches'!A1",
+                    valueInputOption="RAW", body={"values": [header]}
+                ).execute()
+
+            if new_rows:
+                sheet.values().append(
+                    spreadsheetId=GSHEET_ID, range="'job_matches'!A:L",
+                    valueInputOption="RAW", body={"values": new_rows}
+                ).execute()
+                print(f"  [gsheet] Added {len(new_rows)} rows", flush=True)
+            else:
+                print(f"  [gsheet] No new rows", flush=True)
+        except Exception as e:
+            print(f"  [gsheet] Error: {e}", flush=True)
+    else:
+        print("  [!] No GSHEET_ID set — skipping sheet sync", flush=True)
 
     print("=== Done ===", flush=True)
 

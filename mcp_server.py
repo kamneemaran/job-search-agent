@@ -113,10 +113,10 @@ def _send_exception_email(skipped: list[dict], batch_label: str = "MCP Search"):
     """Send an email with details of skipped sources/boards due to exceptions."""
     if not skipped:
         return
-    gmail_address = os.environ.get("GMAIL_ADDRESS")
+    gmail_address = os.environ.get("GMAIL_ADDRESS") or "kamneemaran45@gmail.com"
     gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
-    if not gmail_address or not gmail_app_password:
-        print("Exception email not sent - GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set.")
+    if not gmail_app_password:
+        print("Exception email not sent - GMAIL_APP_PASSWORD not set.")
         return
 
     rows = []

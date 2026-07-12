@@ -143,7 +143,7 @@ def parse_indeed_email(body):
 
 # ── Gmail fetching ─────────────────────────────────────────────────────────
 
-DIGEST_LABEL = os.environ.get("GMAIL_DIGEST_LABEL", "INBOX")
+DIGEST_LABEL = os.environ.get("GMAIL_DIGEST_LABEL")
 
 def fetch_glassdoor_emails(days=7, label=None):
     """Fetch Glassdoor digest emails and parse jobs."""
