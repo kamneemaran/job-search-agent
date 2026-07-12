@@ -17,3 +17,10 @@ ind_sponsors_cache.json
 *.log
 session-*.md
 .browser_state/
+
+# Web
+web/node_modules/
+web/.next/
+web/.env*.local
+*.tsbuildinfo
+next-env.d.ts
