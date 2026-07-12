@@ -27,6 +27,7 @@ from api.models import (
 from api.tracker import router as tracker_router
 from api.digest import router as digest_router
 from api.supabase import get_user_client
+from api.rate_limit import check_search_limit, increment_search_count, check_tracker_limit, get_max_results
 
 _ds = None
 _profile_lock = threading.Lock()
@@ -108,6 +109,17 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
+
+@app.get("/api/subscription")
+def get_subscription(authorization: Optional[str] = Header(None)):
+    from api.rate_limit import get_user_plan
+    info = get_user_plan(authorization)
+    return {
+        "plan": info["plan"],
+        "searches_today": info["searches_today"],
+        "tracker_count": info["tracker_count"],
+        "limits": info["limits"],
+    }
 
 @app.get("/api/profile", response_model=ProfileResponse)
 def get_profile(authorization: Optional[str] = Header(None)):
@@ -237,6 +249,10 @@ def score_job(req: ScoreRequest, authorization: Optional[str] = Header(None)):
 
 @app.post("/api/search", response_model=SearchResponse)
 def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None)):
+    # Rate limit check
+    check_search_limit(authorization)
+    max_results = min(req.max_results, get_max_results(authorization))
+
     ds = _get_ds()
     profile = _get_user_profile(authorization)
 
@@ -311,7 +327,10 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             continue
 
     all_jobs.sort(key=lambda j: j.score, reverse=True)
-    all_jobs = all_jobs[:req.max_results * 2]
+    all_jobs = all_jobs[:max_results * 2]
+
+    # Increment search count after successful search
+    increment_search_count(authorization)
 
     # Log search to searches table for rate limiting
     if authorization:

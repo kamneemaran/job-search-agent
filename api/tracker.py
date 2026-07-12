@@ -7,6 +7,7 @@ from api.models import (
     TrackerAddRequest,
 )
 from api.supabase import get_user_client
+from api.rate_limit import check_tracker_limit
 
 router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 
@@ -51,6 +52,9 @@ async def add_to_tracker(
     req: TrackerAddRequest,
     authorization: Optional[str] = Header(None),
 ):
+    # Check tracker limit before adding
+    check_tracker_limit(authorization)
+
     sb = get_user_client(authorization)
     user = sb.auth.get_user()
     if not user:

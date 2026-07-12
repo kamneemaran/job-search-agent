@@ -256,6 +256,38 @@ def run():
             logger.error(f"Failed to send email to {to_email}: {e}")
             continue
 
+        # Auto-log emailed jobs to user's tracker
+        try:
+            logged = 0
+            for job in jobs:
+                existing = (
+                    sb.table("jobs")
+                    .select("id")
+                    .eq("user_id", user_id)
+                    .eq("title", job["title"])
+                    .eq("company", job["company"])
+                    .limit(1)
+                    .execute()
+                )
+                if existing.data:
+                    continue
+                sb.table("jobs").insert({
+                    "user_id": user_id,
+                    "title": job["title"],
+                    "company": job["company"],
+                    "url": job.get("url", ""),
+                    "score": job.get("score", 0),
+                    "location": job.get("location", ""),
+                    "salary": job.get("salary", ""),
+                    "source": "email_digest",
+                    "status": "new",
+                }).execute()
+                logged += 1
+            if logged:
+                logger.info(f"Auto-logged {logged} jobs to tracker for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to auto-log jobs for user {user_id}: {e}")
+
         # Update last_sent_at
         sb.table("email_preferences").update({
             "last_sent_at": datetime.now(timezone.utc).isoformat(),

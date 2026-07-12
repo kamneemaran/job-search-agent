@@ -191,3 +191,31 @@ create policy "Users can insert own email preferences"
 create policy "Users can update own email preferences"
   on public.email_preferences for update
   using (auth.uid() = user_id);
+
+-- ── Subscription / Freemium ──────────────────────────────────────────────
+create table public.subscriptions (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null unique,
+  plan text default 'free' check (plan in ('free', 'pro', 'enterprise')),
+  searches_today int default 0,
+  searches_reset_at date default current_date,
+  tracker_count int default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index idx_subscriptions_user_id on public.subscriptions(user_id);
+
+alter table public.subscriptions enable row level security;
+
+create policy "Users can view own subscription"
+  on public.subscriptions for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own subscription"
+  on public.subscriptions for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own subscription"
+  on public.subscriptions for update
+  using (auth.uid() = user_id);
