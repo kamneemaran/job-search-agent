@@ -92,3 +92,16 @@ class TrackerAddRequest(BaseModel):
 class TrackerResponse(BaseModel):
     jobs: list[TrackerJob]
     total: int
+
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str = ""
+    current_role: str = ""
+    years_experience: int = 0
+    core_skills: list[str] = []
+
+
+class DigestPreferences(BaseModel):
+    enabled: bool = True
+    frequency: str = "weekly"
+    email: str = ""

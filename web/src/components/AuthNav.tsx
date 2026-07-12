@@ -54,6 +54,12 @@ export default function AuthNav() {
         >
           Dashboard
         </Link>
+        <Link
+          href="/settings"
+          className="hover:text-white transition-colors"
+        >
+          Settings
+        </Link>
         <button
           onClick={handleSignOut}
           className="rounded-lg border border-gray-700 px-3 py-1.5 text-gray-300 hover:bg-gray-800 transition-colors"

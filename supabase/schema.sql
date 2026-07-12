@@ -162,3 +162,31 @@ create policy "Users can delete own resumes"
     bucket_id = 'resumes'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- ── Email Preferences ────────────────────────────────────────────────────
+create table public.email_preferences (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null unique,
+  enabled boolean default false,
+  frequency text default 'weekly' check (frequency in ('daily', 'weekly', 'biweekly')),
+  email text default '',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index idx_email_prefs_user_id on public.email_preferences(user_id);
+create index idx_email_prefs_enabled on public.email_preferences(enabled) where enabled = true;
+
+alter table public.email_preferences enable row level security;
+
+create policy "Users can view own email preferences"
+  on public.email_preferences for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own email preferences"
+  on public.email_preferences for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own email preferences"
+  on public.email_preferences for update
+  using (auth.uid() = user_id);

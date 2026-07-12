@@ -156,3 +156,34 @@ export async function updateTracker(params: {
     body: JSON.stringify(params),
   });
 }
+
+export async function updateProfile(params: {
+  name: string;
+  current_role: string;
+  core_skills: string[];
+  years_experience: number;
+}): Promise<Profile> {
+  return apiFetch("/api/profile", {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
+export interface DigestPreferences {
+  enabled: boolean;
+  email: string;
+}
+
+export async function getDigestPreferences(): Promise<DigestPreferences> {
+  return apiFetch("/api/digest/preferences");
+}
+
+export async function updateDigestPreferences(params: {
+  enabled: boolean;
+  email: string;
+}): Promise<DigestPreferences> {
+  return apiFetch("/api/digest/preferences", {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
