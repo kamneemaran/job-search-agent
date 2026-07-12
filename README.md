@@ -1,6 +1,70 @@
-# Job Search Agent
+# Job Search Agent (JobPilot)
 
-Automated job scanner that discovers, scores, and tracks job opportunities from 25+ sources. Runs as a daily cron job (email digest + Google Sheets) and also exposes interactive tools via an **MCP server** (Model Context Protocol).
+An AI-powered multi-user job search, matching, and tracking platform.
+
+The system consists of:
+1. **Next.js Frontend (`web/`)**: Dark-themed dashboard, search interface, profile/settings, and authentication (via Supabase).
+2. **FastAPI Backend (`api/`)**: Scans 250+ company ATS and 15+ job boards, runs profile-tailored job scoring, handles tracker CRUD, and enforces freemium plan limits.
+3. **Weekly Digest Worker (`api/digest_worker.py`)**: A scheduled background worker that automatically queries user profiles, searches/scores matches, auto-logs matches to trackers, and sends beautiful dark-themed HTML emails via Gmail SMTP.
+
+---
+
+## ── Architecture Flow ──────────────────────────────────────────────────────
+
+```
+ ┌─────────────────────────────────────────────────────────────┐
+ │                      VERCEL FRONTEND                        │
+ │  (Next.js App, Supabase Client Auth, Google Sign-In, UI)    │
+ └──────────────┬──────────────────────────────┬───────────────┘
+                │ Auth Session                 │ API Requests (Bearer JWT)
+                ▼                              ▼
+ ┌──────────────────────────┐        ┌─────────────────────────┐
+ │    SUPABASE PROJECTS     │        │     RAILWAY BACKEND     │
+ │  (Database, Auth, Storage│        │  (FastAPI, Rate Limiter,│
+ │   RLS Policies, Buckets) │◄───────┤   JobPilot Core Engine) │
+ └──────────────▲───────────┘        └────────────┬────────────┘
+                │                                 │
+                │ Read Users &                    │ Scrapes & Matches
+                │ Update last_sent_at             ▼
+ ┌──────────────┴───────────┐        ┌─────────────────────────┐
+ │   DIGEST WORKER (CRON)   │        │     EXTERNAL ENGINES    │
+ │ (Daily/Weekly Scheduler) ├───────►│  (Company ATS feeds,    │
+ └──────────────┬───────────┘        │   Job spy, Playwright)  │
+                │                    └─────────────────────────┘
+                │ Sent Email
+                ▼
+ ┌──────────────────────────┐
+ │    USER INBOX (SMTP)     │
+ │ (Dark-themed HTML Digest)│
+ └──────────────────────────┘
+```
+
+### End-to-End User Journeys
+
+#### 1. Registration & Profiling
+1. User signs up via Email/Password or **Google OAuth** on Next.js.
+2. Supabase trigger auto-creates a profile record.
+3. User uploads their PDF resume on the **Settings** page.
+4. The backend parses the PDF via `parse_resume_pdf`, updates the user's `profiles` record (core skills, years of experience, current role), uploads the PDF to a private Supabase Storage folder (`resumes/{user_id}/{filename}`), and registers it in the `resumes` database table.
+
+#### 2. On-Demand Job Search & Tracking
+1. User searches for jobs on the `/search` page.
+2. The FastAPI server validates their **Freemium plan limit** (e.g., Free users get 5 searches/day, Pro users get 50/day).
+3. The search fetches jobs, then queries the database for the user's specific skills and experience to run the `score_job` function, returning a score (0-100) and match notes tailored exactly to *them*.
+4. User clicks "+ Track" on a job match.
+5. The backend validates their **Tracker Limit** (Free users can track up to 25 jobs, Pro users can track up to 500) and saves the job with status `new` to their tracker table. RLS policies isolate this job to their account only.
+6. On the `/dashboard` page, users can update job statuses (`applied`, `rejected`, `offer`) and add custom progress notes.
+
+#### 3. Automatic Scheduled Digests
+1. The **Weekly Digest Worker** runs as a daily cron job (scheduled via GitHub Actions).
+2. The worker pulls all users from the database with `enabled = true` in their `email_preferences`.
+3. It checks their preferred frequency (`daily`, `weekly`, `biweekly`) against `last_sent_at` to see if they're due.
+4. For due users, the worker builds expanded queries and runs a full, profile-specific search using their recorded skills and experience.
+5. If matches scoring $\ge 65$ are found, it:
+   - Formats a personalized, beautiful dark-themed HTML email with the matching jobs.
+   - Sends the email using Gmail SMTP (`GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` keys).
+   - **Auto-logs** the emailed jobs to the user's tracker database (marked as `new`).
+   - Updates their `last_sent_at` timestamp.
 
 ---
 
