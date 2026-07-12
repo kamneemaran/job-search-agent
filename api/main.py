@@ -3,11 +3,14 @@ import os
 import sys
 import json
 import tempfile
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger("jobpilot")
 
 # Add parent dir so we can import daily_scan
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -19,17 +22,33 @@ from api.models import (
     TrackerJob, TrackerUpdateRequest, TrackerResponse,
 )
 
+_ds = None
+
+def _get_ds():
+    global _ds
+    if _ds is None:
+        import daily_scan as ds
+        try:
+            ds._rebuild_precompiled_patterns()
+        except Exception:
+            pass
+        _ds = ds
+    return _ds
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load profile and precompile patterns on startup."""
-    import daily_scan as ds
-    ds._rebuild_precompiled_patterns()
+    """Try to load daily_scan at startup, but don't block if it fails."""
+    try:
+        _get_ds()
+        logger.info("daily_scan loaded successfully")
+    except Exception as e:
+        logger.warning(f"Failed to load daily_scan at startup: {e}")
     yield
 
 
 app = FastAPI(
-    title="Job Search Agent",
+    title="JobPilot API",
     description="AI-powered job search for tech roles — scoring, matching, and tracking.",
     version="1.0.0",
     lifespan=lifespan,
@@ -44,18 +63,14 @@ app.add_middleware(
 )
 
 
-# ── Health ──────────────────────────────────────────────────────────────────
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
-# ── Profile ─────────────────────────────────────────────────────────────────
-
 @app.get("/api/profile", response_model=ProfileResponse)
 def get_profile():
-    import daily_scan as ds
+    ds = _get_ds()
     p = ds.PROFILE
     return ProfileResponse(
         name=p.get("name", ""),
@@ -66,14 +81,12 @@ def get_profile():
     )
 
 
-# ── Resume Upload ───────────────────────────────────────────────────────────
-
 @app.post("/api/resume/upload", response_model=ResumeUploadResponse)
 async def upload_resume(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files supported")
 
-    import daily_scan as ds
+    ds = _get_ds()
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         content = await file.read()
         tmp.write(content)
@@ -93,22 +106,17 @@ async def upload_resume(file: UploadFile = File(...)):
         os.unlink(tmp_path)
 
 
-# ── Score a Job ─────────────────────────────────────────────────────────────
-
 @app.post("/api/score", response_model=ScoreResponse)
 def score_job(req: ScoreRequest):
-    import daily_scan as ds
+    ds = _get_ds()
     score, note = ds.score_job(req.title, req.description, req.company, req.location)
     return ScoreResponse(score=score, note=note, title=req.title, company=req.company)
 
 
-# ── Search Jobs ─────────────────────────────────────────────────────────────
-
 @app.post("/api/search", response_model=SearchResponse)
 def search_jobs(req: SearchRequest):
-    import daily_scan as ds
+    ds = _get_ds()
 
-    # Build search queries from the input
     queries = ds.build_domain_queries(
         skills=req.query.split(","),
         exp_years=ds.PROFILE.get("years_experience", 5),
@@ -118,7 +126,6 @@ def search_jobs(req: SearchRequest):
     all_jobs = []
     seen = set()
 
-    # Search company ATS sources
     all_sources = (
         ds.JOB_SOURCES
         + ds.EU_JOB_SOURCES
@@ -171,18 +178,15 @@ def search_jobs(req: SearchRequest):
         except Exception:
             continue
 
-    # Sort by score descending, cap results
     all_jobs.sort(key=lambda j: j.score, reverse=True)
     all_jobs = all_jobs[:req.max_results * 2]
 
     return SearchResponse(jobs=all_jobs, total=len(all_jobs), query=req.query)
 
 
-# ── Tracker ─────────────────────────────────────────────────────────────────
-
 @app.get("/api/tracker", response_model=TrackerResponse)
 def get_tracker(status: str = "", limit: int = 50):
-    import daily_scan as ds
+    ds = _get_ds()
     tracker = ds.JobTracker()
     jobs = []
     for key, info in tracker.data.get("jobs", {}).items():
@@ -204,7 +208,7 @@ def get_tracker(status: str = "", limit: int = 50):
 
 @app.post("/api/tracker/update")
 def update_tracker(req: TrackerUpdateRequest):
-    import daily_scan as ds
+    ds = _get_ds()
     tracker = ds.JobTracker()
     success = tracker.update_status(req.title, req.company, req.status, req.notes)
     if not success:
@@ -214,7 +218,7 @@ def update_tracker(req: TrackerUpdateRequest):
 
 @app.post("/api/tracker/add")
 def add_to_tracker(req: TrackerJob):
-    import daily_scan as ds
+    ds = _get_ds()
     tracker = ds.JobTracker()
     tracker.add_job(req.title, req.company, req.url, req.score, req.status)
     return {"status": "added", "title": req.title, "company": req.company}
