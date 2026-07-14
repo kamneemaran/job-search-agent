@@ -35,6 +35,10 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
         enabled=row.get("enabled", True),
         frequency=row.get("frequency", "weekly"),
         email=row.get("email", ""),
+        day_of_week=row.get("day_of_week", "monday"),
+        day_of_month=row.get("day_of_month", 1),
+        time_of_day=row.get("time_of_day", "09:00"),
+        sent_history=row.get("sent_history") or [],
     )
 
 
@@ -54,6 +58,10 @@ async def update_digest_preferences(
         "enabled": prefs.enabled,
         "frequency": prefs.frequency,
         "email": prefs.email,
+        "day_of_week": prefs.day_of_week,
+        "day_of_month": prefs.day_of_month,
+        "time_of_day": prefs.time_of_day,
+        "sent_history": prefs.sent_history,
     }
 
     sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
@@ -91,6 +99,79 @@ async def send_digest(
     to_email = req.email or row.get("email") or user.email or ""
 
     if req.schedule == "now":
+        # Get email preferences for frequency and sent history
+        pref_result = sb.table("email_preferences").select("*").eq("user_id", user.id).maybe_single().execute()
+        pref_row = pref_result.data if pref_result else None
+
+        frequency = pref_row.get("frequency", "weekly") if pref_row else "weekly"
+        sent_history = pref_row.get("sent_history", []) if pref_row else []
+
+        # Enforce rate limits based on user requirements:
+        # 1. "daily option we can click once in daily"
+        # 2. "weekly 1-2 times in week taht too on different day"
+        # 3. "monthly 1-2 times in month provided day has to be different"
+        now = datetime.now()
+        now_weekday = now.weekday()  # 0-6 (Mon-Sun)
+        now_day = now.day            # 1-31
+
+        # Filter sent_history to past 30 days to keep the JSON small
+        history_dates = []
+        for ts in sent_history:
+            try:
+                from datetime import datetime as dt_class
+                # Parse ISO timestamp
+                if "T" in ts:
+                    dt = datetime.fromisoformat(ts)
+                else:
+                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S.%f")
+                # If within 30 days, keep it
+                if (now - dt).days < 30:
+                    history_dates.append(dt)
+            except Exception:
+                pass
+
+        # Check limit logic:
+        if frequency == "daily":
+            # Can only send once per day. Check if any send was today.
+            for dt in history_dates:
+                if dt.date() == now.date():
+                    raise HTTPException(
+                        429,
+                        "Daily limit reached: You can only request an on-demand send once per day."
+                    )
+        elif frequency == "weekly":
+            # Can send 1-2 times in a week, provided the day is different.
+            # Get sends from current calendar week (defined by year & week number)
+            current_week_sends = [dt for dt in history_dates if dt.isocalendar()[1] == now.isocalendar()[1] and dt.year == now.year]
+            if len(current_week_sends) >= 2:
+                raise HTTPException(
+                    429,
+                    "Weekly limit reached: You can only request an on-demand send up to 2 times per week."
+                )
+            if len(current_week_sends) == 1:
+                # Check if it was on a different day of the week
+                if current_week_sends[0].weekday() == now_weekday:
+                    raise HTTPException(
+                        429,
+                        "Weekly limit reached: On-demand weekly digests can only be requested on different days of the same week."
+                    )
+        elif frequency == "monthly":
+            # Can send 1-2 times in a month, provided the day is different.
+            # Get sends from current calendar month
+            current_month_sends = [dt for dt in history_dates if dt.month == now.month and dt.year == now.year]
+            if len(current_month_sends) >= 2:
+                raise HTTPException(
+                    429,
+                    "Monthly limit reached: You can only request an on-demand send up to 2 times per month."
+                )
+            if len(current_month_sends) == 1:
+                # Check if it was on a different day of the month
+                if current_month_sends[0].day == now_day:
+                    raise HTTPException(
+                        429,
+                        "Monthly limit reached: On-demand monthly digests can only be requested on different days of the same month."
+                    )
+
         try:
             ds._rebuild_precompiled_patterns()
         except Exception:
@@ -151,11 +232,15 @@ async def send_digest(
         html = build_email_html(results)
         ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
 
-        # Update last_sent_at
+        # Update last_sent_at and sent_history
+        new_history = [dt.isoformat() for dt in history_dates]
+        new_history.append(now.isoformat())
+
         try:
             sb.table("email_preferences").upsert({
                 "user_id": user.id,
-                "last_sent_at": datetime.now().isoformat(),
+                "last_sent_at": now.isoformat(),
+                "sent_history": new_history,
             }, on_conflict="user_id").execute()
         except Exception:
             pass

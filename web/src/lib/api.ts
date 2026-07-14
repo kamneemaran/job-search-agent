@@ -181,6 +181,10 @@ export interface DigestPreferences {
   enabled: boolean;
   frequency: string;
   email: string;
+  day_of_week: string;
+  day_of_month: number;
+  time_of_day: string;
+  sent_history: string[];
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -191,6 +195,9 @@ export async function updateDigestPreferences(params: {
   enabled: boolean;
   frequency: string;
   email: string;
+  day_of_week: string;
+  day_of_month: number;
+  time_of_day: string;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",

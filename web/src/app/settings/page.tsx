@@ -27,8 +27,10 @@ export default function SettingsPage() {
   const [skills, setSkills] = useState<string[]>([]);
 
   // Digest state
-  const [digestEnabled, setDigestEnabled] = useState(false);
   const [digestFrequency, setDigestFrequency] = useState("weekly");
+  const [digestDayOfWeek, setDigestDayOfWeek] = useState("monday");
+  const [digestDayOfMonth, setDigestDayOfMonth] = useState(1);
+  const [digestTimeOfDay, setDigestTimeOfDay] = useState("09:00");
   const [digestEmail, setDigestEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
@@ -46,7 +48,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile(),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "" })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [] })),
       ]);
 
       setName(profile.name || "");
@@ -55,8 +57,10 @@ export default function SettingsPage() {
       setSkills(profile.core_skills || []);
       setSkillsInput((profile.core_skills || []).join(", "));
 
-      setDigestEnabled(digest.enabled);
       setDigestFrequency(digest.frequency || "weekly");
+      setDigestDayOfWeek(digest.day_of_week || "monday");
+      setDigestDayOfMonth(digest.day_of_month || 1);
+      setDigestTimeOfDay(digest.time_of_day || "09:00");
       setDigestEmail(digest.email || "");
 
       // Get email from auth if digest email is empty
@@ -116,9 +120,12 @@ export default function SettingsPage() {
           years_experience: yearsExperience,
         }),
         updateDigestPreferences({
-          enabled: digestEnabled,
-          frequency: digestEnabled ? digestFrequency : "never",
+          enabled: digestFrequency !== "never",
+          frequency: digestFrequency,
           email: digestEmail,
+          day_of_week: digestDayOfWeek,
+          day_of_month: digestDayOfMonth,
+          time_of_day: digestTimeOfDay,
         }),
       ]);
 
@@ -232,37 +239,76 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Email Digest</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white">Enable Digest</p>
-                <p className="text-xs text-gray-500">Receive periodic summaries of new job matches</p>
-              </div>
-              <button
-                onClick={() => setDigestEnabled(!digestEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  digestEnabled ? "bg-indigo-600" : "bg-gray-700"
-                }`}
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Frequency</label>
+              <select
+                value={digestFrequency}
+                onChange={(e) => setDigestFrequency(e.target.value)}
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    digestEnabled ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
+                <option value="never">Never (Disabled)</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
             </div>
-            {digestEnabled && (
+
+            {digestFrequency === "weekly" && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Frequency</label>
+                <label className="block text-sm text-gray-400 mb-1">Send on Day</label>
                 <select
-                  value={digestFrequency}
-                  onChange={(e) => setDigestFrequency(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  value={digestDayOfWeek}
+                  onChange={(e) => setDigestDayOfWeek(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none capitalize"
                 >
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
+                  <option value="monday">Monday</option>
+                  <option value="tuesday">Tuesday</option>
+                  <option value="wednesday">Wednesday</option>
+                  <option value="thursday">Thursday</option>
+                  <option value="friday">Friday</option>
+                  <option value="saturday">Saturday</option>
+                  <option value="sunday">Sunday</option>
                 </select>
               </div>
             )}
+
+            {digestFrequency === "monthly" && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Send on Day of Month</label>
+                <select
+                  value={digestDayOfMonth}
+                  onChange={(e) => setDigestDayOfMonth(Number(e.target.value))}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>
+                      Day {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {digestFrequency === "daily" && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Send at Time</label>
+                <select
+                  value={digestTimeOfDay}
+                  onChange={(e) => setDigestTimeOfDay(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const hour = String(i).padStart(2, "0");
+                    return `${hour}:00`;
+                  }).map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm text-gray-400 mb-1">Email Address</label>
               <input
@@ -273,34 +319,39 @@ export default function SettingsPage() {
                 placeholder="you@example.com"
               />
             </div>
-            <div className="pt-2 border-t border-gray-800">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    setSending(true);
-                    setSendResult("");
-                    try {
-                      const res = await sendDigestNow(digestEmail);
-                      setSendResult(res.message);
-                    } catch (err) {
-                      setSendResult(`Error: ${err instanceof Error ? err.message : "Failed to send"}`);
-                    } finally {
-                      setSending(false);
-                    }
-                  }}
-                  disabled={sending}
-                  className="rounded-lg border border-indigo-600 bg-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {sending ? "Sending..." : "Send Now"}
-                </button>
-                <p className="text-xs text-gray-500">Get a digest of current matches immediately</p>
+
+            {digestFrequency !== "never" && (
+              <div className="pt-4 border-t border-gray-800">
+                <div className="flex sm:items-center flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={async () => {
+                      setSending(true);
+                      setSendResult("");
+                      try {
+                        const res = await sendDigestNow(digestEmail);
+                        setSendResult(res.message);
+                      } catch (err) {
+                        setSendResult(err instanceof Error ? err.message : "Failed to send digest");
+                      } finally {
+                        setSending(false);
+                      }
+                    }}
+                    disabled={sending}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {sending ? "Sending..." : "Send Now"}
+                  </button>
+                  <p className="text-xs text-gray-500">
+                    Triggers an on-demand scan. You will receive matching jobs in your inbox within 1–2 minutes.
+                  </p>
+                </div>
+                {sendResult && (
+                  <p className={`mt-3 text-sm ${sendResult.includes("Limit") || sendResult.includes("limit") || sendResult.includes("Error") ? "text-red-400" : "text-emerald-400"}`}>
+                    {sendResult}
+                  </p>
+                )}
               </div>
-              {sendResult && (
-                <p className={`mt-2 text-xs ${sendResult.startsWith("Error") ? "text-red-400" : "text-emerald-400"}`}>
-                  {sendResult}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

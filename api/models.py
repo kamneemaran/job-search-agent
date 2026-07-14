@@ -132,3 +132,7 @@ class DigestPreferences(BaseModel):
     enabled: bool = True
     frequency: str = "weekly"
     email: str = ""
+    day_of_week: Optional[str] = "monday"
+    day_of_month: Optional[int] = 1
+    time_of_day: Optional[str] = "09:00"
+    sent_history: list[str] = []
