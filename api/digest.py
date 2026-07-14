@@ -87,7 +87,14 @@ async def send_digest(
 
     row = profile_row.data
     core_skills = row.get("core_skills") or []
-    if not core_skills:
+    if isinstance(core_skills, str):
+        try:
+            import json
+            core_skills = json.loads(core_skills)
+        except Exception:
+            core_skills = []
+
+    if not core_skills or not isinstance(core_skills, list):
         raise HTTPException(400, "No core skills found. Upload a resume first.")
 
     profile = {

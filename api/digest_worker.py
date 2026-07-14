@@ -229,7 +229,14 @@ def run():
 
         row = profile_result.data
         core_skills = row.get("core_skills") or []
-        if not core_skills:
+        if isinstance(core_skills, str):
+            try:
+                import json
+                core_skills = json.loads(core_skills)
+            except Exception:
+                core_skills = []
+
+        if not core_skills or not isinstance(core_skills, list):
             logger.warning(f"User {user_id} has no core_skills, skipping")
             continue
 

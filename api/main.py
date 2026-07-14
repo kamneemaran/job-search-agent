@@ -64,12 +64,19 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
 
         row = result.data
         core_skills = row.get("core_skills")
-        if not core_skills or (isinstance(core_skills, list) and len(core_skills) == 0):
+        if isinstance(core_skills, str):
+            try:
+                import json
+                core_skills = json.loads(core_skills)
+            except Exception:
+                core_skills = []
+
+        if not core_skills or not isinstance(core_skills, list) or len(core_skills) == 0:
             return empty
 
         return {
-            "name": row.get("full_name", ""),
-            "current_role": row.get("current_role", ""),
+            "name": row.get("full_name", "") or "",
+            "current_role": row.get("current_role", "") or "",
             "core_skills": core_skills,
             "years_experience": row.get("years_experience", 0) or 0,
         }
