@@ -1,7 +1,7 @@
 """Supabase client helpers for authenticated requests."""
 from supabase import create_client, Client
 
-SUPABASE_URL = __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+SUPABASE_URL = __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_URL") or __import__("os").environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = __import__("os").environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
@@ -9,7 +9,8 @@ def get_user_client(authorization: str | None = None) -> Client:
     """Create a Supabase client scoped to the authenticated user."""
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
-        sb = create_client(SUPABASE_URL, __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""))
+        anon_key = __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or __import__("os").environ.get("SUPABASE_ANON_KEY", "")
+        sb = create_client(SUPABASE_URL, anon_key)
         sb.auth.set_session(access_token=token, refresh_token="")
         return sb
 
