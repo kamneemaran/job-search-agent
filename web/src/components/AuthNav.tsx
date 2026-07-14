@@ -45,9 +45,18 @@ export default function AuthNav() {
   if (user) {
     return (
       <div className="flex items-center gap-4 text-sm font-medium text-gray-400">
-        <span className="text-gray-500 hidden sm:inline">
-          {user.email}
-        </span>
+        <Link
+          href="/resume"
+          className="hover:text-white transition-colors"
+        >
+          Resume
+        </Link>
+        <Link
+          href="/search"
+          className="hover:text-white transition-colors"
+        >
+          Search
+        </Link>
         <Link
           href="/dashboard"
           className="hover:text-white transition-colors"
