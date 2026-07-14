@@ -13,14 +13,14 @@ export default function AuthNav() {
 
   useEffect(() => {
     const supabase = getBrowserClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
+    supabase.auth.getUser().then((res: any) => {
+      setUser(res?.data?.user || null);
       setLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
     });
 

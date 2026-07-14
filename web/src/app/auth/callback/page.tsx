@@ -9,7 +9,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const supabase = getBrowserClient();
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session) {
         const searchParams = new URLSearchParams(window.location.search);
         const nextParam = searchParams.get("next") || "/dashboard";
