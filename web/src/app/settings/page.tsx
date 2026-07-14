@@ -60,12 +60,26 @@ export default function SettingsPage() {
       setDigestEmail(digest.email || "");
 
       // Get email from auth if digest email is empty
+      const supabase = getBrowserClient();
       if (!digest.email) {
-        const supabase = getBrowserClient();
         const { data } = await supabase.auth.getSession();
         if (data.session?.user?.email) {
           setDigestEmail(data.session.user.email);
         }
+      }
+
+      // Fetch active resume from Supabase database
+      try {
+        const { data: resumes } = await supabase
+          .from("resumes")
+          .select("filename")
+          .eq("is_active", true)
+          .maybeSingle();
+        if (resumes) {
+          setActiveResume(resumes.filename);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active resume:", err);
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
