@@ -107,7 +107,7 @@ export async function searchJobs(params: {
       location: params.location || "Remote",
       threshold: params.threshold || 65,
       max_results: params.max_results || 10,
-      require_visa: params.require_visa ?? true,
+      require_visa: params.require_visa ?? false,
       exclude_companies: params.exclude_companies || [],
       locations: params.locations || [],
       skills: params.skills || [],

@@ -514,7 +514,28 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         is_netherlands_search = "netherlands" in loc_lower or "nl" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
 
         target_boards = []
-        if is_remote_search:
+        BOARD_MAP = {
+            "LinkedIn": ds.search_linkedin,
+            "Indeed": ds.search_indeed,
+            "Naukri": ds.search_naukri,
+            "Instahyre": ds.search_instahyre,
+            "WeWorkRemotely": ds.search_weworkremotely,
+            "Remotive": ds.search_remotive,
+            "Arbeitnow": ds.search_arbeitnow,
+            "IamExpat": ds.search_iamexpat,
+            "TogetherAbroad": ds.search_togetherabroad,
+            "FoundIt": ds.search_foundit,
+            "TimesJobs": ds.search_timesjobs,
+            "Glassdoor": ds.search_glassdoor,
+        }
+
+        if req.sources:
+            target_boards = [
+                (name, BOARD_MAP[name])
+                for name in req.sources
+                if name in BOARD_MAP
+            ]
+        elif is_remote_search:
             # Remote-specific high-signal job boards
             target_boards = [
                 ("WeWorkRemotely", ds.search_weworkremotely),

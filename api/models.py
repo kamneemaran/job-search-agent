@@ -34,7 +34,7 @@ class SearchRequest(BaseModel):
     location: str = "Remote"
     threshold: int = Field(default=65, ge=0, le=100)
     max_results: int = Field(default=10, ge=1, le=50)
-    require_visa: bool = True
+    require_visa: bool = False
     exclude_companies: list[str] = []
     locations: list[str] = []
     skills: list[str] = []

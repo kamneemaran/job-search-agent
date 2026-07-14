@@ -11,7 +11,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("Remote");
   const [threshold, setThreshold] = useState(65);
-  const [requireVisa, setRequireVisa] = useState(true);
+  const [requireVisa, setRequireVisa] = useState(false);
   const [jobType, setJobType] = useState("");
   const [workMode, setWorkMode] = useState("");
   const [skills, setSkills] = useState("");
@@ -253,35 +253,12 @@ export default function SearchPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Work mode</label>
-                <select
-                  value={workMode}
-                  onChange={(e) => setWorkMode(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="">Any</option>
-                  <option value="remote">Remote</option>
-                  <option value="on-site">On-site</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
-              </div>
-              <div>
                 <label className="text-xs text-gray-500 mb-1 block">Skills filter (comma-separated)</label>
                 <input
                   type="text"
                   value={skills}
                   onChange={(e) => setSkills(e.target.value)}
                   placeholder="e.g. rust, kubernetes"
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Exclude companies (comma-separated)</label>
-                <input
-                  type="text"
-                  value={excludeCompanies}
-                  onChange={(e) => setExcludeCompanies(e.target.value)}
-                  placeholder="e.g. acme corp, mollie"
                   className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 />
               </div>

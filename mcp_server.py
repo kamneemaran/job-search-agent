@@ -283,10 +283,10 @@ async def handle_list_tools() -> list[types.Tool]:
                         "items": {"type": "string"},
                         "description": "Optional: company names to exclude, e.g. ['mollie', 'acme corp']",
                     },
-                    "require_visa": {
+                     "require_visa": {
                         "type": "boolean",
-                        "description": "Optional: require visa sponsorship/relocation support (default: true). When true, jobs outside India without explicit visa/relocation signals in the JD, known-sponsor lists, or career page are filtered out (score=0). Set to false for exploratory searches — this injects synthetic visa keywords so all jobs score without the visa penalty, but does NOT guarantee the company actually sponsors.",
-                        "default": True,
+                        "description": "Optional: require visa sponsorship/relocation support (default: false). When true, jobs outside India without explicit visa/relocation signals in the JD, known-sponsor lists, or career page are filtered out (score=0). Set to false for exploratory searches — this injects synthetic visa keywords so all jobs score without the visa penalty, but does NOT guarantee the company actually sponsors.",
+                        "default": False,
                     },
                     "focus_role": {
                         "type": "string",
@@ -665,7 +665,7 @@ def _search_jobs(
     query: str,
     location: str = "Remote",
     threshold: int = 65,
-    require_visa: bool = True,
+    require_visa: bool = False,
     exclude_companies: list[str] | None = None,
     focus_role: str = "",
     max_results: int = 10,
