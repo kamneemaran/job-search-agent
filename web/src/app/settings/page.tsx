@@ -46,7 +46,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile(),
-        getDigestPreferences().catch(() => ({ enabled: false, email: "" })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "" })),
       ]);
 
       setName(profile.name || "");
