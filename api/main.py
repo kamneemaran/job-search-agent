@@ -46,38 +46,32 @@ def _get_ds():
 
 
 def _get_user_profile(authorization: Optional[str]) -> dict:
-    """Fetch user profile from Supabase, fall back to hardcoded PROFILE."""
-    ds = _get_ds()
-    fallback = {
-        "name": ds.PROFILE.get("name", ""),
-        "current_role": ds.PROFILE.get("current_role", ""),
-        "core_skills": ds.PROFILE.get("core_skills", []),
-        "years_experience": ds.PROFILE.get("years_experience", 0),
-    }
+    """Fetch user profile from Supabase. Returns empty profile if not set up."""
+    empty = {"name": "", "current_role": "", "core_skills": [], "years_experience": 0}
 
     if not authorization:
-        return fallback
+        return empty
 
     try:
         sb = get_user_client(authorization)
         user = sb.auth.get_user().user
         result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
         if not result.data:
-            return fallback
+            return empty
 
         row = result.data
         core_skills = row.get("core_skills")
-        if not core_skills:
-            return fallback
+        if not core_skills or (isinstance(core_skills, list) and len(core_skills) == 0):
+            return empty
 
         return {
-            "name": row.get("full_name", "") or fallback["name"],
-            "current_role": row.get("current_role", "") or fallback["current_role"],
+            "name": row.get("full_name", ""),
+            "current_role": row.get("current_role", ""),
             "core_skills": core_skills,
-            "years_experience": row.get("years_experience") or fallback["years_experience"],
+            "years_experience": row.get("years_experience", 0) or 0,
         }
     except Exception:
-        return fallback
+        return empty
 
 
 @asynccontextmanager
@@ -129,7 +123,7 @@ def get_profile(authorization: Optional[str] = Header(None)):
     return ProfileResponse(
         name=profile["name"],
         current_role=profile["current_role"],
-        core_skills=profile["core_skills"],
+        core_skills=profile.get("core_skills", []) or [],
         years_experience=profile["years_experience"],
         seniority_keywords=p.get("seniority_keywords", []),
     )
