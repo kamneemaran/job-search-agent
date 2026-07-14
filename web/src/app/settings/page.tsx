@@ -262,10 +262,27 @@ export default function SettingsPage() {
                 disabled={sending}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {sending ? "Sending..." : "Send Now"}
+                {sending ? "Scanning..." : "Send Now"}
               </button>
             )}
           </div>
+
+          {sending && (
+            <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-4 shadow-lg shadow-indigo-500/5">
+              <div className="flex gap-3 items-start">
+                <span className="text-xl animate-spin shrink-0">⏳</span>
+                <div className="text-xs text-indigo-200 leading-relaxed">
+                  <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">Deep Digest Scan in Progress</span>
+                  Our automated backend scraper is initiating a comprehensive search across 250+ companies and multiple global ATS platforms. 
+                  Because this is an extremely thorough, anti-bot-bypassing background task matching against your unique profile, 
+                  <strong>it will take approximately 3-4 hours to complete</strong>. 
+                  <span className="block mt-2 text-gray-400">
+                    You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {sendResult && (
             <p className={`mb-4 text-xs ${sendResult.includes("Limit") || sendResult.includes("limit") || sendResult.includes("Error") ? "text-red-400" : "text-emerald-400"}`}>
