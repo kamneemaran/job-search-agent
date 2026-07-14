@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
   const [sendError, setSendError] = useState(false);
+  const [sentHistory, setSentHistory] = useState<string[]>([]);
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -44,6 +45,33 @@ export default function SettingsPage() {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    const isScanning = sentHistory.some((x) => x.startsWith("RUNNING:"));
+
+    if (isScanning) {
+      interval = setInterval(async () => {
+        try {
+          const digest = await getDigestPreferences();
+          const newHistory = digest.sent_history || [];
+          setSentHistory(newHistory);
+          
+          const stillScanning = newHistory.some((x) => x.startsWith("RUNNING:"));
+          if (!stillScanning) {
+            setSendResult("Digest was completed, check your email!");
+            setSendError(false);
+          }
+        } catch (err) {
+          console.error("Polling status failed:", err);
+        }
+      }, 10000); // Poll every 10s
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [sentHistory]);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -65,6 +93,7 @@ export default function SettingsPage() {
       setDigestTimeOfDay(digest.time_of_day || "09:00");
       setDigestEmail(digest.email || "");
       setDigestBatches(digest.batches || ["all"]);
+      setSentHistory(digest.sent_history || []);
 
       // Get email from auth if digest email is empty
       const supabase = getBrowserClient();
@@ -263,6 +292,11 @@ export default function SettingsPage() {
                     if (isMsgError) {
                       setSendError(true);
                     }
+                    // Immediately fetch latest preferences to capture RUNNING token
+                    const d = await getDigestPreferences().catch(() => null);
+                    if (d) {
+                      setSentHistory(d.sent_history || []);
+                    }
                   } catch (err) {
                     setSendResult(err instanceof Error ? err.message : "Failed to send digest");
                     setSendError(true);
@@ -270,15 +304,15 @@ export default function SettingsPage() {
                     setSending(false);
                   }
                 }}
-                disabled={sending}
+                disabled={sending || sentHistory.some((x) => x.startsWith("RUNNING:"))}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {sending ? "Scanning..." : "Send Now"}
+                {sending || sentHistory.some((x) => x.startsWith("RUNNING:")) ? "Scanning..." : "Send Now"}
               </button>
             )}
           </div>
 
-          {sending && (
+          {(sending || sentHistory.some((x) => x.startsWith("RUNNING:"))) && (
             <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-4 shadow-lg shadow-indigo-500/5">
               <div className="flex gap-3 items-start">
                 <span className="text-xl animate-spin shrink-0">⏳</span>

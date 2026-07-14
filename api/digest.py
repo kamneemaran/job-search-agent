@@ -5,7 +5,7 @@ import logging
 import threading
 from pathlib import Path
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
 from typing import Optional
 
 logger = logging.getLogger("jobpilot.digest")
@@ -98,9 +98,145 @@ async def update_digest_preferences(
     return prefs
 
 
+def run_background_digest_scan(
+    user_id: str,
+    to_email: str,
+    profile: dict,
+    batches_list: list,
+    authorization: str,
+    history_dates: list,
+    now_iso: str,
+    running_token: str,
+):
+    logger.info(f"[DIGEST-BG-WORKER] Starting async background job scan for user_id={user_id}, target_email={to_email}")
+    sb = get_user_client(authorization)
+    try:
+        all_sources = []
+        if "all" in batches_list:
+            all_sources = (
+                ds.JOB_SOURCES + ds.EU_JOB_SOURCES + ds.GLOBAL_JOB_SOURCES
+                + ds.APAC_JOB_SOURCES + ds.US_CANADA_JOB_SOURCES
+                + ds.MIDDLE_EAST_JOB_SOURCES + ds.REMOTE_JOB_SOURCES
+            )
+        else:
+            if "india" in batches_list:
+                all_sources += ds.JOB_SOURCES
+            if "europe_companies" in batches_list:
+                all_sources += ds.EU_JOB_SOURCES
+            if "europe_boards" in batches_list:
+                all_sources += [s for s in ds.GLOBAL_JOB_SOURCES if s.get("name") in ("Arbeitnow", "IamExpat", "TogetherAbroad")]
+            if "middle_east" in batches_list:
+                all_sources += ds.MIDDLE_EAST_JOB_SOURCES
+            if "apac" in batches_list:
+                all_sources += ds.APAC_JOB_SOURCES
+            if "us_canada" in batches_list:
+                all_sources += ds.US_CANADA_JOB_SOURCES
+            if "remote" in batches_list:
+                all_sources += ds.REMOTE_JOB_SOURCES
+
+        logger.info(f"[DIGEST-BG-WORKER] Compiled {len(all_sources)} total job sources to fetch.")
+
+        results = []
+        seen = set()
+
+        for idx, source in enumerate(all_sources, 1):
+            source_name = source.get("name", f"Source #{idx}")
+            logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Scraping: '{source_name}'...")
+            try:
+                jobs = ds.fetch_jobs_from_source(source)
+                logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Successfully parsed '{source_name}': fetched {len(jobs) if jobs else 0} raw jobs")
+            except Exception as e:
+                logger.error(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Scraper '{source_name}' failed: {e}", exc_info=True)
+                continue
+
+            for job in jobs:
+                key = (job.get("title", "").lower(), job.get("company", "").lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                with _profile_lock:
+                    orig_skills = ds.PROFILE.get("core_skills")
+                    orig_years = ds.PROFILE.get("years_experience")
+                    try:
+                        ds.PROFILE["core_skills"] = profile["core_skills"]
+                        ds.PROFILE["years_experience"] = profile["years_experience"]
+                        score, note = ds.score_job(
+                            job.get("title", ""), job.get("description", ""),
+                            job.get("company", ""), job.get("location", ""),
+                        )
+                    finally:
+                        ds.PROFILE["core_skills"] = orig_skills
+                        ds.PROFILE["years_experience"] = orig_years
+
+                if score >= 65:
+                    logger.info(f"[DIGEST-BG-WORKER] Match verified! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
+                    salary_info = ds.get_salary_info(
+                        job.get("company", ""), job.get("title", ""), job.get("description", ""),
+                    )
+                    results.append({
+                        "title": job.get("title", ""),
+                        "company": job.get("company", ""),
+                        "score": score,
+                        "location": job.get("location", ""),
+                        "salary": ds._format_salary(salary_info) if salary_info else "",
+                        "url": job.get("url", ""),
+                    })
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        logger.info(f"[DIGEST-BG-WORKER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
+
+        clean_history = [dt.isoformat() for dt in history_dates]
+        clean_history.append(now_iso)
+
+        if not results:
+            logger.warning(f"[DIGEST-BG-WORKER] No job matches above 65 found for user_id={user_id}. Skipping email dispatch.")
+            sb.table("email_preferences").upsert({
+                "user_id": user_id,
+                "last_sent_at": now_iso,
+                "sent_history": clean_history,
+            }, on_conflict="user_id").execute()
+            logger.info(f"[DIGEST-BG-WORKER] Updated sent history for user_id={user_id} (completed with 0 matches)")
+            return
+
+        logger.info(f"[DIGEST-BG-WORKER] Constructing email template and sending {len(results)} matches to {to_email}...")
+        try:
+            from daily_scan import build_email_html, send_email
+            html = build_email_html(results)
+            ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+            if ok:
+                logger.info(f"[DIGEST-BG-WORKER] Email dispatch successful for user_id={user_id} -> {to_email}")
+            else:
+                logger.error(f"[DIGEST-BG-WORKER] Email delivery failed (send_email returned False) for {to_email}")
+        except Exception as e:
+            logger.error(f"[DIGEST-BG-WORKER] Exception raised during email compilation/dispatch: {e}", exc_info=True)
+            ok = False
+
+        # Update last_sent_at and sent_history
+        sb.table("email_preferences").upsert({
+            "user_id": user_id,
+            "last_sent_at": now_iso,
+            "sent_history": clean_history,
+        }, on_conflict="user_id").execute()
+        logger.info(f"[DIGEST-BG-WORKER] Successfully updated sent history in Supabase for user_id={user_id}")
+
+    except Exception as e:
+        logger.error(f"[DIGEST-BG-WORKER] Unexpected error in background worker: {e}", exc_info=True)
+        try:
+            pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+            if pref_result and pref_result.data:
+                curr_history = pref_result.data.get("sent_history") or []
+                filtered_history = [x for x in curr_history if x != running_token]
+                sb.table("email_preferences").update({
+                    "sent_history": filtered_history,
+                }).eq("user_id", user_id).execute()
+        except Exception as cleanup_err:
+            logger.error(f"[DIGEST-BG-WORKER] Cleanup token failed: {cleanup_err}")
+
+
 @router.post("/send")
 async def send_digest(
     req: DigestSendRequest,
+    background_tasks: BackgroundTasks,
     authorization: Optional[str] = Header(None),
 ):
     if not authorization:
@@ -149,12 +285,22 @@ async def send_digest(
         frequency = pref_row.get("frequency", "weekly") if pref_row else "weekly"
         sent_history = pref_row.get("sent_history", []) if pref_row else []
 
+        # Check if already running
+        any_running = any(isinstance(x, str) and x.startswith("RUNNING:") for x in sent_history)
+        if any_running:
+            logger.warning(f"[DIGEST-TRIGGER] Rejected send for user_id={user_id} — a scan is already running.")
+            raise HTTPException(400, "A background scan is already in progress. Please wait for it to complete.")
+
         logger.info(f"[DIGEST-TRIGGER] Checking rate limit history for user_id={user_id}. Past sent count: {len(sent_history)}")
 
         # Enforce rate limits based on user requirements:
         now = datetime.now()
         history_dates = []
         for ts in sent_history:
+            if not isinstance(ts, str):
+                continue
+            if ts.startswith("RUNNING:"):
+                continue
             try:
                 # Parse ISO timestamp
                 if "T" in ts:
@@ -195,115 +341,38 @@ async def send_digest(
 
         logger.info(f"[DIGEST-TRIGGER] Active target batches list: {batches_list}")
 
-        all_sources = []
-        if "all" in batches_list:
-            all_sources = (
-                ds.JOB_SOURCES + ds.EU_JOB_SOURCES + ds.GLOBAL_JOB_SOURCES
-                + ds.APAC_JOB_SOURCES + ds.US_CANADA_JOB_SOURCES
-                + ds.MIDDLE_EAST_JOB_SOURCES + ds.REMOTE_JOB_SOURCES
-            )
-        else:
-            if "india" in batches_list:
-                all_sources += ds.JOB_SOURCES
-            if "europe_companies" in batches_list:
-                all_sources += ds.EU_JOB_SOURCES
-            if "europe_boards" in batches_list:
-                all_sources += [s for s in ds.GLOBAL_JOB_SOURCES if s.get("name") in ("Arbeitnow", "IamExpat", "TogetherAbroad")]
-            if "middle_east" in batches_list:
-                all_sources += ds.MIDDLE_EAST_JOB_SOURCES
-            if "apac" in batches_list:
-                all_sources += ds.APAC_JOB_SOURCES
-            if "us_canada" in batches_list:
-                all_sources += ds.US_CANADA_JOB_SOURCES
-            if "remote" in batches_list:
-                all_sources += ds.REMOTE_JOB_SOURCES
-
-        logger.info(f"[DIGEST-TRIGGER] Compiled {len(all_sources)} total job sources to fetch.")
-
-        results = []
-        seen = set()
-
-        for idx, source in enumerate(all_sources, 1):
-            source_name = source.get("name", f"Source #{idx}")
-            logger.info(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Scraping: '{source_name}'...")
-            try:
-                jobs = ds.fetch_jobs_from_source(source)
-                logger.info(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Successfully parsed '{source_name}': fetched {len(jobs) if jobs else 0} raw jobs")
-            except Exception as e:
-                logger.error(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Scraper '{source_name}' failed: {e}", exc_info=True)
-                continue
-
-            for job in jobs:
-                key = (job.get("title", "").lower(), job.get("company", "").lower())
-                if key in seen:
-                    continue
-                seen.add(key)
-                with _profile_lock:
-                    orig_skills = ds.PROFILE.get("core_skills")
-                    orig_years = ds.PROFILE.get("years_experience")
-                    try:
-                        ds.PROFILE["core_skills"] = profile["core_skills"]
-                        ds.PROFILE["years_experience"] = profile["years_experience"]
-                        score, note = ds.score_job(
-                            job.get("title", ""), job.get("description", ""),
-                            job.get("company", ""), job.get("location", ""),
-                        )
-                    finally:
-                        ds.PROFILE["core_skills"] = orig_skills
-                        ds.PROFILE["years_experience"] = orig_years
-
-                if score >= 65:
-                    logger.info(f"[DIGEST-TRIGGER] Match verified! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
-                    salary_info = ds.get_salary_info(
-                        job.get("company", ""), job.get("title", ""), job.get("description", ""),
-                    )
-                    results.append({
-                        "title": job.get("title", ""),
-                        "company": job.get("company", ""),
-                        "score": score,
-                        "location": job.get("location", ""),
-                        "salary": ds._format_salary(salary_info) if salary_info else "",
-                        "url": job.get("url", ""),
-                    })
-
-        results.sort(key=lambda x: x["score"], reverse=True)
-        logger.info(f"[DIGEST-TRIGGER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
-
-        if not results:
-            logger.warning(f"[DIGEST-TRIGGER] No job matches above 65 found for user_id={user_id}. Skipping email dispatch.")
-            return {"message": "No matches above threshold found. Check back later.", "sent": False, "count": 0}
-
-        logger.info(f"[DIGEST-TRIGGER] Constructing email template and sending {len(results)} matches to {to_email}...")
-        try:
-            from daily_scan import build_email_html, send_email
-            html = build_email_html(results)
-            ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
-            if ok:
-                logger.info(f"[DIGEST-TRIGGER] Email dispatch successful for user_id={user_id} -> {to_email}")
-            else:
-                logger.error(f"[DIGEST-TRIGGER] Email delivery failed (send_email returned False) for {to_email}")
-        except Exception as e:
-            logger.error(f"[DIGEST-TRIGGER] Exception raised during email compilation/dispatch: {e}", exc_info=True)
-            ok = False
-
-        # Update last_sent_at and sent_history
-        new_history = [dt.isoformat() for dt in history_dates]
-        new_history.append(now.isoformat())
+        # Set the running token in sent_history
+        running_token = f"RUNNING:{now.isoformat()}"
+        updated_history = list(sent_history)
+        updated_history.append(running_token)
 
         try:
             sb.table("email_preferences").upsert({
                 "user_id": user_id,
-                "last_sent_at": now.isoformat(),
-                "sent_history": new_history,
+                "sent_history": updated_history,
             }, on_conflict="user_id").execute()
-            logger.info(f"[DIGEST-TRIGGER] Successfully updated sent history in Supabase for user_id={user_id}")
+            logger.info(f"[DIGEST-TRIGGER] Marked scan as RUNNING in sent_history for user_id={user_id}")
         except Exception as e:
-            logger.error(f"[DIGEST-TRIGGER] Failed to update sent history in Supabase for user_id={user_id}: {e}", exc_info=True)
+            logger.error(f"[DIGEST-TRIGGER] Failed to mark scan as RUNNING in sent_history: {e}")
+            raise HTTPException(500, "Failed to initialize scan state in database.")
+
+        # Dispatched background task
+        background_tasks.add_task(
+            run_background_digest_scan,
+            user_id=user_id,
+            to_email=to_email,
+            profile=profile,
+            batches_list=batches_list,
+            authorization=authorization,
+            history_dates=history_dates,
+            now_iso=now.isoformat(),
+            running_token=running_token,
+        )
 
         return {
-            "message": f"Sent {len(results)} matches to {to_email}",
-            "sent": ok,
-            "count": len(results),
+            "message": "Scan initiated in background. Your custom digest is compiling and will be emailed directly to your inbox.",
+            "sent": True,
+            "count": 0,
         }
 
     elif req.schedule == "never":
