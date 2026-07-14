@@ -1,5 +1,8 @@
 """Tracker API endpoints — manage job applications in Supabase."""
-from fastapi import APIRouter, HTTPException, Header
+import csv
+import io
+from fastapi import APIRouter, HTTPException, Header, UploadFile, File
+from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from api.models import (
@@ -186,3 +189,135 @@ async def sync_sheet(authorization: Optional[str] = Header(None)):
         raise HTTPException(500, "Failed to sync to sheet. Check the URL and make sure your sheet is shared with the service account.")
 
     return {"status": "synced", "count": len(jobs_result.data)}
+
+
+COLUMN_ALIASES = {
+    "title": ["title", "job title", "position", "job", "role", "name"],
+    "company": ["company", "employer", "organization", "firm", "company name", "employer name"],
+    "location": ["location", "loc", "place", "city", "office"],
+    "url": ["url", "link", "job url", "job link", "apply url", "application link", "href", "posting url"],
+    "status": ["status", "state", "stage", "application status"],
+    "notes": ["notes", "note", "comment", "comments", "description"],
+}
+
+def _find_column(headers, aliases):
+    h_lower = [h.strip().lower() for h in headers]
+    for alias in aliases:
+        for i, h in enumerate(h_lower):
+            if h == alias or h.startswith(alias) or alias in h:
+                return i
+    return None
+
+
+@router.post("/import")
+async def import_tracker(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+):
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+
+    content = await file.read()
+    filename = (file.filename or "").lower()
+
+    rows = []
+
+    if filename.endswith(".csv"):
+        text = content.decode("utf-8-sig")
+        reader = csv.reader(io.StringIO(text))
+        headers = next(reader, [])
+        for row in reader:
+            rows.append(row)
+    else:
+        raise HTTPException(400, "Unsupported file format. Please upload a CSV file.")
+
+    cols = {
+        key: _find_column(headers, aliases)
+        for key, aliases in COLUMN_ALIASES.items()
+    }
+
+    title_idx = cols["title"]
+    if title_idx is None:
+        raise HTTPException(400, "Could not find a 'title' or 'job title' column in the CSV.")
+
+    added = 0
+    errors = 0
+    for row in rows:
+        if not row or len(row) <= max(c for c in cols.values() if c is not None):
+            continue
+        title = row[title_idx].strip()
+        if not title:
+            continue
+
+        company = row[cols["company"]].strip() if cols["company"] is not None and cols["company"] < len(row) else "Unknown"
+        location = row[cols["location"]].strip() if cols["location"] is not None and cols["location"] < len(row) else ""
+        url = row[cols["url"]].strip() if cols["url"] is not None and cols["url"] < len(row) else ""
+        status = row[cols["status"]].strip().lower() if cols["status"] is not None and cols["status"] < len(row) else "new"
+        notes = row[cols["notes"]].strip() if cols["notes"] is not None and cols["notes"] < len(row) else ""
+
+        if status not in ("new", "applied", "rejected", "offer"):
+            status = "new"
+
+        # Check duplicate
+        existing = (
+            sb.table("jobs")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("title", title)
+            .eq("company", company)
+            .maybe_single()
+            .execute()
+        )
+        if existing.data:
+            errors += 1
+            continue
+
+        check_tracker_limit(sb, user.id)
+
+        sb.table("jobs").insert({
+            "user_id": user.id,
+            "title": title,
+            "company": company,
+            "location": location or "Remote",
+            "url": url,
+            "status": status,
+            "notes": notes,
+            "score": 0,
+        }).execute()
+        added += 1
+
+    return {"status": "ok", "added": added, "skipped_duplicates": errors}
+
+
+@router.get("/export")
+async def export_tracker(
+    authorization: Optional[str] = Header(None),
+):
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+
+    jobs_result = sb.table("jobs").select("*").eq("user_id", user.id).order("updated_at", desc=True).execute()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Title", "Company", "Location", "Status", "Score", "URL", "Notes", "Date Added", "Date Updated"])
+
+    for j in jobs_result.data:
+        writer.writerow([
+            j.get("title", ""),
+            j.get("company", ""),
+            j.get("location", ""),
+            j.get("status", "new"),
+            j.get("score", 0),
+            j.get("url", ""),
+            j.get("notes", ""),
+            j.get("created_at", ""),
+            j.get("updated_at", ""),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=job_tracker_export.csv"},
+    )

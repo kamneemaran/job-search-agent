@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getTracker,
   updateTracker,
@@ -30,6 +30,11 @@ export default function DashboardPage() {
   const [sheetInput, setSheetInput] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
+
+  // Import/export state
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadJobs = async (status?: string) => {
     setLoading(true);
@@ -146,6 +151,60 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 5000);
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg("");
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE}/api/tracker/import`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setImportMsg(`Imported ${data.added} jobs${data.skipped_duplicates > 0 ? ` (${data.skipped_duplicates} duplicates skipped)` : ""}!`);
+        loadJobs(filter || undefined);
+      } else {
+        const err = await res.json();
+        setImportMsg(err.detail || "Import failed");
+      }
+    } catch {
+      setImportMsg("Import failed");
+    }
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setTimeout(() => setImportMsg(""), 5000);
+  };
+
+  const handleExport = async () => {
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/api/tracker/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "job_tracker_export.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {}
+  };
+
   const counts = {
     all: jobs.length,
     new: jobs.filter((j) => j.status === "new").length,
@@ -217,6 +276,42 @@ export default function DashboardPage() {
           >
             Open your tracker sheet &rarr;
           </a>
+        )}
+      </div>
+
+      {/* Import / Export */}
+      <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 mb-8">
+        <h2 className="text-lg font-semibold text-white mb-2">📁 Import / Export</h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Upload a CSV of jobs to bulk-add to your tracker, or export your tracker as CSV.
+          The CSV should have columns like <code className="text-indigo-400">Title</code>, <code className="text-indigo-400">Company</code>, <code className="text-indigo-400">Location</code>, <code className="text-indigo-400">URL</code>, <code className="text-indigo-400">Status</code>.
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImport}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 disabled:opacity-50 transition-colors"
+          >
+            {importing ? "Importing..." : "Import CSV"}
+          </button>
+          <button
+            onClick={handleExport}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 transition-colors"
+          >
+            Export CSV
+          </button>
+        </div>
+        {importMsg && (
+          <p className={`text-xs mt-2 ${importMsg.includes("Failed") ? "text-red-400" : "text-emerald-400"}`}>
+            {importMsg}
+          </p>
         )}
       </div>
 
