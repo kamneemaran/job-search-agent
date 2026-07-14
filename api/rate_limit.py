@@ -11,20 +11,23 @@ PLAN_LIMITS = {
     "free": {
         "searches_per_day": 5,
         "max_tracked_jobs": 25,
-        "digest_frequency": ["weekly"],  # free users can only get weekly
+        "digest_frequency": ["weekly"],
         "max_results_per_search": 10,
+        "max_companies": 5,  # only search 5 companies + job boards
     },
     "pro": {
         "searches_per_day": 50,
         "max_tracked_jobs": 500,
         "digest_frequency": ["daily", "weekly", "biweekly"],
         "max_results_per_search": 50,
+        "max_companies": 50,
     },
     "enterprise": {
-        "searches_per_day": -1,  # unlimited
-        "max_tracked_jobs": -1,  # unlimited
+        "searches_per_day": -1,
+        "max_tracked_jobs": -1,
         "digest_frequency": ["daily", "weekly", "biweekly"],
         "max_results_per_search": 50,
+        "max_companies": -1,  # all
     },
 }
 
@@ -138,3 +141,9 @@ def get_max_results(authorization: Optional[str]) -> int:
     """Get the max results per search for the user's plan."""
     info = get_user_plan(authorization)
     return info["limits"]["max_results_per_search"]
+
+
+def get_max_companies(authorization: Optional[str]) -> int:
+    """Get the max companies to search for the user's plan."""
+    info = get_user_plan(authorization)
+    return info["limits"].get("max_companies", 5)

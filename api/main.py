@@ -27,7 +27,7 @@ from api.models import (
 from api.tracker import router as tracker_router
 from api.digest import router as digest_router
 from api.supabase import get_user_client
-from api.rate_limit import check_search_limit, increment_search_count, check_tracker_limit, get_max_results
+from api.rate_limit import check_search_limit, increment_search_count, check_tracker_limit, get_max_results, get_max_companies
 
 _ds = None
 _profile_lock = threading.Lock()
@@ -274,8 +274,10 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         name = src.get("name", "").lower()
         if any(kw in name for kw in ["linkedin", "indeed", "glassdoor", "google jobs"]):
             web_sources.append(src)
-    # Top remote-friendly ATS companies (limit to ~15 for speed)
-    for src in ds.REMOTE_JOB_SOURCES[:15]:
+
+    # Limit company sources based on plan
+    max_companies = get_max_companies(authorization)
+    for src in ds.REMOTE_JOB_SOURCES[:max_companies if max_companies > 0 else len(ds.REMOTE_JOB_SOURCES)]:
         web_sources.append(src)
 
     for source in web_sources:
