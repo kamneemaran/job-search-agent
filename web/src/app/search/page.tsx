@@ -9,7 +9,7 @@ export default function SearchPage() {
   const router = useRouter();
   const [hasResume, setHasResume] = useState<boolean | null>(null);
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("Remote");
+  const [location, setLocation] = useState("");
   const [threshold, setThreshold] = useState(65);
   const [requireVisa, setRequireVisa] = useState(false);
   const [jobType, setJobType] = useState("");
@@ -241,18 +241,6 @@ export default function SearchPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Job type</label>
-                <select
-                  value={jobType}
-                  onChange={(e) => setJobType(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="">Any</option>
-                  <option value="full-time">Full-time</option>
-                  <option value="contract">Contract</option>
-                </select>
-              </div>
-              <div>
                 <label className="text-xs text-gray-500 mb-1 block">Skills filter (comma-separated)</label>
                 <input
                   type="text"
@@ -323,6 +311,17 @@ export default function SearchPage() {
             {results.map((job, i) => {
               const key = `${job.company}|${job.title}`;
               const isTracked = tracked.has(key);
+              
+              const detectJobType = () => {
+                const text = `${job.title} ${job.description} ${job.note}`.toLowerCase();
+                if (text.includes("full-time") || text.includes("full time")) return "Full-time";
+                if (text.includes("contract") || text.includes("contractor") || text.includes("freelance")) return "Contract";
+                if (text.includes("part-time") || text.includes("part time")) return "Part-time";
+                if (text.includes("internship") || text.includes("intern")) return "Internship";
+                return null;
+              };
+              const jobTypeBadge = detectJobType();
+
               return (
                 <div key={key + i} className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 hover:border-gray-700 transition-colors">
                   <div className="flex items-start justify-between gap-4">
@@ -331,10 +330,15 @@ export default function SearchPage() {
                         <h3 className="font-semibold text-white truncate">{job.title}</h3>
                         <span className={`flex-shrink-0 rounded-md px-2.5 py-0.5 text-sm font-bold ${scoreColor(job.score)}`}>{job.score}</span>
                       </div>
-                      <div className="text-sm text-gray-400 mb-2">
-                        {job.company}
-                        {job.location && ` · ${job.location}`}
-                        {job.salary && <span className="ml-2 text-emerald-400">{job.salary}</span>}
+                      <div className="text-sm text-gray-400 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>{job.company}</span>
+                        {job.location && <span>· {job.location}</span>}
+                        {jobTypeBadge && (
+                          <span className="inline-block rounded bg-gray-800 border border-gray-700/60 px-1.5 py-0.5 text-[10px] font-medium text-indigo-400 uppercase tracking-wider">
+                            {jobTypeBadge}
+                          </span>
+                        )}
+                        {job.salary && <span className="text-emerald-400">· {job.salary}</span>}
                       </div>
                       {job.note && <p className="text-xs text-gray-500 mb-2">{job.note}</p>}
                       {job.description && <p className="text-xs text-gray-500 line-clamp-2">{job.description}</p>}
