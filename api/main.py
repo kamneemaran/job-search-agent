@@ -265,17 +265,22 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     all_jobs = []
     seen = set()
 
-    all_sources = (
-        ds.JOB_SOURCES
-        + ds.EU_JOB_SOURCES
-        + ds.GLOBAL_JOB_SOURCES
-        + ds.APAC_JOB_SOURCES
-        + ds.US_CANADA_JOB_SOURCES
-        + ds.MIDDLE_EAST_JOB_SOURCES
-        + ds.REMOTE_JOB_SOURCES
-    )
+    # Fast path for web API: limit to job boards and top remote-friendly companies
+    import time as _time
+    _deadline = _time.time() + 25  # 25s global timeout
 
-    for source in all_sources:
+    web_sources = []
+    for src in ds.JOB_SOURCES:
+        name = src.get("name", "").lower()
+        if any(kw in name for kw in ["linkedin", "indeed", "glassdoor", "google jobs"]):
+            web_sources.append(src)
+    # Top remote-friendly ATS companies (limit to ~15 for speed)
+    for src in ds.REMOTE_JOB_SOURCES[:15]:
+        web_sources.append(src)
+
+    for source in web_sources:
+        if _time.time() > _deadline:
+            break
         try:
             jobs = ds.fetch_jobs_from_source(source)
             for job in jobs:
