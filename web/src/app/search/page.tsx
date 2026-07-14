@@ -255,13 +255,20 @@ export default function SearchPage() {
         </form>
       </div>
 
-      <div className="bg-indigo-950/20 border border-indigo-900/40 rounded-lg p-3.5 mb-6 flex items-start gap-3">
-        <span className="text-indigo-400 mt-0.5">ℹ️</span>
-        <div className="text-xs text-gray-400 leading-relaxed">
-          <span className="text-indigo-300 font-semibold">Note:</span> This live search retrieves on-demand results directly from your selected 
-          job boards. High-latency, heavy company career page scraping is skipped here to ensure sub-10s response times, 
-          but is covered extensively in your scheduled <span className="text-white font-semibold">Daily/Weekly Email Digests</span>!
+      <div className="bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-indigo-950/40 border border-indigo-500/30 rounded-xl p-4.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-indigo-500/5">
+        <div className="flex items-start gap-3 flex-1">
+          <span className="text-xl shrink-0">💡</span>
+          <div className="text-xs text-gray-300 leading-relaxed">
+            <span className="text-indigo-400 font-bold uppercase tracking-wider text-[10px] block mb-0.5">Maximize Your Job Search</span>
+            On-demand search scans selected boards instantly. High-latency, heavy automated company career page scraping (over 250+ domains!) is handled in the background to ensure sub-10s speeds, and is delivered daily/weekly via your <span className="text-white font-semibold underline decoration-indigo-400">Email Digest</span>!
+          </div>
         </div>
+        <Link
+          href="/settings"
+          className="shrink-0 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 hover:shadow-md hover:shadow-indigo-500/20 transition-all text-center"
+        >
+          Configure Email Digest &rarr;
+        </Link>
       </div>
 
       {error && (
