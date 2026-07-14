@@ -2963,15 +2963,14 @@ def search_linkedin(query, location="India", max_results=500):
                 break  # No more results
 
             min_len = min(len(titles), len(companies), len(locations))
-            for i in range(min_len):
-                if len(jobs) >= max_results:
-                    break
-                url = links[i] if i < len(links) else ""
-                # Try to fetch actual job description from the LinkedIn job page
+            
+            # Helper to fetch a single description
+            def _fetch_desc(idx):
+                url = links[idx] if idx < len(links) else ""
                 full_desc = ""
                 if url:
                     try:
-                        jd_resp = requests.get(url, headers=headers, timeout=10)
+                        jd_resp = requests.get(url, headers=headers, timeout=5)
                         if jd_resp.status_code == 200:
                             jd_html = jd_resp.text
                             desc_match = re.search(r'<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
@@ -2983,13 +2982,30 @@ def search_linkedin(query, location="India", max_results=500):
                                     full_desc = desc_match2.group(1)[:2000]
                     except Exception:
                         pass
-                desc = full_desc or f"LinkedIn job: {titles[i]} at {companies[i]} in {locations[i]}"
+                return idx, full_desc or f"LinkedIn job: {titles[idx]} at {companies[idx]} in {locations[idx]}"
+
+            # Fetch all descriptions in parallel using ThreadPoolExecutor
+            from concurrent.futures import ThreadPoolExecutor as TPE, as_completed
+            descs = [f"LinkedIn job: {titles[i]} at {companies[i]} in {locations[i]}" for i in range(min_len)]
+            
+            with TPE(max_workers=min(15, min_len)) as tpe:
+                futures = [tpe.submit(_fetch_desc, i) for i in range(min_len)]
+                for fut in as_completed(futures):
+                    try:
+                        idx, d_text = fut.result()
+                        descs[idx] = d_text
+                    except Exception:
+                        pass
+
+            for i in range(min_len):
+                if len(jobs) >= max_results:
+                    break
                 jobs.append({
                     "title": titles[i].strip(),
                     "company": companies[i].strip(),
                     "location": locations[i].strip(),
-                    "url": url,
-                    "description": desc,
+                    "url": links[i] if i < len(links) else "",
+                    "description": descs[i],
                 })
 
             if len(jobs) >= max_results:
