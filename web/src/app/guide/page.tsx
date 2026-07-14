@@ -86,7 +86,7 @@ export default function GuidePage() {
               <ul className="list-disc pl-5 text-gray-400 text-sm space-y-1">
                 <li><strong className="text-white">Frequency:</strong> Choose Daily, Weekly, or Monthly.</li>
                 <li><strong className="text-white">Scheduled Time:</strong> Choose the exact hour, day of the week, or day of the month when your digest should be compiled and sent to your inbox.</li>
-                <li><strong className="text-white">Send Now (On-Demand):</strong> Want an instant update? Click the "Send Now" button. It will run a fresh background scan and email you the top matching jobs within 1–2 minutes.</li>
+                <li><strong className="text-white">Send Now (On-Demand):</strong> Want an instant update? Click the "Send Now" button. It will trigger an on-demand background scan to compile matching jobs from multiple regions and company career pages. Please note that scanning 250+ company sites is comprehensive and takes time, so you will receive the email as soon as the background scan is complete (which can take several hours).</li>
               </ul>
               <p className="text-gray-500 text-xs mt-2 italic">
                 Note: On-demand "Send Now" requests are limited to once every 8 hours to protect your API quotas.
