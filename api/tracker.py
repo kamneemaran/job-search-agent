@@ -38,6 +38,8 @@ async def get_tracker(
             date_found=r.get("found_at", ""),
             date_updated=r.get("updated_at", ""),
             notes=r.get("notes", ""),
+            location=r.get("location", "") or "",
+            salary=r.get("salary", "") or "",
         )
         for r in result.data
     ]
@@ -103,13 +105,25 @@ async def update_tracker(
     if not user:
         raise HTTPException(401, "Not authenticated")
 
+    update_data = {
+        "status": req.status,
+        "notes": req.notes,
+        "updated_at": "now()",
+    }
+    if req.new_title:
+        update_data["title"] = req.new_title
+    if req.new_company:
+        update_data["company"] = req.new_company
+    if req.url is not None:
+        update_data["url"] = req.url
+    if req.salary is not None:
+        update_data["salary"] = req.salary
+    if req.location is not None:
+        update_data["location"] = req.location
+
     result = (
         sb.table("jobs")
-        .update({
-            "status": req.status,
-            "notes": req.notes,
-            "updated_at": "now()",
-        })
+        .update(update_data)
         .eq("user_id", user.id)
         .eq("title", req.title)
         .eq("company", req.company)

@@ -36,6 +36,8 @@ export interface TrackerJob {
   date_found: string;
   date_updated: string;
   notes: string;
+  location?: string;
+  salary?: string;
 }
 
 export interface Profile {
@@ -158,6 +160,11 @@ export async function updateTracker(params: {
   company: string;
   status: string;
   notes?: string;
+  new_title?: string;
+  new_company?: string;
+  url?: string;
+  salary?: string;
+  location?: string;
 }) {
   return apiFetch("/api/tracker/update", {
     method: "POST",

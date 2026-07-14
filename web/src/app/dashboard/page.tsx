@@ -22,8 +22,16 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<string | null>(null);
+
+  // Advanced Editing State
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [editUrl, setEditUrl] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editSalary, setEditSalary] = useState("");
+  const [editStatus, setEditStatus] = useState("new");
 
   // Sheet state
   const [sheetUrl, setSheetUrl] = useState("");
@@ -36,10 +44,11 @@ export default function DashboardPage() {
   const [importMsg, setImportMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadJobs = async (status?: string) => {
+  // Load all jobs on mount to allow instant client-side switching and correct counters
+  const loadJobs = async () => {
     setLoading(true);
     try {
-      const res = await getTracker(status);
+      const res = await getTracker();
       setJobs(res.jobs);
     } catch {
       setJobs([]);
@@ -66,11 +75,11 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadJobs(filter || undefined);
+    loadJobs();
     loadSheet();
-  }, [filter]);
+  }, []);
 
-  const handleStatus = async (title: string, company: string, status: string) => {
+  const handleStatusChange = async (title: string, company: string, status: string) => {
     try {
       await updateTracker({ title, company, status });
       setJobs((prev) =>
@@ -81,24 +90,56 @@ export default function DashboardPage() {
         )
       );
     } catch (err) {
-      console.error("Update failed:", err);
+      console.error("Update status failed:", err);
     }
   };
 
-  const handleSaveNotes = async (title: string, company: string) => {
+  const startEditing = (job: TrackerJob) => {
+    setEditingKey(`${job.company}|${job.title}`);
+    setEditTitle(job.title);
+    setEditCompany(job.company);
+    setEditUrl(job.url || "");
+    setEditNotes(job.notes || "");
+    setEditLocation(job.location || "");
+    setEditSalary(job.salary || "");
+    setEditStatus(job.status);
+  };
+
+  const handleSaveEdit = async (originalTitle: string, originalCompany: string) => {
     try {
-      const job = jobs.find((j) => j.title === title && j.company === company);
-      await updateTracker({ title, company, status: job?.status || "new", notes: editNotes });
+      await updateTracker({
+        title: originalTitle,
+        company: originalCompany,
+        status: editStatus,
+        notes: editNotes,
+        new_title: editTitle !== originalTitle ? editTitle : undefined,
+        new_company: editCompany !== originalCompany ? editCompany : undefined,
+        url: editUrl,
+        location: editLocation,
+        salary: editSalary,
+      });
+
       setJobs((prev) =>
         prev.map((j) =>
-          j.title === title && j.company === company
-            ? { ...j, notes: editNotes, date_updated: new Date().toISOString() }
+          j.title === originalTitle && j.company === originalCompany
+            ? {
+                ...j,
+                title: editTitle,
+                company: editCompany,
+                url: editUrl,
+                notes: editNotes,
+                location: editLocation,
+                salary: editSalary,
+                status: editStatus,
+                date_updated: new Date().toISOString(),
+              }
             : j
         )
       );
-      setEditing(null);
+      setEditingKey(null);
     } catch (err) {
-      console.error("Update notes failed:", err);
+      console.error("Save edit failed:", err);
+      alert("Failed to save changes. Make sure Title and Company do not duplicate an existing job.");
     }
   };
 
@@ -171,7 +212,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setImportMsg(`Imported ${data.added} jobs${data.skipped_duplicates > 0 ? ` (${data.skipped_duplicates} duplicates skipped)` : ""}!`);
-        loadJobs(filter || undefined);
+        loadJobs();
       } else {
         const err = await res.json();
         setImportMsg(err.detail || "Import failed");
@@ -205,6 +246,7 @@ export default function DashboardPage() {
     } catch {}
   };
 
+  // Client-side statistics & filters (fixed "counters resetting to 0" issue)
   const counts = {
     all: jobs.length,
     new: jobs.filter((j) => j.status === "new").length,
@@ -212,6 +254,8 @@ export default function DashboardPage() {
     rejected: jobs.filter((j) => j.status === "rejected").length,
     offer: jobs.filter((j) => j.status === "offer").length,
   };
+
+  const filteredJobs = filter ? jobs.filter((j) => j.status === filter) : jobs;
 
   const formatDate = (d: string) => {
     if (!d) return "";
@@ -338,81 +382,163 @@ export default function DashboardPage() {
       {/* Jobs List */}
       {loading ? (
         <div className="text-center py-16 text-gray-500">Loading...</div>
-      ) : jobs.length === 0 ? (
+      ) : filteredJobs.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          No tracked jobs yet. Search and add jobs to start tracking.
+          No jobs found in this section. Add or import jobs to track.
         </div>
       ) : (
         <div className="space-y-3">
-          {jobs.map((job, i) => {
+          {filteredJobs.map((job, i) => {
             const editKey = `${job.company}|${job.title}`;
-            const isEditing = editing === editKey;
+            const isEditing = editingKey === editKey;
             return (
               <div key={editKey + i} className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-white truncate">{job.title}</h3>
-                      <select
-                        value={job.status}
-                        onChange={(e) => handleStatus(job.title, job.company, e.target.value)}
-                        className={`rounded-md border px-2 py-0.5 text-xs font-bold bg-transparent cursor-pointer ${
-                          STATUS_COLORS[job.status] || STATUS_COLORS.new
-                        }`}
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s} className="bg-gray-800 text-white">
-                            {s.charAt(0).toUpperCase() + s.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                      {job.score > 0 && <span className="text-xs text-gray-500">Score: {job.score}</span>}
-                    </div>
-                    <div className="text-sm text-gray-400 mb-1">
-                      {job.company}
-                      {job.url && (
-                        <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-indigo-400 hover:text-indigo-300 text-xs">
-                          View posting
-                        </a>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-600 mb-2">
-                      Added: {formatDate(job.date_found)}
-                      {job.date_updated && job.date_updated !== job.date_found && (
-                        <> · Updated: {formatDate(job.date_updated)}</>
-                      )}
-                    </div>
                     {isEditing ? (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="text"
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          placeholder="Add notes..."
-                          className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleSaveNotes(job.title, job.company)}
-                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditing(null)}
-                          className="rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
+                      /* Expanded Complete Editing Form */
+                      <div className="space-y-3 mt-2 border-l-2 border-indigo-500 pl-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Job Title</label>
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Company</label>
+                            <input
+                              type="text"
+                              value={editCompany}
+                              onChange={(e) => setEditCompany(e.target.value)}
+                              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Location</label>
+                            <input
+                              type="text"
+                              value={editLocation}
+                              onChange={(e) => setEditLocation(e.target.value)}
+                              placeholder="e.g. Remote, Berlin"
+                              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Salary</label>
+                            <input
+                              type="text"
+                              value={editSalary}
+                              onChange={(e) => setEditSalary(e.target.value)}
+                              placeholder="e.g. $120,000"
+                              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">URL</label>
+                          <input
+                            type="text"
+                            value={editUrl}
+                            onChange={(e) => setEditUrl(e.target.value)}
+                            placeholder="e.g. https://company.com/job"
+                            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Notes</label>
+                          <input
+                            type="text"
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            placeholder="Add application notes..."
+                            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Status</label>
+                          <select
+                            value={editStatus}
+                            onChange={(e) => setEditStatus(e.target.value)}
+                            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2">
+                          <button
+                            onClick={() => handleSaveEdit(job.title, job.company)}
+                            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => setEditingKey(null)}
+                            className="rounded-lg bg-gray-800 border border-gray-700 px-4 py-2 text-xs font-semibold text-gray-400 hover:bg-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                    ) : job.notes ? (
-                      <p className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 mt-1" onClick={() => { setEditing(editKey); setEditNotes(job.notes); }}>
-                        📝 {job.notes}
-                      </p>
                     ) : (
-                      <button onClick={() => { setEditing(editKey); setEditNotes(""); }} className="text-xs text-gray-600 hover:text-gray-400 mt-1">
-                        + Add notes
-                      </button>
+                      /* Standard Job View Mode */
+                      <>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-semibold text-white truncate">{job.title}</h3>
+                          <select
+                            value={job.status}
+                            onChange={(e) => handleStatusChange(job.title, job.company, e.target.value)}
+                            className={`rounded-md border px-2 py-0.5 text-xs font-bold bg-transparent cursor-pointer ${
+                              STATUS_COLORS[job.status] || STATUS_COLORS.new
+                            }`}
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s} className="bg-gray-800 text-white">
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                          {job.score > 0 && <span className="text-xs text-gray-500">Score: {job.score}</span>}
+                          <button
+                            onClick={() => startEditing(job)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium ml-2"
+                          >
+                            ✏️ Edit Details
+                          </button>
+                        </div>
+                        <div className="text-sm text-gray-400 mb-1">
+                          {job.company}
+                          {job.location && <span className="text-gray-500"> · {job.location}</span>}
+                          {job.salary && <span className="ml-2 text-emerald-400">{job.salary}</span>}
+                          {job.url && (
+                            <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-indigo-400 hover:text-indigo-300 text-xs">
+                              View posting &rarr;
+                            </a>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-600 mb-2">
+                          Added: {formatDate(job.date_found)}
+                          {job.date_updated && job.date_updated !== job.date_found && (
+                            <> · Updated: {formatDate(job.date_updated)}</>
+                          )}
+                        </div>
+                        {job.notes ? (
+                          <p className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 mt-1" onClick={() => startEditing(job)}>
+                            📝 {job.notes}
+                          </p>
+                        ) : (
+                          <button onClick={() => startEditing(job)} className="text-xs text-gray-600 hover:text-gray-400 mt-1">
+                            + Add notes/details
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

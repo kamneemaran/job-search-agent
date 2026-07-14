@@ -27,7 +27,9 @@ export default function SignInPage() {
       setError(authError.message);
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      const searchParams = new URLSearchParams(window.location.search);
+      const nextParam = searchParams.get("next") || "/dashboard";
+      router.push(nextParam);
       router.refresh();
     }
   };
@@ -101,9 +103,11 @@ export default function SignInPage() {
             type="button"
             onClick={async () => {
               const supabase = getBrowserClient();
+              const searchParams = new URLSearchParams(window.location.search);
+              const nextParam = searchParams.get("next") || "/dashboard";
               await supabase.auth.signInWithOAuth({
                 provider: "google",
-                options: { redirectTo: `${window.location.origin}/auth/callback` },
+                options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}` },
               });
             }}
             className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 font-semibold text-white hover:bg-gray-700 transition-colors"

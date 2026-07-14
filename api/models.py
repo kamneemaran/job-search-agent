@@ -97,13 +97,20 @@ class TrackerJob(BaseModel):
     date_found: str = ""
     date_updated: str = ""
     notes: str = ""
+    location: str = ""
+    salary: str = ""
 
 
 class TrackerUpdateRequest(BaseModel):
     title: str
     company: str
-    status: str = Field(..., pattern="^(applied|rejected|offer)$")
+    status: str = Field(..., pattern="^(new|applied|rejected|offer)$")
     notes: str = ""
+    new_title: Optional[str] = None
+    new_company: Optional[str] = None
+    url: Optional[str] = None
+    salary: Optional[str] = None
+    location: Optional[str] = None
 
 
 class TrackerAddRequest(BaseModel):

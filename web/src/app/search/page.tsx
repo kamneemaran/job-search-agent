@@ -115,9 +115,12 @@ export default function SearchPage() {
       {/* Search Form */}
       <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-8 mb-10">
         <h1 className="text-3xl font-bold mb-2">Job Search</h1>
-        <p className="text-gray-400 text-sm mb-8">
-          Search across job boards and company career pages. Results scored against your profile.
+        <p className="text-gray-400 text-sm mb-4">
+          Search top job boards and targeted company channels on-demand. Results are scored against your profile.
         </p>
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 mb-8 text-xs text-yellow-500/80 leading-relaxed">
+          ⚠️ <strong>Note:</strong> On-demand web searches are optimized for speed and scan only <strong>3–5 of the most relevant job boards</strong> (such as WeWorkRemotely/Remotive for Remote, or Naukri/Instahyre for India) based on your selected filters. For a complete, deeper scan across all <strong>250+ company career pages</strong>, configure your automated <strong>Email Digest</strong> in your Settings page.
+        </div>
         <form onSubmit={handleSearch} className="space-y-4">
           <div>
             <input

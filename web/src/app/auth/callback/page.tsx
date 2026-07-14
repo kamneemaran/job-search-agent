@@ -11,7 +11,9 @@ export default function AuthCallbackPage() {
     const supabase = getBrowserClient();
     supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        router.push("/dashboard");
+        const searchParams = new URLSearchParams(window.location.search);
+        const nextParam = searchParams.get("next") || "/dashboard";
+        router.push(nextParam);
       } else {
         router.push("/auth/signin");
       }

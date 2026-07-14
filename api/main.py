@@ -440,14 +440,36 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     source=src_name,
                 ))
 
-        # 1. Search job boards
-        for name, fn in [
-            ("LinkedIn", ds.search_linkedin),
-            ("Indeed", ds.search_indeed),
-            ("Naukri", ds.search_naukri),
-            ("Glassdoor", ds.search_glassdoor),
-            ("SimplyHired", ds.search_simplyhired),
-        ]:
+        # Select highly-targeted search boards based on location and work mode (reduces latency & boosts relevance)
+        loc_lower = req.location.lower()
+        is_remote_search = req.work_mode == "remote" or "remote" in loc_lower
+        is_india_search = "india" in loc_lower or any(city in loc_lower for city in ["pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon"])
+
+        target_boards = []
+        if is_remote_search:
+            # Remote-specific high-signal job boards
+            target_boards = [
+                ("WeWorkRemotely", ds.search_weworkremotely),
+                ("Remotive", ds.search_remotive),
+                ("LinkedIn", ds.search_linkedin),
+            ]
+        elif is_india_search:
+            # India-specific job boards
+            target_boards = [
+                ("Naukri", ds.search_naukri),
+                ("Instahyre", ds.search_instahyre),
+                ("LinkedIn", ds.search_linkedin),
+            ]
+        else:
+            # Default / Global / Europe boards
+            target_boards = [
+                ("LinkedIn", ds.search_linkedin),
+                ("Indeed", ds.search_indeed),
+                ("Glassdoor", ds.search_glassdoor),
+            ]
+
+        # 1. Search targeted job boards
+        for name, fn in target_boards:
             if _time.time() > _deadline:
                 break
             try:
