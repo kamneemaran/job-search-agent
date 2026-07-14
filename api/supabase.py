@@ -1,21 +1,21 @@
 """Supabase client helpers for authenticated requests."""
+import os
 from supabase import create_client, Client
 
-SUPABASE_URL = __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_URL") or __import__("os").environ.get("SUPABASE_URL", "")
-SUPABASE_SERVICE_KEY = __import__("os").environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 
 def get_user_client(authorization: str | None = None) -> Client:
     """Create a Supabase client scoped to the authenticated user."""
-    # Use Service Key or Anon Key for client setup to satisfy Supabase API Gateway (Kong)
-    client_key = SUPABASE_SERVICE_KEY or __import__("os").environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or __import__("os").environ.get("SUPABASE_ANON_KEY", "")
+    anon_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY", "")
+    client_key = anon_key or SUPABASE_SERVICE_KEY
     sb = create_client(SUPABASE_URL, client_key)
 
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
         try:
             sb.auth.set_session(access_token=token, refresh_token="")
-            sb.postgrest.auth(token)
         except Exception:
             pass
     return sb
@@ -27,8 +27,7 @@ def get_user_id(authorization: str | None) -> str | None:
         return None
     try:
         sb = get_user_client(authorization)
-        token = authorization[7:]
-        resp = sb.auth.get_user(token)
+        resp = sb.auth.get_user()
         user = resp.user if hasattr(resp, "user") else resp
         if hasattr(user, "id"):
             return user.id
