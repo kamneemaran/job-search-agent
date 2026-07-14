@@ -73,7 +73,10 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
             "core_skills": core_skills,
             "years_experience": row.get("years_experience", 0) or 0,
         }
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error in _get_user_profile: {e}")
         return empty
 
 
