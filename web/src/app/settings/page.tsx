@@ -237,7 +237,39 @@ export default function SettingsPage() {
 
         {/* Email Digest Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Email Digest</h2>
+          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Email Digest</h2>
+              <p className="text-xs text-gray-500">Automated scheduler preferences</p>
+            </div>
+            {digestFrequency !== "never" && (
+              <button
+                onClick={async () => {
+                  setSending(true);
+                  setSendResult("");
+                  try {
+                    const res = await sendDigestNow(digestEmail);
+                    setSendResult(res.message);
+                  } catch (err) {
+                    setSendResult(err instanceof Error ? err.message : "Failed to send digest");
+                  } finally {
+                    setSending(false);
+                  }
+                }}
+                disabled={sending}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sending ? "Sending..." : "Send Now"}
+              </button>
+            )}
+          </div>
+
+          {sendResult && (
+            <p className={`mb-4 text-xs ${sendResult.includes("Limit") || sendResult.includes("limit") || sendResult.includes("Error") ? "text-red-400" : "text-emerald-400"}`}>
+              {sendResult}
+            </p>
+          )}
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Frequency</label>
@@ -319,39 +351,6 @@ export default function SettingsPage() {
                 placeholder="you@example.com"
               />
             </div>
-
-            {digestFrequency !== "never" && (
-              <div className="pt-4 border-t border-gray-800">
-                <div className="flex sm:items-center flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={async () => {
-                      setSending(true);
-                      setSendResult("");
-                      try {
-                        const res = await sendDigestNow(digestEmail);
-                        setSendResult(res.message);
-                      } catch (err) {
-                        setSendResult(err instanceof Error ? err.message : "Failed to send digest");
-                      } finally {
-                        setSending(false);
-                      }
-                    }}
-                    disabled={sending}
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {sending ? "Sending..." : "Send Now"}
-                  </button>
-                  <p className="text-xs text-gray-500">
-                    Triggers an on-demand scan. You will receive matching jobs in your inbox within 1–2 minutes.
-                  </p>
-                </div>
-                {sendResult && (
-                  <p className={`mt-3 text-sm ${sendResult.includes("Limit") || sendResult.includes("limit") || sendResult.includes("Error") ? "text-red-400" : "text-emerald-400"}`}>
-                    {sendResult}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
