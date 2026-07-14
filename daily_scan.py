@@ -1077,7 +1077,7 @@ def score_job(title, description, company, location=""):
                       "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
                       "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
     is_outside_india = not any(m in loc_lower or m in text for m in _INDIA_MARKERS)
-    is_remote = "remote" in loc_lower or "remote" in text
+    is_remote = any(kw in loc_lower or kw in text for kw in ["remote", "work from home", "wfh", "virtual"])
     visa_note = ""
     has_visa_relo = False
     has_visa_sponsor = False
