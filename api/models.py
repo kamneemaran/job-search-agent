@@ -36,12 +36,39 @@ class SearchRequest(BaseModel):
     max_results: int = Field(default=10, ge=1, le=50)
     require_visa: bool = True
     exclude_companies: list[str] = []
+    locations: list[str] = []
+    skills: list[str] = []
+    job_type: str = ""
+    work_mode: str = ""
 
 
 class SearchResponse(BaseModel):
     jobs: list[JobResult]
     total: int
     query: str
+
+
+class ResumeInfo(BaseModel):
+    key: str
+    filename: str
+    exists: bool
+    is_default: bool
+    size_kb: int = 0
+
+
+class ListResumesResponse(BaseModel):
+    registered: list[ResumeInfo]
+    unregistered: list[str]
+    default_key: str
+
+
+class ResumeUploadWithKeyRequest(BaseModel):
+    key: str = ""
+
+
+class DigestSendRequest(BaseModel):
+    schedule: str = "now"
+    email: str = ""
 
 
 class ResumeUploadResponse(BaseModel):

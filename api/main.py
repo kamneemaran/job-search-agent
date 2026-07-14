@@ -5,11 +5,13 @@ import json
 import tempfile
 import logging
 import threading
+import shutil
+from glob import glob
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger("jobpilot")
@@ -20,9 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from api.models import (
     ScoreRequest, ScoreResponse,
     SearchRequest, SearchResponse, JobResult,
-    ResumeUploadResponse, ProfileResponse,
+    ResumeUploadResponse, ResumeInfo, ListResumesResponse, ProfileResponse,
     TrackerJob, TrackerUpdateRequest, TrackerResponse,
-    ProfileUpdateRequest,
+    ProfileUpdateRequest, DigestSendRequest,
 )
 from api.tracker import router as tracker_router
 from api.digest import router as digest_router
@@ -162,7 +164,11 @@ def update_profile(
 
 
 @app.post("/api/resume/upload", response_model=ResumeUploadResponse)
-async def upload_resume(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+async def upload_resume(
+    file: UploadFile = File(...),
+    key: str = Query("", description="Optional version name to register as (e.g. 'faang', 'general', 'startup')"),
+    authorization: Optional[str] = Header(None),
+):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files supported")
 
@@ -215,6 +221,18 @@ async def upload_resume(file: UploadFile = File(...), authorization: Optional[st
             except Exception as e:
                 print(f"  [resume] Supabase save failed: {e}")
 
+        # Register as a local resume version if key is provided
+        if key and not missing:
+            key = key.strip().lower().replace(" ", "_")
+            filename = file.filename or f"resume_{key}.pdf"
+            dest = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", filename)
+            if not os.path.exists(os.path.dirname(os.path.abspath(dest))):
+                os.makedirs(os.path.dirname(os.path.abspath(dest)), exist_ok=True)
+            with open(dest, "wb") as f:
+                f.write(content)
+            ds.RESUME_VERSIONS[key] = filename
+            print(f"  [resume] Registered version '{key}' -> {filename}")
+
         return ResumeUploadResponse(
             name=profile.get("name", ""),
             email=profile.get("email", ""),
@@ -225,6 +243,26 @@ async def upload_resume(file: UploadFile = File(...), authorization: Optional[st
         )
     finally:
         os.unlink(tmp_path)
+
+
+@app.get("/api/resumes", response_model=ListResumesResponse)
+def list_resumes(authorization: Optional[str] = Header(None)):
+    ds = _get_ds()
+    registered = []
+    default_key = "faang"
+    for key, filename in ds.RESUME_VERSIONS.items():
+        exists = os.path.exists(filename)
+        fsize = os.path.getsize(filename) // 1024 if exists else 0
+        registered.append(ResumeInfo(
+            key=key, filename=filename, exists=exists,
+            is_default=(key == default_key), size_kb=fsize,
+        ))
+    pdfs = glob("*.pdf") or []
+    registered_names = set(ds.RESUME_VERSIONS.values())
+    unregistered = [p for p in pdfs if os.path.basename(p) not in registered_names]
+    return ListResumesResponse(
+        registered=registered, unregistered=unregistered, default_key=default_key,
+    )
 
 
 @app.post("/api/score", response_model=ScoreResponse)
@@ -275,6 +313,37 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         import time as _time
         _deadline = _time.time() + 25
 
+        # Filter keyword sets (mirrors mcp_server.py)
+        _CONTRACT_KW = ["contract", "freelance", "temporary", "temp ", "fixed-term", "consultant", "12-month", "6-month"]
+        _FULLTIME_KW = ["full-time", "full time", "permanent", "fte", "regular", "permanent employee"]
+        _REMOTE_KW = ["remote", "work from home", "wfh", "virtual", "100% remote", "fully remote"]
+        _ONSITE_KW = ["on-site", "on site", "in-office", "office based", "office-based"]
+        _HYBRID_KW = ["hybrid"]
+
+        locations_lower = [l.lower() for l in req.locations] if req.locations else None
+        skills_lower = [s.lower() for s in req.skills] if req.skills else None
+
+        def _passes_filters(job):
+            combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
+            loc = job.get("location", "").lower()
+            if locations_lower and not any(l in loc for l in locations_lower):
+                return False
+            if skills_lower and not any(s in combined for s in skills_lower):
+                return False
+            if req.job_type:
+                if req.job_type == "contract" and not any(kw in combined for kw in _CONTRACT_KW):
+                    return False
+                if req.job_type == "full-time" and not any(kw in combined for kw in _FULLTIME_KW):
+                    return False
+            if req.work_mode:
+                if req.work_mode == "remote" and not any(kw in combined for kw in _REMOTE_KW):
+                    return False
+                if req.work_mode == "on-site" and not any(kw in combined for kw in _ONSITE_KW):
+                    return False
+                if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
+                    return False
+            return True
+
         def _collect(jobs, src_name):
             if _time.time() > _deadline:
                 return
@@ -283,6 +352,9 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 if key in seen:
                     continue
                 seen.add(key)
+
+                if not _passes_filters(job):
+                    continue
 
                 score, note = ds.score_job(
                     job.get("title", ""),
