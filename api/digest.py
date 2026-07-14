@@ -1,11 +1,14 @@
 """Digest preference and send endpoints."""
 import os
 import sys
+import logging
 import threading
 from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
+
+logger = logging.getLogger("jobpilot.digest")
 
 from api.models import DigestPreferences, DigestSendRequest
 from api.supabase import get_user_client
@@ -101,14 +104,17 @@ async def send_digest(
     authorization: Optional[str] = Header(None),
 ):
     if not authorization:
+        logger.warning("[DIGEST-TRIGGER] Rejected request: Authorization header missing.")
         raise HTTPException(401, "Authorization required")
 
     sb = get_user_client(authorization)
     user = sb.auth.get_user().user
+    user_id = user.id
 
     # Get user profile
-    profile_row = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
+    profile_row = sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
     if not profile_row.data:
+        logger.error(f"[DIGEST-TRIGGER] Profile not found for user_id={user_id}. Upload a resume first.")
         raise HTTPException(400, "Profile not found. Upload a resume first.")
 
     row = profile_row.data
@@ -117,10 +123,12 @@ async def send_digest(
         try:
             import json
             core_skills = json.loads(core_skills)
-        except Exception:
+        except Exception as e:
+            logger.error(f"[DIGEST-TRIGGER] Failed to parse core_skills JSON for user_id={user_id}: {e}")
             core_skills = []
 
     if not core_skills or not isinstance(core_skills, list):
+        logger.error(f"[DIGEST-TRIGGER] No core skills array found for user_id={user_id}.")
         raise HTTPException(400, "No core skills found. Upload a resume first.")
 
     profile = {
@@ -130,28 +138,24 @@ async def send_digest(
     }
 
     to_email = req.email or row.get("email") or user.email or ""
+    logger.info(f"[DIGEST-TRIGGER] Manual email digest send initiated for user_id={user_id}, target_email={to_email}, schedule={req.schedule}")
+    logger.info(f"[DIGEST-TRIGGER] Matching profile: years_experience={profile['years_experience']}, core_skills={profile['core_skills']}")
 
     if req.schedule == "now":
         # Get email preferences for frequency and sent history
-        pref_result = sb.table("email_preferences").select("*").eq("user_id", user.id).maybe_single().execute()
+        pref_result = sb.table("email_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
         pref_row = pref_result.data if pref_result else None
 
         frequency = pref_row.get("frequency", "weekly") if pref_row else "weekly"
         sent_history = pref_row.get("sent_history", []) if pref_row else []
 
-        # Enforce rate limits based on user requirements:
-        # 1. "daily option we can click once in daily"
-        # 2. "weekly 1-2 times in week taht too on different day"
-        # 3. "monthly 1-2 times in month provided day has to be different"
-        now = datetime.now()
-        now_weekday = now.weekday()  # 0-6 (Mon-Sun)
-        now_day = now.day            # 1-31
+        logger.info(f"[DIGEST-TRIGGER] Checking rate limit history for user_id={user_id}. Past sent count: {len(sent_history)}")
 
-        # Filter sent_history to past 30 days to keep the JSON small
+        # Enforce rate limits based on user requirements:
+        now = datetime.now()
         history_dates = []
         for ts in sent_history:
             try:
-                from datetime import datetime as dt_class
                 # Parse ISO timestamp
                 if "T" in ts:
                     dt = datetime.fromisoformat(ts)
@@ -160,13 +164,14 @@ async def send_digest(
                 # If within 30 days, keep it
                 if (now - dt).days < 30:
                     history_dates.append(dt)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[DIGEST-TRIGGER] Skip parsing history timestamp '{ts}': {e}")
 
         # Check limit logic: Flat 8 hours limit on manual trigger
         for dt in history_dates:
             diff_hours = (now - dt).total_seconds() / 3600.0
             if diff_hours < 8.0:
+                logger.warning(f"[DIGEST-TRIGGER] User user_id={user_id} was rate-limited. Last run was {diff_hours:.2f} hours ago (less than 8h threshold).")
                 raise HTTPException(
                     429,
                     "You already requested a scan recently. Your on-demand digest is running in the background and compiling jobs from multiple regions and company career pages. Please check your inbox in a few minutes, or wait up to 4-5 hours before requesting another scan."
@@ -174,18 +179,21 @@ async def send_digest(
 
         try:
             ds._rebuild_precompiled_patterns()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[DIGEST-TRIGGER] Non-fatal: Pattern rebuild exception: {e}")
 
         batches_list = pref_row.get("batches") if pref_row else ["all"]
         if isinstance(batches_list, str):
             try:
                 import json
                 batches_list = json.loads(batches_list)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"[DIGEST-TRIGGER] Failed to parse batches string {batches_list}: {e}")
                 batches_list = ["all"]
         if not batches_list:
             batches_list = ["all"]
+
+        logger.info(f"[DIGEST-TRIGGER] Active target batches list: {batches_list}")
 
         all_sources = []
         if "all" in batches_list:
@@ -210,14 +218,21 @@ async def send_digest(
             if "remote" in batches_list:
                 all_sources += ds.REMOTE_JOB_SOURCES
 
+        logger.info(f"[DIGEST-TRIGGER] Compiled {len(all_sources)} total job sources to fetch.")
+
         results = []
         seen = set()
 
-        for source in all_sources:
+        for idx, source in enumerate(all_sources, 1):
+            source_name = source.get("name", f"Source #{idx}")
+            logger.info(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Scraping: '{source_name}'...")
             try:
                 jobs = ds.fetch_jobs_from_source(source)
-            except Exception:
+                logger.info(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Successfully parsed '{source_name}': fetched {len(jobs) if jobs else 0} raw jobs")
+            except Exception as e:
+                logger.error(f"[DIGEST-TRIGGER] [{idx}/{len(all_sources)}] Scraper '{source_name}' failed: {e}", exc_info=True)
                 continue
+
             for job in jobs:
                 key = (job.get("title", "").lower(), job.get("company", "").lower())
                 if key in seen:
@@ -238,6 +253,7 @@ async def send_digest(
                         ds.PROFILE["years_experience"] = orig_years
 
                 if score >= 65:
+                    logger.info(f"[DIGEST-TRIGGER] Match verified! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
                     salary_info = ds.get_salary_info(
                         job.get("company", ""), job.get("title", ""), job.get("description", ""),
                     )
@@ -251,13 +267,24 @@ async def send_digest(
                     })
 
         results.sort(key=lambda x: x["score"], reverse=True)
+        logger.info(f"[DIGEST-TRIGGER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
 
         if not results:
+            logger.warning(f"[DIGEST-TRIGGER] No job matches above 65 found for user_id={user_id}. Skipping email dispatch.")
             return {"message": "No matches above threshold found. Check back later.", "sent": False, "count": 0}
 
-        from daily_scan import build_email_html, send_email
-        html = build_email_html(results)
-        ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+        logger.info(f"[DIGEST-TRIGGER] Constructing email template and sending {len(results)} matches to {to_email}...")
+        try:
+            from daily_scan import build_email_html, send_email
+            html = build_email_html(results)
+            ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+            if ok:
+                logger.info(f"[DIGEST-TRIGGER] Email dispatch successful for user_id={user_id} -> {to_email}")
+            else:
+                logger.error(f"[DIGEST-TRIGGER] Email delivery failed (send_email returned False) for {to_email}")
+        except Exception as e:
+            logger.error(f"[DIGEST-TRIGGER] Exception raised during email compilation/dispatch: {e}", exc_info=True)
+            ok = False
 
         # Update last_sent_at and sent_history
         new_history = [dt.isoformat() for dt in history_dates]
@@ -265,12 +292,13 @@ async def send_digest(
 
         try:
             sb.table("email_preferences").upsert({
-                "user_id": user.id,
+                "user_id": user_id,
                 "last_sent_at": now.isoformat(),
                 "sent_history": new_history,
             }, on_conflict="user_id").execute()
-        except Exception:
-            pass
+            logger.info(f"[DIGEST-TRIGGER] Successfully updated sent history in Supabase for user_id={user_id}")
+        except Exception as e:
+            logger.error(f"[DIGEST-TRIGGER] Failed to update sent history in Supabase for user_id={user_id}: {e}", exc_info=True)
 
         return {
             "message": f"Sent {len(results)} matches to {to_email}",
@@ -279,16 +307,19 @@ async def send_digest(
         }
 
     elif req.schedule == "never":
+        logger.info(f"[DIGEST-TRIGGER] Disabling email digest for user_id={user_id}")
         sb.table("email_preferences").upsert({
-            "user_id": user.id, "enabled": False, "frequency": "never",
+            "user_id": user_id, "enabled": False, "frequency": "never",
         }, on_conflict="user_id").execute()
         return {"message": "Digest disabled", "schedule": "never", "sent": False, "count": 0}
 
     elif req.schedule in ("tomorrow", "weekly", "monthly"):
+        logger.info(f"[DIGEST-TRIGGER] Updating email digest preference for user_id={user_id} to schedule={req.schedule}")
         sb.table("email_preferences").upsert({
-            "user_id": user.id, "enabled": True, "frequency": req.schedule,
+            "user_id": user_id, "enabled": True, "frequency": req.schedule,
             "email": to_email,
         }, on_conflict="user_id").execute()
         return {"message": f"Digest scheduled {req.schedule}", "schedule": req.schedule, "sent": False, "count": 0}
 
+    logger.warning(f"[DIGEST-TRIGGER] Unknown schedule value received: {req.schedule}")
     return {"message": f"Unknown schedule: {req.schedule}", "sent": False, "count": 0}
