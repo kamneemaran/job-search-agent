@@ -67,15 +67,42 @@ def search_jobs_for_user(profile: dict) -> list[dict]:
     except Exception:
         pass
 
-    all_sources = (
-        ds.JOB_SOURCES
-        + ds.EU_JOB_SOURCES
-        + ds.GLOBAL_JOB_SOURCES
-        + ds.APAC_JOB_SOURCES
-        + ds.US_CANADA_JOB_SOURCES
-        + ds.MIDDLE_EAST_JOB_SOURCES
-        + ds.REMOTE_JOB_SOURCES
-    )
+    batches_list = profile.get("batches") or ["all"]
+    if isinstance(batches_list, str):
+        try:
+            import json
+            batches_list = json.loads(batches_list)
+        except Exception:
+            batches_list = ["all"]
+    if not batches_list:
+        batches_list = ["all"]
+
+    all_sources = []
+    if "all" in batches_list:
+        all_sources = (
+            ds.JOB_SOURCES
+            + ds.EU_JOB_SOURCES
+            + ds.GLOBAL_JOB_SOURCES
+            + ds.APAC_JOB_SOURCES
+            + ds.US_CANADA_JOB_SOURCES
+            + ds.MIDDLE_EAST_JOB_SOURCES
+            + ds.REMOTE_JOB_SOURCES
+        )
+    else:
+        if "india" in batches_list:
+            all_sources += ds.JOB_SOURCES
+        if "europe_companies" in batches_list:
+            all_sources += ds.EU_JOB_SOURCES
+        if "europe_boards" in batches_list:
+            all_sources += [s for s in ds.GLOBAL_JOB_SOURCES if s.get("name") in ("Arbeitnow", "IamExpat", "TogetherAbroad")]
+        if "middle_east" in batches_list:
+            all_sources += ds.MIDDLE_EAST_JOB_SOURCES
+        if "apac" in batches_list:
+            all_sources += ds.APAC_JOB_SOURCES
+        if "us_canada" in batches_list:
+            all_sources += ds.US_CANADA_JOB_SOURCES
+        if "remote" in batches_list:
+            all_sources += ds.REMOTE_JOB_SOURCES
 
     results = []
     seen = set()
@@ -244,6 +271,7 @@ def run():
             "core_skills": core_skills,
             "years_experience": row.get("years_experience", 0),
             "current_role": row.get("current_role", ""),
+            "batches": pref.get("batches") or ["all"]
         }
 
         logger.info(f"Searching jobs for user {user_id} ({to_email})")

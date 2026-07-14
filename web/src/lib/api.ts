@@ -98,6 +98,7 @@ export async function searchJobs(params: {
   skills?: string[];
   job_type?: string;
   work_mode?: string;
+  sources?: string[];
 }): Promise<SearchResponse> {
   return apiFetch("/api/search", {
     method: "POST",
@@ -112,6 +113,7 @@ export async function searchJobs(params: {
       skills: params.skills || [],
       job_type: params.job_type || "",
       work_mode: params.work_mode || "",
+      sources: params.sources || [],
     }),
   });
 }
@@ -202,6 +204,7 @@ export interface DigestPreferences {
   day_of_month: number;
   time_of_day: string;
   sent_history: string[];
+  batches?: string[];
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -215,6 +218,7 @@ export async function updateDigestPreferences(params: {
   day_of_week: string;
   day_of_month: number;
   time_of_day: string;
+  batches?: string[];
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",

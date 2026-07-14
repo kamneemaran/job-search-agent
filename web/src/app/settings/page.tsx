@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [digestDayOfMonth, setDigestDayOfMonth] = useState(1);
   const [digestTimeOfDay, setDigestTimeOfDay] = useState("09:00");
   const [digestEmail, setDigestEmail] = useState("");
+  const [digestBatches, setDigestBatches] = useState<string[]>(["all"]);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
 
@@ -48,7 +49,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile(),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [] })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"] })),
       ]);
 
       setName(profile.name || "");
@@ -62,6 +63,7 @@ export default function SettingsPage() {
       setDigestDayOfMonth(digest.day_of_month || 1);
       setDigestTimeOfDay(digest.time_of_day || "09:00");
       setDigestEmail(digest.email || "");
+      setDigestBatches(digest.batches || ["all"]);
 
       // Get email from auth if digest email is empty
       const supabase = getBrowserClient();
@@ -126,6 +128,7 @@ export default function SettingsPage() {
           day_of_week: digestDayOfWeek,
           day_of_month: digestDayOfMonth,
           time_of_day: digestTimeOfDay,
+          batches: digestBatches,
         }),
       ]);
 
@@ -350,6 +353,65 @@ export default function SettingsPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 placeholder="you@example.com"
               />
+            </div>
+
+            <div className="col-span-1 sm:col-span-2 pt-3 border-t border-gray-800">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                Included Scraper Batches in Email Digest
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Choose which regions/boards you want the automated scheduler to scan for your matches.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { id: "all", label: "All Regions (Complete Master Scan)" },
+                  { id: "india", label: "India boards & company career pages" },
+                  { id: "europe_companies", label: "Europe company career pages (e.g. ASML, Adyen)" },
+                  { id: "europe_boards", label: "Europe job boards (IamExpat, TogetherAbroad, Arbeitnow)" },
+                  { id: "middle_east", label: "Middle East job boards & company careers" },
+                  { id: "apac", label: "APAC job boards & company careers" },
+                  { id: "us_canada", label: "US & Canada job boards & company careers" },
+                  { id: "remote", label: "Global Remote boards (WeWorkRemotely, Remotive)" },
+                ].map((batch) => {
+                  const isChecked = digestBatches.includes(batch.id);
+                  return (
+                    <label
+                      key={batch.id}
+                      className="inline-flex items-start gap-2.5 text-sm cursor-pointer text-gray-300 hover:text-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (batch.id === "all") {
+                            if (e.target.checked) {
+                              setDigestBatches(["all"]);
+                            } else {
+                              setDigestBatches([]);
+                            }
+                          } else {
+                            let updated = [...digestBatches];
+                            if (updated.includes("all")) {
+                              updated = updated.filter((x) => x !== "all");
+                            }
+                            if (e.target.checked) {
+                              updated.push(batch.id);
+                            } else {
+                              updated = updated.filter((x) => x !== batch.id);
+                            }
+                            if (updated.length === 0) {
+                              updated = ["all"];
+                            }
+                            setDigestBatches(updated);
+                          }
+                        }}
+                        className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 mt-1"
+                      />
+                      <span>{batch.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

@@ -40,6 +40,7 @@ class SearchRequest(BaseModel):
     skills: list[str] = []
     job_type: str = ""
     work_mode: str = ""
+    sources: list[str] = []
 
 
 class SearchResponse(BaseModel):
@@ -143,3 +144,4 @@ class DigestPreferences(BaseModel):
     day_of_month: Optional[int] = 1
     time_of_day: Optional[str] = "09:00"
     sent_history: list[str] = []
+    batches: list[str] = ["all"]

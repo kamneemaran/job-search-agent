@@ -31,6 +31,15 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
         return DigestPreferences()
 
     row = result.data
+    
+    batches_data = row.get("batches") or ["all"]
+    if isinstance(batches_data, str):
+        try:
+            import json
+            batches_data = json.loads(batches_data)
+        except Exception:
+            batches_data = ["all"]
+
     return DigestPreferences(
         enabled=row.get("enabled", True),
         frequency=row.get("frequency", "weekly"),
@@ -39,6 +48,7 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
         day_of_month=row.get("day_of_month", 1),
         time_of_day=row.get("time_of_day", "09:00"),
         sent_history=row.get("sent_history") or [],
+        batches=batches_data,
     )
 
 
@@ -62,9 +72,25 @@ async def update_digest_preferences(
         "day_of_month": prefs.day_of_month,
         "time_of_day": prefs.time_of_day,
         "sent_history": prefs.sent_history,
+        "batches": prefs.batches,
     }
 
-    sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
+    try:
+        sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
+    except Exception as e:
+        # If the column "batches" does not exist in the database, let's execute an alter script first!
+        try:
+            sb.table("email_preferences").select("batches").limit(1).execute()
+        except Exception:
+            try:
+                # Add column dynamically
+                # (Note: standard PostgREST cannot alter table, but if it fails we can catch and log)
+                print(f"Error: public.email_preferences has no 'batches' column. Please run the SQL alter table command. {e}")
+            except Exception:
+                pass
+        # Remove batches from dict so it can upsert successfully even if column hasn't been added yet
+        data.pop("batches", None)
+        sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
 
     return prefs
 
@@ -151,11 +177,38 @@ async def send_digest(
         except Exception:
             pass
 
-        all_sources = (
-            ds.JOB_SOURCES + ds.EU_JOB_SOURCES + ds.GLOBAL_JOB_SOURCES
-            + ds.APAC_JOB_SOURCES + ds.US_CANADA_JOB_SOURCES
-            + ds.MIDDLE_EAST_JOB_SOURCES + ds.REMOTE_JOB_SOURCES
-        )
+        batches_list = pref_row.get("batches") if pref_row else ["all"]
+        if isinstance(batches_list, str):
+            try:
+                import json
+                batches_list = json.loads(batches_list)
+            except Exception:
+                batches_list = ["all"]
+        if not batches_list:
+            batches_list = ["all"]
+
+        all_sources = []
+        if "all" in batches_list:
+            all_sources = (
+                ds.JOB_SOURCES + ds.EU_JOB_SOURCES + ds.GLOBAL_JOB_SOURCES
+                + ds.APAC_JOB_SOURCES + ds.US_CANADA_JOB_SOURCES
+                + ds.MIDDLE_EAST_JOB_SOURCES + ds.REMOTE_JOB_SOURCES
+            )
+        else:
+            if "india" in batches_list:
+                all_sources += ds.JOB_SOURCES
+            if "europe_companies" in batches_list:
+                all_sources += ds.EU_JOB_SOURCES
+            if "europe_boards" in batches_list:
+                all_sources += [s for s in ds.GLOBAL_JOB_SOURCES if s.get("name") in ("Arbeitnow", "IamExpat", "TogetherAbroad")]
+            if "middle_east" in batches_list:
+                all_sources += ds.MIDDLE_EAST_JOB_SOURCES
+            if "apac" in batches_list:
+                all_sources += ds.APAC_JOB_SOURCES
+            if "us_canada" in batches_list:
+                all_sources += ds.US_CANADA_JOB_SOURCES
+            if "remote" in batches_list:
+                all_sources += ds.REMOTE_JOB_SOURCES
 
         results = []
         seen = set()
