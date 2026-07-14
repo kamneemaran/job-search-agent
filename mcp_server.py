@@ -13,9 +13,11 @@ import os
 import json
 import re
 import smtplib
+import shutil
+from glob import glob
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 # Add project root to path
@@ -89,13 +91,17 @@ from daily_scan import (
     sync_tracker_to_gsheet,
     get_salary_info,
     build_domain_queries,
+    build_email_html,
+    send_email,
     _format_salary,
+    _rebuild_precompiled_patterns,
 )
 from eu_companies import EU_JOB_SOURCES
 from global_companies import GLOBAL_JOB_SOURCES
 from apac_companies import APAC_JOB_SOURCES
 from us_canada_companies import US_CANADA_JOB_SOURCES
 from middle_east_companies import MIDDLE_EAST_JOB_SOURCES
+from remote_companies import REMOTE_JOB_SOURCES
 
 # ---------------------------------------------------------------------------
 # Server setup
@@ -215,6 +221,23 @@ def _check_career_page_visa(company: str, career_url: str | None = None) -> bool
     _visa_cache[co_key] = None
     return None
 
+# Schedule file for email digest preferences
+DIGEST_SCHEDULE_FILE = "digest_schedule.json"
+
+
+def _load_digest_schedule() -> dict:
+    try:
+        with open(DIGEST_SCHEDULE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"schedule": "never", "email": "", "last_sent": "", "scheduled_date": ""}
+
+
+def _save_digest_schedule(data: dict):
+    with open(DIGEST_SCHEDULE_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
@@ -279,6 +302,28 @@ async def handle_list_tools() -> list[types.Tool]:
                         "items": {"type": "string"},
                         "description": "Optional: specific sources to search e.g. ['linkedin', 'greenhouse', 'indeed']. Leave empty for all.",
                     },
+                    "locations": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Multi-select locations (OR logic). Only jobs matching ANY of these locations pass. Overrides 'location' if provided. Example: ['Remote', 'Amsterdam', 'Berlin']",
+                    },
+                    "skills": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Additional skills to filter by (OR logic). Only jobs whose title or description mentions ANY of these skills pass, in addition to profile-based scoring. Example: ['rust', 'react', 'typescript']",
+                    },
+                    "job_type": {
+                        "type": "string",
+                        "enum": ["", "full-time", "contract"],
+                        "description": "Employment type filter: 'full-time', 'contract', or empty string for both",
+                        "default": "",
+                    },
+                    "work_mode": {
+                        "type": "string",
+                        "enum": ["", "remote", "on-site", "hybrid"],
+                        "description": "Work mode filter: 'remote', 'on-site', 'hybrid', or empty string for all",
+                        "default": "",
+                    },
                 },
                 "required": ["query"],
             },
@@ -340,7 +385,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="parse_resume",
-            description="Extract name, email, current role, skills, and experience from a PDF resume. Validates that current_role, years_experience, and core_skills are present. Auto-configures title filters based on detected role domain.",
+            description="Extract name, email, current role, skills, and experience from a PDF resume. Auto-configures title filters. Optionally register the resume as a new version with a key name (e.g. 'faang', 'general', 'startup').",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -348,16 +393,34 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "string",
                         "description": "Absolute path to the PDF resume file",
                     },
+                    "key": {
+                        "type": "string",
+                        "description": "Optional: version name to register this resume as (e.g. 'faang', 'general', 'startup'). Overwrites if key already exists.",
+                    },
                 },
                 "required": ["path"],
             },
         ),
         types.Tool(
             name="get_profile",
-            description="View the current profile configuration: name, experience, core skills, and filter settings",
+            description="View the current profile configuration: name, experience, core skills, filter settings, and resume versions",
             inputSchema={
                 "type": "object",
                 "properties": {},
+            },
+        ),
+        types.Tool(
+            name="list_resumes",
+            description="List all registered resume versions and discover available PDF files in the project directory",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "scan": {
+                        "type": "boolean",
+                        "description": "Scan for unregistered PDF files in the project directory (default: true)",
+                        "default": True,
+                    },
+                },
             },
         ),
         types.Tool(
@@ -415,6 +478,25 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["title", "company", "description"],
             },
         ),
+        types.Tool(
+            name="email_digest",
+            description="Trigger or schedule the email digest with your latest job matches. Send immediately ('now'), schedule for tomorrow, or set a recurring schedule (weekly/monthly). Use 'never' to disable.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "schedule": {
+                        "type": "string",
+                        "enum": ["now", "tomorrow", "weekly", "monthly", "never"],
+                        "description": "'now' — send immediately | 'tomorrow' — send once tomorrow | 'weekly'/'monthly' — recurring digest | 'never' — disable scheduled digest",
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Optional: recipient email override (defaults to GMAIL_ADDRESS or EMAIL_TO from env)",
+                    },
+                },
+                "required": ["schedule"],
+            },
+        ),
     ]
 
 
@@ -446,8 +528,14 @@ async def handle_call_tool(
     if name == "get_profile":
         return [types.TextContent(type="text", text=_get_profile())]
 
+    if name == "list_resumes":
+        return [types.TextContent(type="text", text=_list_resumes(**arguments))]
+
     if name == "search_board_jobs":
         return [types.TextContent(type="text", text=_search_board_jobs(**arguments))]
+
+    if name == "email_digest":
+        return [types.TextContent(type="text", text=_email_digest(**arguments))]
 
     if name == "prepare_application":
         return [types.TextContent(type="text", text=_prepare_application(**arguments))]
@@ -565,6 +653,14 @@ You're now talking to the interactive MCP interface, which lets you search, scor
     return overview
 
 
+# Keywords for job type and work mode filtering
+_CONTRACT_KW = ["contract", "freelance", "temporary", "temp ", "fixed-term", "consultant", "12-month", "6-month"]
+_FULLTIME_KW = ["full-time", "full time", "permanent", "fte", "regular", "permanent employee"]
+_REMOTE_KW = ["remote", "work from home", "wfh", "virtual", "100% remote", "fully remote"]
+_ONSITE_KW = ["on-site", "on site", "in-office", "office based", "office-based"]
+_HYBRID_KW = ["hybrid"]
+
+
 def _search_jobs(
     query: str,
     location: str = "Remote",
@@ -574,6 +670,10 @@ def _search_jobs(
     focus_role: str = "",
     max_results: int = 10,
     sources: list[str] | None = None,
+    locations: list[str] | None = None,
+    skills: list[str] | None = None,
+    job_type: str = "",
+    work_mode: str = "",
 ) -> str:
     if max_results > 50:
         max_results = 50
@@ -628,6 +728,45 @@ def _search_jobs(
     all_jobs = []
     skipped = []
 
+    # Determine effective location for board scrapers (use first from multi-select if provided)
+    effective_location = locations[0] if locations else location
+    locations_lower = [l.lower() for l in locations] if locations else None
+    skills_lower = [s.lower() for s in skills] if skills else None
+
+    def _passes_filters(job):
+        """Check job against additional filters: locations, skills, job_type, work_mode (OR logic)."""
+        combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
+        loc = job.get("location", "").lower()
+
+        if locations_lower:
+            if not any(l in loc for l in locations_lower):
+                return False
+
+        if skills_lower:
+            if not any(s in combined for s in skills_lower):
+                return False
+
+        if job_type:
+            if job_type == "contract":
+                if not any(kw in combined for kw in _CONTRACT_KW):
+                    return False
+            elif job_type == "full-time":
+                if not any(kw in combined for kw in _FULLTIME_KW):
+                    return False
+
+        if work_mode:
+            if work_mode == "remote":
+                if not any(kw in combined for kw in _REMOTE_KW):
+                    return False
+            elif work_mode == "on-site":
+                if not any(kw in combined for kw in _ONSITE_KW):
+                    return False
+            elif work_mode == "hybrid":
+                if not any(kw in combined for kw in _HYBRID_KW):
+                    return False
+
+        return True
+
     def _score(job):
         """Score job, with career page fallback for visa check."""
         desc = job.get("description", "")
@@ -672,6 +811,8 @@ def _search_jobs(
             company_lower = job["company"].lower().strip()
             if exclude_lower and any(c in company_lower for c in exclude_lower):
                 continue
+            if not _passes_filters(job):
+                continue
             score, note = _score(job)
             if score >= threshold:
                 salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
@@ -684,10 +825,12 @@ def _search_jobs(
             continue
         for q in expanded_queries:
             try:
-                jobs = board_fn(q, location=location, max_results=max_results)
+                jobs = board_fn(q, location=effective_location, max_results=max_results)
                 for job in jobs:
                     company_lower = job["company"].lower().strip()
                     if exclude_lower and any(c in company_lower for c in exclude_lower):
+                        continue
+                    if not _passes_filters(job):
                         continue
                     score, note = _score(job)
                     if score >= threshold:
@@ -708,10 +851,12 @@ def _search_jobs(
             continue
         for q in expanded_queries:
             try:
-                jobs = pw_fn(q, location=location, max_results=max_results)
+                jobs = pw_fn(q, location=effective_location, max_results=max_results)
                 for job in jobs:
                     company_lower = job["company"].lower().strip()
                     if exclude_lower and any(c in company_lower for c in exclude_lower):
+                        continue
+                    if not _passes_filters(job):
                         continue
                     score, note = _score(job)
                     if score >= threshold:
@@ -745,7 +890,15 @@ def _search_jobs(
         qs = ", ".join(expanded_queries[:5])
         parts = [f"# No matching jobs found for your profile"]
         parts.append(f"Searched queries: {qs}{'...' if len(expanded_queries) > 5 else ''}")
-        parts.append(f"\nYour settings: threshold={threshold}% | location={location}")
+        parts.append(f"\nYour settings: threshold={threshold}% | location={effective_location}")
+        if locations:
+            parts.append(f"Locations filter: {', '.join(locations)}")
+        if skills:
+            parts.append(f"Skills filter: {', '.join(skills)}")
+        if job_type:
+            parts.append(f"Job type: {job_type}")
+        if work_mode:
+            parts.append(f"Work mode: {work_mode}")
         if exclude_companies:
             parts.append(f"Excluded companies: {', '.join(exclude_companies)}")
         parts.append("\nTry lowering the threshold or removing exclusions.")
@@ -754,7 +907,16 @@ def _search_jobs(
     q_summary = ", ".join(expanded_queries[:5])
     lines = [f"# Job Search Results ({len(unique)} matches)"]
     lines.append(f"Queries: {q_summary}{' ...' if len(expanded_queries) > 5 else ''}")
-    lines.append(f"Settings: threshold={threshold}% | require_visa={'yes' if require_visa else 'no'} | location={location}")
+    filter_parts = [f"threshold={threshold}%", f"require_visa={'yes' if require_visa else 'no'}", f"location={effective_location}"]
+    if locations:
+        filter_parts.append(f"locations={','.join(locations)}")
+    if skills:
+        filter_parts.append(f"skills={','.join(skills)}")
+    if job_type:
+        filter_parts.append(f"job_type={job_type}")
+    if work_mode:
+        filter_parts.append(f"work_mode={work_mode}")
+    lines.append(f"Settings: {' | '.join(filter_parts)}")
     if exclude_companies:
         lines.append(f"Excluded: {', '.join(exclude_companies)}")
     if focus_role:
@@ -890,7 +1052,7 @@ _REQUIRED_RESUME_FIELDS = {
 }
 
 
-def _parse_resume(path: str) -> str:
+def _parse_resume(path: str, key: str = "") -> str:
     if not os.path.exists(path):
         return f"Error: File not found at {path}"
     try:
@@ -931,6 +1093,45 @@ def _parse_resume(path: str) -> str:
         for i in range(0, len(skills), 10):
             parts.append("  " + ", ".join(skills[i:i + 10]))
         parts.append("")
+
+        # --- Register/Copy resume if key is provided ---
+        resume_registered = False
+        if key:
+            key = key.strip().lower().replace(" ", "_")
+            filename = os.path.basename(path)
+            dest = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+            # Copy file to project directory if it's not already there
+            if os.path.abspath(path) != os.path.abspath(dest):
+                shutil.copy2(path, dest)
+                parts.append(f"📄 Copied to: {filename}")
+
+            # Register in RESUME_VERSIONS
+            old_filename = RESUME_VERSIONS.get(key, "")
+            RESUME_VERSIONS[key] = filename
+            resume_registered = True
+
+            if old_filename:
+                parts.append(f"🔄 Replaced resume **{key}** (was: {old_filename} → now: {filename})")
+            else:
+                parts.append(f"✅ Registered new resume version **{key}** → {filename}")
+                # Auto-map common company patterns to the new key
+                if key == "faang":
+                    parts.append("ℹ️ This is the default resume — will be used for most companies.")
+                elif key:
+                    known_domains = {"general", "indian_tech", "startup", "eu", "us", "asia"}
+                    if key in known_domains:
+                        parts.append(f"ℹ️ Mapped as **{key}** version. Use `update_tracker` with resume={filename} to assign it to specific jobs.")
+
+        # Show all current resume versions
+        parts.append("")
+        parts.append(f"### Current Resume Versions ({len(RESUME_VERSIONS)})")
+        for rk, rfn in RESUME_VERSIONS.items():
+            exists = "✅" if os.path.exists(rfn) else "❌"
+            is_default = " (default)" if rk == "faang" else ""
+            parts.append(f"  {exists} **{rk}** → {rfn}{is_default}")
+
+        parts.append("")
         parts.append(f"Profile updated with {len(PROFILE['title_red_flags'])} title filters "
                      f"(universal + domain-specific).")
         parts.append("Run `get_profile` to see the active configuration.")
@@ -967,6 +1168,60 @@ def _get_profile() -> str:
         f"\n**Job sources configured:** {len(JOB_SOURCES)} company ATS feeds "
         f"+ 15+ job board scrapers"
     )
+
+    # Resume section
+    default_resume = RESUME_VERSIONS.get("faang", "N/A")
+    parts.append(f"\n### Resumes ({len(RESUME_VERSIONS)} registered)")
+    for key, filename in RESUME_VERSIONS.items():
+        exists = "✅" if os.path.exists(filename) else "❌"
+        is_default = " (default)" if key == "faang" else ""
+        parts.append(f"  {exists} **{key}** → {filename}{is_default}")
+    parts.append(f"\nUse `parse_resume <path>` to upload a new resume.")
+    parts.append(f"Use `list_resumes` to scan for available PDFs.")
+
+    return "\n".join(parts)
+
+
+def _list_resumes(scan: bool = True) -> str:
+    """List registered resume versions and optionally discover new PDFs."""
+    parts = [f"## Resume Versions ({len(RESUME_VERSIONS)} registered)"]
+    parts.append("")
+    default_key = "faang"
+
+    for key, filename in RESUME_VERSIONS.items():
+        exists = os.path.exists(filename)
+        status = "✅ exists" if exists else "❌ not found"
+        is_default = " ← default" if key == default_key else ""
+        parts.append(f"  **{key}** → {filename}  ({status}){is_default}")
+
+    parts.append("")
+    parts.append("### Company → Resume Mapping")
+    parts.append(f"  {len(COMPANY_RESUME_MAP)} companies mapped to resume versions")
+    parts.append(f"  Default resume: {RESUME_VERSIONS.get(default_key, 'N/A')}")
+    parts.append("")
+
+    if scan:
+        pdfs = glob("*.pdf") or []
+        registered_names = set(RESUME_VERSIONS.values())
+        unregistered = [p for p in pdfs if os.path.basename(p) not in registered_names]
+        if unregistered:
+            parts.append(f"### Unregistered PDFs Found ({len(unregistered)})")
+            for p in unregistered:
+                fsize = os.path.getsize(p) // 1024
+                parts.append(f"  📄 {p}  ({fsize} KB)")
+            parts.append("")
+            parts.append("Use `parse_resume <path> [key=<name>]` to register a new resume version.")
+        else:
+            parts.append("No unregistered PDFs found in the project directory.")
+            parts.append("Place a PDF in the project folder and run `list_resumes` to discover it.")
+
+    parts.append("")
+    parts.append("---")
+    parts.append("**To register a new resume:**")
+    parts.append("  1. Place the PDF in the project directory")
+    parts.append("  2. Run `parse_resume /path/to/file.pdf` with optional `key=<version_name>`")
+    parts.append("  3. The resume is auto-copied and registered for future searches")
+
     return "\n".join(parts)
 
 
@@ -1161,6 +1416,79 @@ _COMPANY_CONTEXT = {
     "clariant": "Swiss specialty chemical company focused on sustainability and innovation.",
     "holcim": "Swiss global building materials and cement manufacturer.",
 }
+
+def _email_digest(schedule: str = "now", email: str = "") -> str:
+    """Trigger or schedule the email digest."""
+    all_sources = JOB_SOURCES + EU_JOB_SOURCES + GLOBAL_JOB_SOURCES + APAC_JOB_SOURCES + US_CANADA_JOB_SOURCES + MIDDLE_EAST_JOB_SOURCES + REMOTE_JOB_SOURCES
+    gmail_address = os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
+    recipient = email or os.environ.get("EMAIL_TO") or gmail_address
+
+    if schedule == "now":
+        _rebuild_precompiled_patterns()
+        matches = []
+        seen = set()
+        for source in all_sources:
+            try:
+                jobs = fetch_jobs_from_source(source)
+            except Exception:
+                continue
+            for job in jobs:
+                key = (job["title"].lower().strip(), job["company"].lower().strip())
+                if key in seen:
+                    continue
+                seen.add(key)
+                score, note = score_job(job["title"], job.get("description", ""), job["company"], job.get("location", ""))
+                if score >= 65:
+                    salary_info = get_salary_info(job["company"], job["title"], job.get("description", ""))
+                    resume = pick_resume(job["company"])
+                    matches.append({
+                        **job,
+                        "score": score,
+                        "resume": resume,
+                        "relocation_note": note,
+                        "salary_info": salary_info,
+                        "company_url": company_url(job["company"], job.get("url", "")),
+                    })
+        matches.sort(key=lambda m: m["score"], reverse=True)
+
+        html = build_email_html(matches)
+        ok = send_email(html, subject=f"Job Matches — {len(matches)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+
+        if ok:
+            _save_digest_schedule({
+                "schedule": schedule,
+                "email": recipient,
+                "last_sent": datetime.now().isoformat(),
+                "scheduled_date": "",
+            })
+            return f"## Email Digest Sent\n- **Recipient:** {recipient}\n- **Matches:** {len(matches)} jobs above 65%\n- **Sent:** {datetime.now().strftime('%Y-%m-%d %H:%M')}\n- Top match: {matches[0]['title']} @ {matches[0]['company']} ({matches[0]['score']}%)" if matches else f"## Email Digest Sent\n- **Recipient:** {recipient}\n- **Matches:** 0 (no jobs above threshold)\nCheck back later or adjust your profile."
+        else:
+            return f"## Email Digest Failed\nCould not send email. Check GMAIL_APP_PASSWORD in your .env."
+
+    elif schedule == "never":
+        _save_digest_schedule({
+            "schedule": "never",
+            "email": recipient,
+            "last_sent": "",
+            "scheduled_date": "",
+        })
+        return f"## Digest Disabled\nScheduled email digest has been turned off."
+
+    elif schedule in ("tomorrow", "weekly", "monthly"):
+        scheduled_date = ""
+        if schedule == "tomorrow":
+            scheduled_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        _save_digest_schedule({
+            "schedule": schedule,
+            "email": recipient,
+            "last_sent": "",
+            "scheduled_date": scheduled_date,
+        })
+        freq_label = {"tomorrow": "tomorrow (one-time)", "weekly": "every week", "monthly": "every month"}
+        return f"## Digest Scheduled\n- **Frequency:** {freq_label.get(schedule, schedule)}\n- **Recipient:** {recipient}\n- **Next send:** {scheduled_date or 'based on frequency'}\n\nRun `email_digest` with `schedule='now'` any time to send immediately."
+
+    return f"## Unknown schedule: {schedule}\nUse one of: now, tomorrow, weekly, monthly, never"
+
 
 def _prepare_application(
     title: str,

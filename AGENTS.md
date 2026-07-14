@@ -30,10 +30,12 @@ Filter out these role types in `daily_scan.py` → `PROFILE["title_red_flags"]`:
   ```
 - **Tools available:**
   - `about` — describes the job search engine (sources, scoring, how it works)
-  - `search_jobs` — on-demand job search across ATS APIs + 15+ job boards. Auto-expands to relevant title variants (senior/staff/principal + domain) based on profile. Shows salary from JD or Levels.fyi static table (35+ companies).
+  - `search_jobs` — on-demand job search across ATS APIs + 15+ job boards. Auto-expands to relevant title variants (senior/staff/principal + domain) based on profile. Shows salary from JD or Levels.fyi static table (35+ companies). Supports filters: `locations` (multi-select OR), `skills` (multi-select OR), `job_type` (full-time/contract), `work_mode` (remote/on-site/hybrid).
   - `score_job` — score any job title/description against profile (0-100). Includes salary info.
   - `tracker_status` — view tracked jobs and their statuses
   - `update_tracker` — update job status (applied/rejected/offer). Jobs go to separate Google Sheet tabs organized by resume version.
-  - `parse_resume` — parse a PDF resume
-  - `get_profile` — show active profile config
+  - `parse_resume` — parse a PDF resume. Optional `key` param registers it as a named version (e.g. `faang`, `general`). Shows all registered versions.
+  - `list_resumes` — list registered resume versions and discover unregistered PDFs in the project directory.
+  - `get_profile` — show active profile config and all resume versions
+  - `email_digest` — trigger or schedule the email digest. `schedule='now'` sends immediately; 'tomorrow' schedules one-time; 'weekly'/'monthly' sets recurring; 'never' disables. Optional `email` to override recipient.
   - `prepare_application` — generates structured context (profile, match analysis, skill gaps, salary, resume) for an LLM to produce a cover letter draft, STAR+R stories, and gap mitigation plan. Run after scoring a job. Pass title, company, description, and optional url/resume.
