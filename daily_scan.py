@@ -835,8 +835,26 @@ def _rebuild_precompiled_patterns():
     _TITLE_RED_FLAG_RE = [(flag.strip(), re.compile(r'(?<![a-z])' + re.escape(flag.strip()) + r'(?![a-z])'))
                           for flag in PROFILE["title_red_flags"]]
     
+    TECH_ALIASES = {
+        "node.js": ["node.js", "nodejs", "node-js", r"node\s+js"],
+        "ci/cd": ["ci/cd", "cicd", "ci-cd", "continuous integration"],
+        "system design": ["system design", "system-design"],
+        "distributed systems": ["distributed systems", "distributed-systems"],
+        "fastapi": ["fastapi", "fast-api", r"fast\s+api"],
+        "spring boot": ["spring boot", "springboot", "spring-boot"],
+        "mysql": ["mysql", "my-sql", r"my\s+sql"],
+        "postgresql": ["postgresql", "postgres"],
+    }
+
+    def _compile_skill_pattern(skill):
+        sk_lower = skill.lower()
+        if sk_lower in TECH_ALIASES:
+            joint_pattern = '|'.join(TECH_ALIASES[sk_lower])
+            return re.compile(r'\b(' + joint_pattern + r')\b', re.IGNORECASE)
+        return re.compile(r'\b' + re.escape(skill) + r'\b', re.IGNORECASE)
+
     # Complete list of skills for backwards compatibility
-    _SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+    _SKILL_RE = [(skill, _compile_skill_pattern(skill))
                  for skill in PROFILE["core_skills"]]
 
     # Split core_skills into Primary (Core) vs Auxiliary (Bonus)
@@ -864,9 +882,9 @@ def _rebuild_precompiled_patterns():
         core_skills_list = PROFILE["core_skills"][:split_idx]
         bonus_skills_list = PROFILE["core_skills"][split_idx:]
 
-    _CORE_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+    _CORE_SKILL_RE = [(skill, _compile_skill_pattern(skill))
                       for skill in core_skills_list]
-    _BONUS_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+    _BONUS_SKILL_RE = [(skill, _compile_skill_pattern(skill))
                        for skill in bonus_skills_list]
 
     # Invalidate cached derived values so they're recomputed from updated PROFILE
@@ -3293,12 +3311,14 @@ def search_naukri(query, location="India", max_results=500):
                 loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
                 location_str = loc_clean if loc_clean else location
                 job_url = job.get("urlStr", "")
+                desc_snippet = job.get("jobDesc", "") or ""
+                keywords = job.get("keywords", "") or ""
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": location_str,
                     "url": job_url,
-                    "description": f"Naukri job: {title} at {company}",
+                    "description": f"Naukri job: {title} at {company}. {desc_snippet}. Skills: {keywords}",
                 })
             if len(jobs) >= max_results:
                 break
@@ -3354,12 +3374,13 @@ def search_instahyre(query, location="India", max_results=500):
                 if not all(term in text for term in query_terms):
                     continue
                 job_url = obj.get("public_url", "")
+                keywords_raw = ", ".join(obj.get("keywords", []) or [])
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": loc,
                     "url": job_url,
-                    "description": f"Instahyre job: {title} at {company}",
+                    "description": f"Instahyre job: {title} at {company}. Skills: {keywords_raw}",
                 })
                 if len(jobs) >= max_results:
                     break
