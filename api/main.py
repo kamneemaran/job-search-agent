@@ -372,9 +372,22 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             """Check job against filters with dedicated field support (varies by ATS/board)."""
             combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
             loc = job.get("location", "").lower()
-            if locations_lower and not any(l in loc for l in locations_lower):
-                print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
-                return False
+            if locations_lower:
+                has_loc_match = False
+                for l in locations_lower:
+                    if l in loc:
+                        has_loc_match = True
+                        break
+                    if l in ("india", "ind"):
+                        _INDIA_CITIES = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                                         "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                                         "ahmedabad", "jaipur", "kochi", "coimbatore"]
+                        if any(c in loc for c in _INDIA_CITIES):
+                            has_loc_match = True
+                            break
+                if not has_loc_match:
+                    print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
+                    return False
             if skills_lower and not any(s in combined for s in skills_lower):
                 print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - combined text doesn't match skills {req.skills}")
                 return False
