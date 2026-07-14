@@ -445,6 +445,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         loc_lower = req.location.lower()
         is_remote_search = req.work_mode == "remote" or "remote" in loc_lower
         is_india_search = "india" in loc_lower or any(city in loc_lower for city in ["pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon"])
+        is_germany_search = "germany" in loc_lower or "de" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower
 
         target_boards = []
         if is_remote_search:
@@ -461,6 +462,13 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 ("Instahyre", ds.search_instahyre),
                 ("LinkedIn", ds.search_linkedin),
             ]
+        elif is_germany_search:
+            # Germany-specific job boards
+            target_boards = [
+                ("Arbeitnow", ds.search_arbeitnow),
+                ("LinkedIn", ds.search_linkedin),
+                ("Indeed", ds.search_indeed),
+            ]
         else:
             # Default / Global / Europe boards
             target_boards = [
@@ -469,14 +477,25 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 ("Glassdoor", ds.search_glassdoor),
             ]
 
-        # 1. Search targeted job boards
-        for name, fn in target_boards:
-            if _time.time() > _deadline:
-                break
-            try:
-                _collect(fn(req.query, req.location, max_results // 2), name)
-            except Exception:
-                continue
+        # 1. Search targeted job boards in parallel to prevent a slow scraper (like LinkedIn) from blocking others
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        scraper_timeout = 12.0
+
+        with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
+            future_to_board = {
+                executor.submit(fn, req.query, req.location, max_results // 2): name
+                for name, fn in target_boards
+            }
+
+            for future in as_completed(future_to_board):
+                name = future_to_board[future]
+                try:
+                    # Collect results concurrently (caps wait time at 12s per board)
+                    jobs = future.result(timeout=scraper_timeout)
+                    if jobs:
+                        _collect(jobs, name)
+                except Exception as e:
+                    print(f"Scraper {name} failed or timed out: {e}")
 
         # 2. Search remote company ATS (skip heavy Playwright-based scrapers to ensure sub-5s response times)
         max_companies = get_max_companies(authorization)
