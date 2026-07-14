@@ -19,7 +19,7 @@ async def get_tracker(
     authorization: Optional[str] = Header(None),
 ):
     sb = get_user_client(authorization)
-    query = sb.table("jobs").select("*").eq("user_id", sb.auth.get_user().id)
+    query = sb.table("jobs").select("*").eq("user_id", sb.auth.get_user().user.id)
 
     if status:
         query = query.eq("status", status)
@@ -39,7 +39,7 @@ async def get_tracker(
         for r in result.data
     ]
 
-    count_q = sb.table("jobs").select("id", count="exact").eq("user_id", sb.auth.get_user().id)
+    count_q = sb.table("jobs").select("id", count="exact").eq("user_id", sb.auth.get_user().user.id)
     if status:
         count_q = count_q.eq("status", status)
     count_result = count_q.execute()
@@ -56,7 +56,7 @@ async def add_to_tracker(
     check_tracker_limit(authorization)
 
     sb = get_user_client(authorization)
-    user = sb.auth.get_user()
+    user = sb.auth.get_user().user
     if not user:
         raise HTTPException(401, "Not authenticated")
 
@@ -96,7 +96,7 @@ async def update_tracker(
     authorization: Optional[str] = Header(None),
 ):
     sb = get_user_client(authorization)
-    user = sb.auth.get_user()
+    user = sb.auth.get_user().user
     if not user:
         raise HTTPException(401, "Not authenticated")
 
@@ -126,7 +126,7 @@ async def remove_from_tracker(
     authorization: Optional[str] = Header(None),
 ):
     sb = get_user_client(authorization)
-    user = sb.auth.get_user()
+    user = sb.auth.get_user().user
     if not user:
         raise HTTPException(401, "Not authenticated")
 

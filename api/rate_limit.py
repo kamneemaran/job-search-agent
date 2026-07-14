@@ -42,7 +42,7 @@ def get_user_plan(authorization: Optional[str]) -> dict:
 
     try:
         sb = get_user_client(authorization)
-        user = sb.auth.get_user()
+        user = sb.auth.get_user().user
 
         result = sb.table("subscriptions").select("*").eq("user_id", user.id).maybe_single().execute()
 
@@ -104,13 +104,13 @@ def increment_search_count(authorization: Optional[str]):
         return
     try:
         sb = get_user_client(authorization)
-        user = sb.auth.get_user()
+        user = sb.auth.get_user().user
         sb.rpc("increment_search_count", {"uid": user.id}).execute()
     except Exception:
         # Fallback: direct update
         try:
             sb = get_user_client(authorization)
-            user = sb.auth.get_user()
+            user = sb.auth.get_user().user
             result = sb.table("subscriptions").select("searches_today").eq("user_id", user.id).maybe_single().execute()
             if result.data:
                 current = result.data.get("searches_today", 0)

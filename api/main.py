@@ -60,7 +60,7 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
 
     try:
         sb = get_user_client(authorization)
-        user = sb.auth.get_user()
+        user = sb.auth.get_user().user
         result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
         if not result.data:
             return fallback
@@ -144,7 +144,7 @@ def update_profile(
         raise HTTPException(401, "Authorization required")
 
     sb = get_user_client(authorization)
-    user = sb.auth.get_user()
+    user = sb.auth.get_user().user
 
     data = {
         "id": user.id,
@@ -183,7 +183,7 @@ async def upload_resume(file: UploadFile = File(...), authorization: Optional[st
         if authorization:
             try:
                 sb = get_user_client(authorization)
-                user = sb.auth.get_user()
+                user = sb.auth.get_user().user
                 user_id = user.id
                 filename = file.filename
                 storage_path = f"{user_id}/{filename}"
@@ -340,7 +340,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     if authorization:
         try:
             sb = get_user_client(authorization)
-            user = sb.auth.get_user()
+            user = sb.auth.get_user().user
             sb.table("searches").insert({
                 "user_id": user.id,
                 "query": req.query,

@@ -11,7 +11,7 @@ create table public.profiles (
   full_name text default '',
   resume_path text default '',
   core_skills jsonb default '[]',
-  current_role text default '',
+  "current_role" text default '',
   years_experience int default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

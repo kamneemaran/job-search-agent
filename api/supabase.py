@@ -25,7 +25,7 @@ def get_user_id(authorization: str | None) -> str | None:
         return None
     try:
         sb = get_user_client(authorization)
-        resp = sb.auth.get_user()
+        resp = sb.auth.get_user().user
         user = resp.user if hasattr(resp, "user") else resp
         return user.id
     except Exception:
