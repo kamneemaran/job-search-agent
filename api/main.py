@@ -138,10 +138,12 @@ def update_profile(
         raise HTTPException(401, "Authorization required")
 
     sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
+    resp = sb.auth.get_user()
+    user = resp.user if hasattr(resp, "user") else resp
 
     data = {
         "id": user.id,
+        "email": user.email or "",
         "full_name": req.full_name,
         "current_role": req.current_role,
         "years_experience": req.years_experience,

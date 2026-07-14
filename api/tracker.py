@@ -276,7 +276,7 @@ async def import_tracker(
             .maybe_single()
             .execute()
         )
-        if existing.data:
+        if existing and existing.data:
             errors += 1
             continue
 
