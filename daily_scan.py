@@ -1204,10 +1204,12 @@ def score_job(title, description, company, location=""):
                 skill_hits += 1
                 break  # at most one adjacent hit
     total_skills = len(PROFILE["core_skills"])
-    # For thin JDs (where the feed only provides metadata, not full text),
+    # For thin JDs / search snippets (where the feed only provides metadata, not full text),
     # scale down the skill denominator so we don't penalize short descriptions.
-    if len(description) < 400:
-        skill_denominator = max(int(total_skills * 0.07), 3)
+    if len(description) < 500:
+        skill_denominator = max(int(total_skills * 0.08), 3)
+    elif len(description) < 1800:
+        skill_denominator = max(int(total_skills * 0.18), 4)
     else:
         skill_denominator = max(int(total_skills * 0.4), 5)
     skill_score = min(skill_hits / skill_denominator, 1.0) * 50  # up to 50 points

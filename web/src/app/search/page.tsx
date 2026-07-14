@@ -45,7 +45,7 @@ export default function SearchPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() && !hasResume) return;
     setLoading(true);
     setError("");
     setSearched(true);
@@ -171,7 +171,7 @@ export default function SearchPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !query.trim()}
+              disabled={loading || (!query.trim() && !hasResume)}
               className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Searching..." : "Search"}

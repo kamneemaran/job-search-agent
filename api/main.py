@@ -314,6 +314,29 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     ds = _get_ds()
     profile = _get_user_profile(authorization)
 
+    # Smart query fallback if user left search box empty (as per resume)
+    search_query = req.query.strip()
+    if not search_query:
+        role = profile.get("current_role", "").lower()
+        if "backend" in role:
+            search_query = "backend engineer"
+        elif "frontend" in role:
+            search_query = "frontend engineer"
+        elif "full stack" in role or "fullstack" in role:
+            search_query = "full stack engineer"
+        elif "devops" in role:
+            search_query = "devops engineer"
+        elif "qa" in role or "test" in role:
+            search_query = "qa engineer"
+        elif "data" in role:
+            search_query = "data engineer"
+        elif profile.get("current_role"):
+            search_query = profile["current_role"]
+        elif profile.get("core_skills"):
+            search_query = profile["core_skills"][0] + " developer"
+        else:
+            search_query = "software engineer"
+
     # Swap profile once for the whole search
     with _profile_lock:
         orig_skills = ds.PROFILE.get("core_skills")
@@ -507,7 +530,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             ]
 
         print(f"=== Starting On-Demand Search ===")
-        print(f"Query: {req.query}")
+        print(f"Query: {search_query}")
         print(f"Location: {req.location}")
         print(f"Locations filter: {req.locations}")
         print(f"Threshold: {req.threshold}")
@@ -520,7 +543,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
         with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
             future_to_board = {
-                executor.submit(fn, req.query, req.location, max_results // 2): name
+                executor.submit(fn, search_query, req.location, max_results // 2): name
                 for name, fn in target_boards
             }
 
@@ -558,14 +581,14 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 user = sb.auth.get_user().user
                 sb.table("searches").insert({
                     "user_id": user.id,
-                    "query": req.query,
+                    "query": search_query,
                     "location": req.location,
                     "results_count": len(all_jobs),
                 }).execute()
             except Exception:
                 pass
 
-        return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=req.query)
+        return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=search_query)
     finally:
         with _profile_lock:
             ds.PROFILE["core_skills"] = orig_skills
