@@ -56,7 +56,8 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
 
     try:
         sb = get_user_client(authorization)
-        user = sb.auth.get_user().user
+        resp = sb.auth.get_user()
+        user = resp.user if hasattr(resp, "user") else resp
         result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
         if not result.data:
             return empty

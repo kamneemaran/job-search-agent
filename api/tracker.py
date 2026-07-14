@@ -9,7 +9,7 @@ from api.models import (
     TrackerJob, TrackerUpdateRequest, TrackerResponse,
     TrackerAddRequest,
 )
-from api.supabase import get_user_client
+from api.supabase import get_user_client, get_user_id
 from api.rate_limit import check_tracker_limit
 
 router = APIRouter(prefix="/api/tracker", tags=["tracker"])
@@ -21,8 +21,12 @@ async def get_tracker(
     limit: int = 50,
     authorization: Optional[str] = Header(None),
 ):
+    user_id = get_user_id(authorization)
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+
     sb = get_user_client(authorization)
-    query = sb.table("jobs").select("*").eq("user_id", sb.auth.get_user().user.id)
+    query = sb.table("jobs").select("*").eq("user_id", user_id)
 
     if status:
         query = query.eq("status", status)
@@ -44,7 +48,7 @@ async def get_tracker(
         for r in result.data
     ]
 
-    count_q = sb.table("jobs").select("id", count="exact").eq("user_id", sb.auth.get_user().user.id)
+    count_q = sb.table("jobs").select("id", count="exact").eq("user_id", user_id)
     if status:
         count_q = count_q.eq("status", status)
     count_result = count_q.execute()
@@ -60,15 +64,16 @@ async def add_to_tracker(
     # Check tracker limit before adding
     check_tracker_limit(authorization)
 
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    if not user:
+    user_id = get_user_id(authorization)
+    if not user_id:
         raise HTTPException(401, "Not authenticated")
+
+    sb = get_user_client(authorization)
 
     existing = (
         sb.table("jobs")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user_id)
         .eq("title", req.title)
         .eq("company", req.company)
         .execute()
@@ -79,7 +84,7 @@ async def add_to_tracker(
     result = (
         sb.table("jobs")
         .insert({
-            "user_id": user.id,
+            "user_id": user_id,
             "title": req.title,
             "company": req.company,
             "url": req.url,
@@ -100,10 +105,11 @@ async def update_tracker(
     req: TrackerUpdateRequest,
     authorization: Optional[str] = Header(None),
 ):
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    if not user:
+    user_id = get_user_id(authorization)
+    if not user_id:
         raise HTTPException(401, "Not authenticated")
+
+    sb = get_user_client(authorization)
 
     update_data = {
         "status": req.status,
@@ -124,7 +130,7 @@ async def update_tracker(
     result = (
         sb.table("jobs")
         .update(update_data)
-        .eq("user_id", user.id)
+        .eq("user_id", user_id)
         .eq("title", req.title)
         .eq("company", req.company)
         .execute()
@@ -142,15 +148,20 @@ async def remove_from_tracker(
     company: str,
     authorization: Optional[str] = Header(None),
 ):
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    if not user:
+    user_id = get_user_id(authorization)
+    if not user_id:
         raise HTTPException(401, "Not authenticated")
+
+    sb = get_user_client(authorization)
 
     result = (
         sb.table("jobs")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", user_id)
+        .eq("title", title)
+        .eq("company", company)
+        .execute()
+    )
         .eq("title", title)
         .eq("company", company)
         .execute()
