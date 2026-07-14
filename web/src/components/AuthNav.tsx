@@ -69,6 +69,12 @@ export default function AuthNav() {
         >
           Settings
         </Link>
+        <Link
+          href="/guide"
+          className="hover:text-white transition-colors text-indigo-400 font-semibold"
+        >
+          Guide
+        </Link>
         <button
           onClick={handleSignOut}
           className="rounded-lg border border-gray-700 px-3 py-1.5 text-gray-300 hover:bg-gray-800 transition-colors"
@@ -81,6 +87,9 @@ export default function AuthNav() {
 
   return (
     <div className="flex items-center gap-3 text-sm font-medium text-gray-400">
+      <Link href="/guide" className="hover:text-white transition-colors text-indigo-400 font-semibold">
+        Guide
+      </Link>
       <Link href="/auth/signin" className="hover:text-white transition-colors">
         Sign In
       </Link>
