@@ -734,7 +734,11 @@ def _search_jobs(
     skills_lower = [s.lower() for s in skills] if skills else None
 
     def _passes_filters(job):
-        """Check job against additional filters: locations, skills, job_type, work_mode (OR logic)."""
+        """Check job against additional filters: locations, skills, job_type, work_mode (OR logic).
+        
+        For job_type and work_mode, checks dedicated job fields first (varies by source),
+        then falls back to text matching in title + description + location.
+        """
         combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
         loc = job.get("location", "").lower()
 
@@ -747,23 +751,73 @@ def _search_jobs(
                 return False
 
         if job_type:
-            if job_type == "contract":
-                if not any(kw in combined for kw in _CONTRACT_KW):
-                    return False
-            elif job_type == "full-time":
-                if not any(kw in combined for kw in _FULLTIME_KW):
-                    return False
+            # Try dedicated employment type field first (varies by source/ATS)
+            emp = None
+            for f in ("employment_type", "employmentType", "commitment", "job_type", "jobType", "type"):
+                v = job.get(f)
+                if v is not None and v != "":
+                    emp = str(v).lower().replace(" ", "_").replace("-", "_")
+                    break
+            if emp:
+                if job_type == "contract":
+                    if not any(t in emp for t in ("contract", "temporary", "temp", "freelance", "fixed_term")):
+                        return False
+                elif job_type == "full-time":
+                    if not any(t in emp for t in ("full_time", "fulltime", "permanent", "fte", "regular")):
+                        return False
+            else:
+                # Fall back to text matching
+                if job_type == "contract":
+                    if not any(kw in combined for kw in _CONTRACT_KW):
+                        return False
+                elif job_type == "full-time":
+                    if not any(kw in combined for kw in _FULLTIME_KW):
+                        return False
 
         if work_mode:
-            if work_mode == "remote":
-                if not any(kw in combined for kw in _REMOTE_KW):
-                    return False
-            elif work_mode == "on-site":
-                if not any(kw in combined for kw in _ONSITE_KW):
-                    return False
-            elif work_mode == "hybrid":
-                if not any(kw in combined for kw in _HYBRID_KW):
-                    return False
+            # Try dedicated workplace type field first
+            wfm = None
+            for f in ("workplace_type", "workplaceType", "workplace", "locationType"):
+                v = job.get(f)
+                if v is not None and v != "":
+                    wfm = str(v).lower().replace(" ", "_").replace("-", "_")
+                    break
+            # Also check boolean 'remote' field
+            remote_bool = job.get("remote")
+            if wfm or remote_bool is not None:
+                if work_mode == "remote":
+                    is_remote = False
+                    if wfm:
+                        is_remote = any(t in wfm for t in ("remote", "fully_remote"))
+                    if remote_bool is True:
+                        is_remote = True
+                    if not is_remote:
+                        return False
+                elif work_mode == "on-site":
+                    if wfm:
+                        if any(t in wfm for t in ("remote", "fully_remote", "hybrid")):
+                            return False
+                    elif remote_bool is True:
+                        return False
+                elif work_mode == "hybrid":
+                    is_hybrid = False
+                    if wfm:
+                        is_hybrid = "hybrid" in wfm
+                    if not is_hybrid and remote_bool is True:
+                        return False  # purely remote, not hybrid
+                    if not is_hybrid and not any(kw in combined for kw in _HYBRID_KW):
+                        return False
+            else:
+                # Fall back to text matching
+                if work_mode == "remote":
+                    if not any(kw in combined for kw in _REMOTE_KW):
+                        return False
+                elif work_mode == "on-site":
+                    if not any(kw in combined for kw in _ONSITE_KW):
+                        return False
+                elif work_mode == "hybrid":
+                    if not any(kw in combined for kw in _HYBRID_KW):
+                        return False
 
         return True
 

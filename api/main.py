@@ -323,25 +323,68 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         locations_lower = [l.lower() for l in req.locations] if req.locations else None
         skills_lower = [s.lower() for s in req.skills] if req.skills else None
 
+        def _get_job_field(job, *names):
+            for n in names:
+                v = job.get(n)
+                if v is not None and v != "":
+                    return str(v).lower().replace(" ", "_").replace("-", "_")
+            return None
+
         def _passes_filters(job):
+            """Check job against filters with dedicated field support (varies by ATS/board)."""
             combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
             loc = job.get("location", "").lower()
             if locations_lower and not any(l in loc for l in locations_lower):
                 return False
             if skills_lower and not any(s in combined for s in skills_lower):
                 return False
+
             if req.job_type:
-                if req.job_type == "contract" and not any(kw in combined for kw in _CONTRACT_KW):
-                    return False
-                if req.job_type == "full-time" and not any(kw in combined for kw in _FULLTIME_KW):
-                    return False
+                emp = _get_job_field(job, "employment_type", "employmentType", "commitment", "job_type", "jobType", "type")
+                if emp:
+                    if req.job_type == "contract":
+                        if not any(t in emp for t in ("contract", "temporary", "temp", "freelance", "fixed_term")):
+                            return False
+                    elif req.job_type == "full-time":
+                        if not any(t in emp for t in ("full_time", "fulltime", "permanent", "fte", "regular")):
+                            return False
+                else:
+                    if req.job_type == "contract" and not any(kw in combined for kw in _CONTRACT_KW):
+                        return False
+                    if req.job_type == "full-time" and not any(kw in combined for kw in _FULLTIME_KW):
+                        return False
+
             if req.work_mode:
-                if req.work_mode == "remote" and not any(kw in combined for kw in _REMOTE_KW):
-                    return False
-                if req.work_mode == "on-site" and not any(kw in combined for kw in _ONSITE_KW):
-                    return False
-                if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
-                    return False
+                wfm = _get_job_field(job, "workplace_type", "workplaceType", "workplace", "locationType")
+                remote_bool = job.get("remote")
+                if wfm or remote_bool is not None:
+                    if req.work_mode == "remote":
+                        is_remote = bool(remote_bool is True)
+                        if wfm and any(t in wfm for t in ("remote", "fully_remote")):
+                            is_remote = True
+                        if not is_remote:
+                            return False
+                    elif req.work_mode == "on-site":
+                        if wfm and any(t in wfm for t in ("remote", "fully_remote", "hybrid")):
+                            return False
+                        if remote_bool is True:
+                            return False
+                    elif req.work_mode == "hybrid":
+                        is_hybrid = False
+                        if wfm:
+                            is_hybrid = "hybrid" in wfm
+                        if not is_hybrid:
+                            if remote_bool is True:
+                                return False
+                            if not any(kw in combined for kw in _HYBRID_KW):
+                                return False
+                else:
+                    if req.work_mode == "remote" and not any(kw in combined for kw in _REMOTE_KW):
+                        return False
+                    if req.work_mode == "on-site" and not any(kw in combined for kw in _ONSITE_KW):
+                        return False
+                    if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
+                        return False
             return True
 
         def _collect(jobs, src_name):
