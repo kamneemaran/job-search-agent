@@ -511,6 +511,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         is_remote_search = req.work_mode == "remote" or "remote" in loc_lower
         is_india_search = "india" in loc_lower or any(city in loc_lower for city in ["pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon"])
         is_germany_search = "germany" in loc_lower or "de" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower
+        is_netherlands_search = "netherlands" in loc_lower or "nl" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
 
         target_boards = []
         if is_remote_search:
@@ -534,6 +535,14 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             # Germany-specific job boards
             target_boards = [
                 ("Arbeitnow", ds.search_arbeitnow),
+                ("LinkedIn", ds.search_linkedin),
+                ("Indeed", ds.search_indeed),
+            ]
+        elif is_netherlands_search:
+            # Netherlands-specific job boards
+            target_boards = [
+                ("IamExpat", ds.search_iamexpat),
+                ("TogetherAbroad", ds.search_togetherabroad),
                 ("LinkedIn", ds.search_linkedin),
                 ("Indeed", ds.search_indeed),
             ]
