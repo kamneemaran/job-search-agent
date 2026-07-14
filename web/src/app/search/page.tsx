@@ -16,6 +16,7 @@ export default function SearchPage() {
   const [workMode, setWorkMode] = useState("");
   const [skills, setSkills] = useState("");
   const [excludeCompanies, setExcludeCompanies] = useState("");
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<JobResult[]>([]);
@@ -64,6 +65,7 @@ export default function SearchPage() {
         locations: locList,
         skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
         exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        sources: selectedSources,
       });
       setResults(res.jobs);
     } catch (err: unknown) {
@@ -136,9 +138,6 @@ export default function SearchPage() {
         <p className="text-gray-400 text-sm mb-4">
           Search top job boards and targeted company channels on-demand. Results are scored against your profile.
         </p>
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 mb-8 text-xs text-yellow-500/80 leading-relaxed">
-          ⚠️ <strong>Note:</strong> On-demand web searches are optimized for speed and scan only <strong>3 targeted, high-signal job boards</strong>. Based on your current location & work mode, we will scan: <strong className="text-white underline">{getTargetedBoards()}</strong>. For a complete background scan across all <strong>250+ company career pages</strong>, configure your automated <strong>Email Digest</strong> in your Settings page.
-        </div>
         <form onSubmit={handleSearch} className="space-y-4">
           <div>
             <input
@@ -149,6 +148,46 @@ export default function SearchPage() {
               className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
+
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 space-y-3">
+            <label className="text-sm font-semibold text-gray-300 flex items-center gap-1.5">
+              <span>🎯</span> Select Job Boards to Scan (Max 4 — Defaults to auto-targeted boards based on location)
+            </label>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {["LinkedIn", "Indeed", "Naukri", "Instahyre", "WeWorkRemotely", "Remotive", "Arbeitnow", "IamExpat", "TogetherAbroad", "FoundIt", "TimesJobs"].map((source) => {
+                const isChecked = selectedSources.includes(source);
+                const isDisabled = !isChecked && selectedSources.length >= 4;
+                return (
+                  <label
+                    key={source}
+                    className={`inline-flex items-center gap-2 text-sm cursor-pointer ${
+                      isDisabled ? "opacity-35 cursor-not-allowed" : "hover:text-white"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isDisabled}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          if (selectedSources.length < 4) {
+                            setSelectedSources([...selectedSources, source]);
+                          }
+                        } else {
+                          setSelectedSources(selectedSources.filter((s) => s !== source));
+                        }
+                      }}
+                      className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                    />
+                    <span className={isChecked ? "text-indigo-400 font-semibold" : "text-gray-300"}>
+                      {source}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-400">Min score:</label>
@@ -249,6 +288,15 @@ export default function SearchPage() {
             </div>
           )}
         </form>
+      </div>
+
+      <div className="bg-indigo-950/20 border border-indigo-900/40 rounded-lg p-3.5 mb-6 flex items-start gap-3">
+        <span className="text-indigo-400 mt-0.5">ℹ️</span>
+        <div className="text-xs text-gray-400 leading-relaxed">
+          <span className="text-indigo-300 font-semibold">Note:</span> This live search retrieves on-demand results directly from your selected 
+          job boards. High-latency, heavy company career page scraping is skipped here to ensure sub-10s response times, 
+          but is covered extensively in your scheduled <span className="text-white font-semibold">Daily/Weekly Email Digests</span>!
+        </div>
       </div>
 
       {error && (
