@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { searchJobs, addToTracker, getProfile, type JobResult } from "@/lib/api";
 
 export default function SearchPage() {
@@ -252,6 +253,22 @@ export default function SearchPage() {
 
       {results.length > 0 && (
         <div>
+          {/* Email Digest Upsell Banner */}
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-5 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm">
+            <div className="space-y-1">
+              <p className="font-semibold text-indigo-400">💡 Want more matched opportunities?</p>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                Lightweight web searches show up to 20 top matches. To automatically scan across 250+ company career pages and get all matching roles delivered straight to your inbox daily or weekly, set up your Email Digest!
+              </p>
+            </div>
+            <Link
+              href="/settings"
+              className="shrink-0 rounded-lg bg-indigo-600/20 border border-indigo-500/30 px-4 py-2 font-semibold text-indigo-400 hover:bg-indigo-600/30 transition-colors text-center text-xs"
+            >
+              Configure Digest &rarr;
+            </Link>
+          </div>
+
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">{results.length} matches found</h2>
             <span className="text-sm text-gray-500">Sorted by score</span>
