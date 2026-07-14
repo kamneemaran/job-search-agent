@@ -44,26 +44,20 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # Lazy import for Playwright (headless browser for JS-rendered sites)
-# WARNING: Playwright sync_api is NOT thread-safe. The browser must be created
-# in the main thread (pre-warm with _get_browser() before spawning threads).
-# Thread pool workers must NOT use Playwright concurrently — only HTTP scrapers
-# should run in the thread pool. Playwright scrapers run sequentially in main thread.
-_playwright_browser = None
-_playwright_pw = None
-_browser_lock = threading.Lock()
+# Using thread-local storage to prevent Greenlet thread-switching conflicts in web servers like FastAPI.
+_local_playwright = threading.local()
 _personio_lock = threading.Lock()
+
 def _get_browser():
-    global _playwright_browser, _playwright_pw
-    if _playwright_browser is None:
-        with _browser_lock:
-            if _playwright_browser is None:
-                from playwright.sync_api import sync_playwright
-                _playwright_pw = sync_playwright().start()
-                _playwright_browser = _playwright_pw.chromium.launch(
-                    headless=True,
-                    args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
-                )
-    return _playwright_browser
+    """Retrieve or create a thread-local Playwright browser to ensure thread-safety."""
+    if not hasattr(_local_playwright, "browser") or _local_playwright.browser is None:
+        from playwright.sync_api import sync_playwright
+        _local_playwright.pw = sync_playwright().start()
+        _local_playwright.browser = _local_playwright.pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
+        )
+    return _local_playwright.browser
 
 def _with_stealth(page):
     """Apply stealth anti-detection to a page if playwright_stealth is available."""
