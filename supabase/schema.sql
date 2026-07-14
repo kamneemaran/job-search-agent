@@ -13,6 +13,8 @@ create table public.profiles (
   core_skills jsonb default '[]',
   "current_role" text default '',
   years_experience int default 0,
+  tracker_sheet_url text default '',
+  google_sa_json text default '',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

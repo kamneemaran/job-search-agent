@@ -140,3 +140,49 @@ async def remove_from_tracker(
     )
 
     return {"status": "removed"}
+
+
+@router.get("/sheet")
+async def get_tracker_sheet(authorization: Optional[str] = Header(None)):
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    result = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
+    url = result.data.get("tracker_sheet_url", "") if result.data else ""
+    return {"url": url}
+
+
+@router.put("/sheet")
+async def set_tracker_sheet(
+    body: dict,
+    authorization: Optional[str] = Header(None),
+):
+    url = body.get("url", "")
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    sb.table("profiles").update({"tracker_sheet_url": url}).eq("id", user.id).execute()
+    return {"status": "saved", "url": url}
+
+
+@router.post("/sheet/sync")
+async def sync_sheet(authorization: Optional[str] = Header(None)):
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+
+    # Get user's sheet URL
+    profile = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
+    if not profile.data or not profile.data.get("tracker_sheet_url"):
+        raise HTTPException(400, "No tracker sheet configured. Save a sheet URL first.")
+
+    sheet_url = profile.data["tracker_sheet_url"]
+    sa_json = profile.data.get("google_sa_json", "") or None
+
+    # Get all tracked jobs
+    jobs_result = sb.table("jobs").select("*").eq("user_id", user.id).order("updated_at", desc=True).execute()
+
+    from api.gsheet_sync import sync_jobs_to_sheet
+    ok = sync_jobs_to_sheet(jobs_result.data, sheet_url, sa_json)
+
+    if not ok:
+        raise HTTPException(500, "Failed to sync to sheet. Check the URL and make sure your sheet is shared with the service account.")
+
+    return {"status": "synced", "count": len(jobs_result.data)}
