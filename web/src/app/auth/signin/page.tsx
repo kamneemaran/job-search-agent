@@ -28,7 +28,7 @@ export default function SignInPage() {
       setLoading(false);
     } else {
       const searchParams = new URLSearchParams(window.location.search);
-      const nextParam = searchParams.get("next") || "/dashboard";
+              const nextParam = searchParams.get("next") || "/resume";
       router.push(nextParam);
       router.refresh();
     }
@@ -104,7 +104,7 @@ export default function SignInPage() {
             onClick={async () => {
               const supabase = getBrowserClient();
               const searchParams = new URLSearchParams(window.location.search);
-              const nextParam = searchParams.get("next") || "/dashboard";
+      const nextParam = searchParams.get("next") || "/resume";
               await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}` },
