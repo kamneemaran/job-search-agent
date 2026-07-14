@@ -3444,31 +3444,57 @@ def search_womenintech(query, location="UK", max_results=500):
 
 
 def search_weworkremotely(query, location="Remote", max_results=500):
-    """Search We Work Remotely for jobs matching a query."""
+    """Search We Work Remotely for jobs matching a query via their public RSS feed."""
     jobs = []
-    scraper = cloudscraper.create_scraper()
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
-    term = query.replace(" ", "+")
+    import requests
+    import xml.etree.ElementTree as ET
     try:
-        resp = scraper.get(f"https://weworkremotely.com/remote-jobs/search?term={term}", headers=headers, timeout=20)
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+        resp = requests.get("https://weworkremotely.com/remote-jobs.rss", headers=headers, timeout=20)
         if resp.status_code != 200:
             print(f"  [weworkremotely] HTTP {resp.status_code}")
             return jobs
-        html = resp.text
-        titles = re.findall(r'class="title"[^>]*>\s*([^<]+?)\s*</a>', html)
-        companies = re.findall(r'class="company"[^>]*>\s*([^<]+)', html)
-        links = re.findall(r'href="(/remote-jobs/[^"]+)"', html)
-        min_len = min(len(titles), len(companies))
-        for i in range(min(min_len, max_results)):
-            t = titles[i].strip()
-            if t.lower() in ("search remote jobs", "post a job", ""):
-                continue
-            url = f"https://weworkremotely.com{links[i]}" if i < len(links) else ""
-            jobs.append({
-                "title": t, "company": companies[i].strip(),
-                "location": "Remote", "url": url,
-                "description": f"WeWorkRemotely: {t} at {companies[i].strip()}",
-            })
+        
+        root = ET.fromstring(resp.content)
+        items = root.findall(".//item")
+        
+        q_terms = [term.strip().lower() for term in query.lower().split() if term.strip()]
+        
+        for item in items:
+            title_el = item.find("title")
+            link_el = item.find("link")
+            desc_el = item.find("description")
+            region_el = item.find("region")
+            
+            title = title_el.text if title_el is not None else ""
+            link = link_el.text if link_el is not None else ""
+            description = desc_el.text if desc_el is not None else ""
+            region = region_el.text if region_el is not None else "Remote"
+            
+            match = True
+            for term in q_terms:
+                if term not in title.lower() and term not in description.lower():
+                    match = False
+                    break
+            
+            if match and title:
+                title_clean = title
+                company = "We Work Remotely"
+                if ":" in title:
+                    parts = title.split(":", 1)
+                    company = parts[0].strip()
+                    title_clean = parts[1].strip()
+                
+                jobs.append({
+                    "title": title_clean,
+                    "company": company,
+                    "location": region,
+                    "url": link,
+                    "description": description,
+                })
+                
+                if len(jobs) >= max_results:
+                    break
         if jobs:
             print(f"  [weworkremotely] {len(jobs)} jobs for '{query}'")
     except Exception as e:
