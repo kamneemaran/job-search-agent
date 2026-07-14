@@ -155,6 +155,17 @@ export default function SearchPage() {
         <div className="rounded-lg border border-red-800 bg-red-900/20 p-4 mb-6 text-red-400 text-sm">{error}</div>
       )}
 
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-20 mb-6">
+          <div className="relative w-16 h-16 mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-gray-700"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin"></div>
+          </div>
+          <p className="text-gray-400 text-sm">Searching job boards and company career pages...</p>
+          <p className="text-gray-600 text-xs mt-1">This may take up to 30 seconds</p>
+        </div>
+      )}
+
       {searched && !loading && results.length === 0 && !error && (
         <div className="text-center py-16 text-gray-500">
           No jobs found matching your criteria. Try lowering the threshold or changing your query.
