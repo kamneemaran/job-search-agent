@@ -130,47 +130,14 @@ async def send_digest(
             except Exception:
                 pass
 
-        # Check limit logic:
-        if frequency == "daily":
-            # Can only send once per day. Check if any send was today.
-            for dt in history_dates:
-                if dt.date() == now.date():
-                    raise HTTPException(
-                        429,
-                        "Daily limit reached: You can only request an on-demand send once per day."
-                    )
-        elif frequency == "weekly":
-            # Can send 1-2 times in a week, provided the day is different.
-            # Get sends from current calendar week (defined by year & week number)
-            current_week_sends = [dt for dt in history_dates if dt.isocalendar()[1] == now.isocalendar()[1] and dt.year == now.year]
-            if len(current_week_sends) >= 2:
+        # Check limit logic: Flat 8 hours limit on manual trigger
+        for dt in history_dates:
+            diff_hours = (now - dt).total_seconds() / 3600.0
+            if diff_hours < 8.0:
                 raise HTTPException(
                     429,
-                    "Weekly limit reached: You can only request an on-demand send up to 2 times per week."
+                    "You already requested a scan recently. Your on-demand digest is running in the background and compiling jobs from multiple regions and company career pages. Please check your inbox in a few minutes, or wait up to 4-5 hours before requesting another scan."
                 )
-            if len(current_week_sends) == 1:
-                # Check if it was on a different day of the week
-                if current_week_sends[0].weekday() == now_weekday:
-                    raise HTTPException(
-                        429,
-                        "Weekly limit reached: On-demand weekly digests can only be requested on different days of the same week."
-                    )
-        elif frequency == "monthly":
-            # Can send 1-2 times in a month, provided the day is different.
-            # Get sends from current calendar month
-            current_month_sends = [dt for dt in history_dates if dt.month == now.month and dt.year == now.year]
-            if len(current_month_sends) >= 2:
-                raise HTTPException(
-                    429,
-                    "Monthly limit reached: You can only request an on-demand send up to 2 times per month."
-                )
-            if len(current_month_sends) == 1:
-                # Check if it was on a different day of the month
-                if current_month_sends[0].day == now_day:
-                    raise HTTPException(
-                        429,
-                        "Monthly limit reached: On-demand monthly digests can only be requested on different days of the same month."
-                    )
 
         try:
             ds._rebuild_precompiled_patterns()

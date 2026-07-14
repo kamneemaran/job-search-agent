@@ -118,25 +118,14 @@ export default function SearchPage() {
           Search across job boards and company career pages. Results scored against your profile.
         </p>
         <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. backend engineer, senior java developer"
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Remote"
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
+          <div>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="e.g. backend engineer, senior java developer"
+              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -179,6 +168,16 @@ export default function SearchPage() {
                   <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
                 </label>
                 <span className="text-sm text-gray-300">Require visa/relo</span>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Location</label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Remote, India, Berlin"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Job type</label>
