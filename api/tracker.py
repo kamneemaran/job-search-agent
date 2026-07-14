@@ -162,10 +162,6 @@ async def remove_from_tracker(
         .eq("company", company)
         .execute()
     )
-        .eq("title", title)
-        .eq("company", company)
-        .execute()
-    )
 
     return {"status": "removed"}
 
