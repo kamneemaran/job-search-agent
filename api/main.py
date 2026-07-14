@@ -350,8 +350,10 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
             loc = job.get("location", "").lower()
             if locations_lower and not any(l in loc for l in locations_lower):
+                print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
                 return False
             if skills_lower and not any(s in combined for s in skills_lower):
+                print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - combined text doesn't match skills {req.skills}")
                 return False
 
             if req.job_type:
@@ -404,7 +406,9 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
         def _collect(jobs, src_name):
             if _time.time() > _deadline:
+                print(f"  [collect] WARNING: Search deadline exceeded during source '{src_name}'")
                 return
+            print(f"  [collect] Processing {len(jobs)} jobs from {src_name}...")
             for job in jobs:
                 key = (job.get("title", "").lower(), job.get("company", "").lower())
                 if key in seen:
@@ -436,12 +440,17 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                                           "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
                         is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
                         if is_outside_india:
+                            print(f"  [collect] SKIP Visa: '{job.get('title')}' @ '{job.get('company')}' - outside India & not remote & no visa info")
                             continue
 
+                print(f"  [collect] Scored: '{job.get('title')}' @ '{job.get('company')}' in '{job.get('location')}' -> score {score} (note: {note or 'N/A'})")
+
                 if score < req.threshold:
+                    print(f"  [collect] SKIP Threshold: '{job.get('title')}' @ '{job.get('company')}' - score {score} < {req.threshold}")
                     continue
                 ec = [c.lower() for c in req.exclude_companies]
                 if ec and job.get("company", "").lower() in ec:
+                    print(f"  [collect] SKIP Excluded: '{job.get('title')}' @ '{job.get('company')}'")
                     continue
 
                 salary_info = ds.get_salary_info(
@@ -497,6 +506,14 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 ("Glassdoor", ds.search_glassdoor),
             ]
 
+        print(f"=== Starting On-Demand Search ===")
+        print(f"Query: {req.query}")
+        print(f"Location: {req.location}")
+        print(f"Locations filter: {req.locations}")
+        print(f"Threshold: {req.threshold}")
+        print(f"Profile: {profile['name']} | {profile['years_experience']} yrs exp | {len(profile['core_skills'])} skills")
+        print(f"Job boards targeted: {[name for name, _ in target_boards]}")
+
         # 1. Search targeted job boards in parallel to prevent a slow scraper (like LinkedIn) from blocking others
         from concurrent.futures import ThreadPoolExecutor, as_completed
         scraper_timeout = 12.0
@@ -512,9 +529,12 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 try:
                     # Collect results concurrently (caps wait time at 12s per board)
                     jobs = future.result(timeout=scraper_timeout)
+                    print(f"  [scraper] Board '{name}' completed, returned {len(jobs) if jobs else 0} raw results")
                     if jobs:
                         _collect(jobs, name)
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     print(f"Scraper {name} failed or timed out: {e}")
 
         # 2. Search remote company ATS (skip heavy Playwright-based scrapers to ensure sub-5s response times)
