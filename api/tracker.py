@@ -145,10 +145,21 @@ async def remove_from_tracker(
     return {"status": "removed"}
 
 
+def _require_user(authorization):
+    """Get authenticated user or raise 401."""
+    if not authorization:
+        raise HTTPException(401, "Authentication required")
+    sb = get_user_client(authorization)
+    resp = sb.auth.get_user()
+    user = resp.user if hasattr(resp, "user") else resp
+    if not user:
+        raise HTTPException(401, "Invalid or expired token")
+    return sb, user
+
+
 @router.get("/sheet")
 async def get_tracker_sheet(authorization: Optional[str] = Header(None)):
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
+    sb, user = _require_user(authorization)
     result = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
     url = result.data.get("tracker_sheet_url", "") if result.data else ""
     return {"url": url}
@@ -159,17 +170,15 @@ async def set_tracker_sheet(
     body: dict,
     authorization: Optional[str] = Header(None),
 ):
+    sb, user = _require_user(authorization)
     url = body.get("url", "")
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
     sb.table("profiles").update({"tracker_sheet_url": url}).eq("id", user.id).execute()
     return {"status": "saved", "url": url}
 
 
 @router.post("/sheet/sync")
 async def sync_sheet(authorization: Optional[str] = Header(None)):
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
+    sb, user = _require_user(authorization)
 
     # Get user's sheet URL
     profile = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
@@ -214,8 +223,7 @@ async def import_tracker(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(None),
 ):
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
+    sb, user = _require_user(authorization)
 
     content = await file.read()
     filename = (file.filename or "").lower()
@@ -272,7 +280,7 @@ async def import_tracker(
             errors += 1
             continue
 
-        check_tracker_limit(sb, user.id)
+        check_tracker_limit(authorization)
 
         sb.table("jobs").insert({
             "user_id": user.id,

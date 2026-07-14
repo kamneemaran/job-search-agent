@@ -1,6 +1,7 @@
 """Sync tracked jobs to user's Google Sheet."""
 import os
 import json
+import base64
 import logging
 from datetime import datetime
 
@@ -12,19 +13,45 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 def _get_gsheet_service(sa_json: str | None = None):
     """Get a Google Sheets service instance.
 
-    Uses user-provided service account JSON, or falls back to gsheet_service_account.json.
+    Tries in order:
+    1. User-provided sa_json
+    2. GOOGLE_SA_JSON env var (base64 encoded)
+    3. GOOGLE_SERVICE_ACCOUNT_JSON env var (raw JSON, fallback)
+    4. GSHEET_SERVICE_ACCOUNT env var (file path)
+    5. gsheet_service_account.json (local file)
     """
     from google.oauth2.service_account import Credentials
     from googleapiclient.discovery import build
 
     if sa_json:
         creds = Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
-    else:
-        sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
-        if not os.path.exists(sa_path):
-            raise FileNotFoundError(f"Service account file not found: {sa_path}")
-        creds = Credentials.from_service_account_file(sa_path, scopes=SCOPES)
+        return build("sheets", "v4", credentials=creds)
 
+    # Check base64 env var
+    b64_json = os.environ.get("GOOGLE_SA_JSON")
+    if b64_json:
+        try:
+            decoded = base64.b64decode(b64_json).decode("utf-8")
+            creds = Credentials.from_service_account_info(json.loads(decoded), scopes=SCOPES)
+            return build("sheets", "v4", credentials=creds)
+        except Exception:
+            pass
+
+    env_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if env_json:
+        try:
+            creds = Credentials.from_service_account_info(json.loads(env_json), scopes=SCOPES)
+            return build("sheets", "v4", credentials=creds)
+        except Exception:
+            pass
+
+    sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+    if not os.path.exists(sa_path):
+        raise FileNotFoundError(
+            f"Service account not found. "
+            f"Set GOOGLE_SA_JSON env var (base64) or provide gsheet_service_account.json."
+        )
+    creds = Credentials.from_service_account_file(sa_path, scopes=SCOPES)
     return build("sheets", "v4", credentials=creds)
 
 
