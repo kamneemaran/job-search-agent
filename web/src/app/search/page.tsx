@@ -23,6 +23,20 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [tracked, setTracked] = useState<Set<string>>(new Set());
 
+  const getTargetedBoards = () => {
+    const locLower = (location || "").toLowerCase();
+    const isRemote = workMode === "remote" || locLower.includes("remote");
+    const isIndia = locLower.includes("india") || ["pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon"].some(city => locLower.includes(city));
+
+    if (isRemote) {
+      return "WeWorkRemotely, Remotive, and LinkedIn";
+    }
+    if (isIndia) {
+      return "Naukri, Instahyre, and LinkedIn";
+    }
+    return "LinkedIn, Indeed, and Glassdoor";
+  };
+
   useEffect(() => {
     getProfile()
       .then((p) => setHasResume(!!p.core_skills?.length))
@@ -119,7 +133,7 @@ export default function SearchPage() {
           Search top job boards and targeted company channels on-demand. Results are scored against your profile.
         </p>
         <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 mb-8 text-xs text-yellow-500/80 leading-relaxed">
-          ⚠️ <strong>Note:</strong> On-demand web searches are optimized for speed and scan only <strong>3–5 of the most relevant job boards</strong> (such as WeWorkRemotely/Remotive for Remote, or Naukri/Instahyre for India) based on your selected filters. For a complete, deeper scan across all <strong>250+ company career pages</strong>, configure your automated <strong>Email Digest</strong> in your Settings page.
+          ⚠️ <strong>Note:</strong> On-demand web searches are optimized for speed and scan only <strong>3 targeted, high-signal job boards</strong>. Based on your current location & work mode, we will scan: <strong className="text-white underline">{getTargetedBoards()}</strong>. For a complete background scan across all <strong>250+ company career pages</strong>, configure your automated <strong>Email Digest</strong> in your Settings page.
         </div>
         <form onSubmit={handleSearch} className="space-y-4">
           <div>
