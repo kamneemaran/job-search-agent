@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const [digestBatches, setDigestBatches] = useState<string[]>(["all"]);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
+  const [sendError, setSendError] = useState(false);
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -48,7 +49,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const [profile, digest] = await Promise.all([
-        getProfile(),
+        getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [] })),
         getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"] })),
       ]);
 
@@ -250,11 +251,21 @@ export default function SettingsPage() {
                 onClick={async () => {
                   setSending(true);
                   setSendResult("");
+                  setSendError(false);
                   try {
                     const res = await sendDigestNow(digestEmail);
                     setSendResult(res.message);
+                    const isMsgError = res.message.toLowerCase().includes("fail") || 
+                                       res.message.toLowerCase().includes("error") || 
+                                       res.message.toLowerCase().includes("limit") || 
+                                       res.message.toLowerCase().includes("unauthorized") ||
+                                       !res.sent;
+                    if (isMsgError) {
+                      setSendError(true);
+                    }
                   } catch (err) {
                     setSendResult(err instanceof Error ? err.message : "Failed to send digest");
+                    setSendError(true);
                   } finally {
                     setSending(false);
                   }
@@ -285,7 +296,7 @@ export default function SettingsPage() {
           )}
 
           {sendResult && (
-            <p className={`mb-4 text-xs ${sendResult.includes("Limit") || sendResult.includes("limit") || sendResult.includes("Error") ? "text-red-400" : "text-emerald-400"}`}>
+            <p className={`mb-4 text-xs font-semibold ${sendError || sendResult.toLowerCase().includes("fail") || sendResult.toLowerCase().includes("error") || sendResult.toLowerCase().includes("limit") ? "text-red-400" : "text-emerald-400"}`}>
               {sendResult}
             </p>
           )}

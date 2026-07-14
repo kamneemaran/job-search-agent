@@ -14,6 +14,7 @@ from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("jobpilot")
 
 # Add parent dir so we can import daily_scan
@@ -61,7 +62,7 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
 
         result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
         if not result.data:
-            raise HTTPException(status_code=401, detail="Profile not found. Please log in.")
+            raise HTTPException(status_code=404, detail="Profile not found. Please upload a resume.")
 
         row = result.data
         core_skills = row.get("core_skills")
