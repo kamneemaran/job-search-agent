@@ -823,15 +823,48 @@ def _rebuild_precompiled_patterns():
 
     MUST be called after any mutation of PROFILE (--resume, --profile, CLI overrides).
     """
-    global _JUNIOR_RE, _TITLE_RED_FLAG_RE, _SKILL_RE
+    global _JUNIOR_RE, _TITLE_RED_FLAG_RE, _SKILL_RE, _CORE_SKILL_RE, _BONUS_SKILL_RE
     global _CACHED_TITLE_KEYWORDS, _CACHED_SENIORITY_KEYWORDS
 
     _JUNIOR_RE = [re.compile(r'(?<![a-z])' + re.escape(flag) + r'(?![a-z])')
                   for flag in PROFILE["junior_red_flags"]]
     _TITLE_RED_FLAG_RE = [(flag.strip(), re.compile(r'(?<![a-z])' + re.escape(flag.strip()) + r'(?![a-z])'))
                           for flag in PROFILE["title_red_flags"]]
+    
+    # Complete list of skills for backwards compatibility
     _SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
                  for skill in PROFILE["core_skills"]]
+
+    # Split core_skills into Primary (Core) vs Auxiliary (Bonus)
+    primary_tech_terms = {
+        "java", "python", "node.js", "golang", "go", "c++", "c#", "ruby", "typescript",
+        "system design", "distributed systems", "microservices", "architecture", "api", "apis",
+        "backend", "back-end", "database design", "datastructures", "algorithms",
+        "sap mm", "sap ewm", "sap wm", "materials management", "warehouse management",
+        "extended warehouse management"
+    }
+
+    core_skills_list = []
+    bonus_skills_list = []
+
+    for skill in PROFILE["core_skills"]:
+        sk_lower = skill.lower()
+        if sk_lower in primary_tech_terms:
+            core_skills_list.append(skill)
+        else:
+            bonus_skills_list.append(skill)
+
+    # Ensure we always have at least some core skills
+    if len(core_skills_list) < max(4, int(len(PROFILE["core_skills"]) * 0.3)):
+        split_idx = max(4, int(len(PROFILE["core_skills"]) * 0.35))
+        core_skills_list = PROFILE["core_skills"][:split_idx]
+        bonus_skills_list = PROFILE["core_skills"][split_idx:]
+
+    _CORE_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+                      for skill in core_skills_list]
+    _BONUS_SKILL_RE = [(skill, re.compile(r'\b' + re.escape(skill) + r'\b'))
+                       for skill in bonus_skills_list]
+
     # Invalidate cached derived values so they're recomputed from updated PROFILE
     _CACHED_TITLE_KEYWORDS = None
     _CACHED_SENIORITY_KEYWORDS = None
@@ -1178,16 +1211,18 @@ def score_job(title, description, company, location=""):
             if specific_title_modules and not (specific_title_modules & profile_specific):
                 return 0, f"Filtered: title matches non-relevant SAP module ({', '.join(sorted(specific_title_modules))})"
 
-    # --- Skill scoring (word-boundary matching; up to 50 points) ---
-    skill_hits = sum(1 for _, pat in _SKILL_RE if pat.search(text))
-    # Relaxed SAP module matching: if profile has "sap mm", also count standalone "mm" in text
+    # --- Skill scoring (word-boundary matching; Core: up to 35 points, Bonus: up to 15 points) ---
+    core_hits = sum(1 for _, pat in _CORE_SKILL_RE if pat.search(text))
+    bonus_hits = sum(1 for _, pat in _BONUS_SKILL_RE if pat.search(text))
+
+    # Relaxed SAP module matching (adds to core_hits)
     if has_sap_skills:
         for sap_skill in PROFILE["core_skills"]:
             if "sap " in sap_skill.lower():
                 module_part = sap_skill.lower().replace("sap ", "", 1).strip()
                 if module_part and module_part not in ("s/4hana", "s4hana"):
                     if re.search(r'\b' + re.escape(module_part) + r'\b', text):
-                        skill_hits += 1
+                        core_hits += 1
                         break  # at most one extra point from this relaxation
     if has_sap_skills:
         for sap_skill in PROFILE["core_skills"]:
@@ -1195,24 +1230,32 @@ def score_job(title, description, company, location=""):
             if sk in _SAP_MODULE_ALIASES:
                 for alias_pat in _SAP_MODULE_ALIASES[sk]:
                     if re.search(alias_pat, text, re.IGNORECASE):
-                        skill_hits += 1
+                        core_hits += 1
                         break  # one extra hit per module alias
     # Also count supply chain / logistics as adjacent hits for MM/EWM profiles
     if has_sap_skills and any(s in PROFILE["core_skills"] for s in ("sap mm", "sap ewm", "sap wm")):
         for adj_pat in [r"supply\s+chain", r"\blogistics?\b", r"procure.to.pay", r"\bscm\b"]:
             if re.search(adj_pat, text, re.IGNORECASE):
-                skill_hits += 1
+                core_hits += 1
                 break  # at most one adjacent hit
-    total_skills = len(PROFILE["core_skills"])
-    # For thin JDs / search snippets (where the feed only provides metadata, not full text),
-    # scale down the skill denominator so we don't penalize short descriptions.
+
+    core_total = len(_CORE_SKILL_RE)
+    bonus_total = len(_BONUS_SKILL_RE)
+
+    # Scale core and bonus denominators based on description length (prevents snippet penalties)
     if len(description) < 500:
-        skill_denominator = max(int(total_skills * 0.08), 3)
+        core_denom = max(int(core_total * 0.15), 2)
+        bonus_denom = max(int(bonus_total * 0.10), 2)
     elif len(description) < 1800:
-        skill_denominator = max(int(total_skills * 0.18), 4)
+        core_denom = max(int(core_total * 0.35), 3)
+        bonus_denom = max(int(bonus_total * 0.20), 2)
     else:
-        skill_denominator = max(int(total_skills * 0.4), 5)
-    skill_score = min(skill_hits / skill_denominator, 1.0) * 50  # up to 50 points
+        core_denom = max(int(core_total * 0.60), 4)
+        bonus_denom = max(int(bonus_total * 0.40), 3)
+
+    core_score = min(core_hits / core_denom, 1.0) * 35
+    bonus_score = min(bonus_hits / bonus_denom, 1.0) * 15
+    skill_score = core_score + bonus_score
 
     # Penalize skill score when title explicitly names a DIFFERENT SAP module
     # Generic SAP skills (sap, erp, configuration) inflate the score even though
@@ -1264,7 +1307,9 @@ def score_job(title, description, company, location=""):
     # (e.g. "SAP Consultant" instead of "SAP MM Consultant", or "Software Engineer"
     # instead of "Backend Engineer"), infer partial title relevance from skill overlap.
     # This avoids penalizing roles that match on substance but use broad titles.
-    skill_match_ratio = skill_hits / total_skills if total_skills > 0 else 0
+    total_skills = len(PROFILE["core_skills"])
+    total_hits = core_hits + bonus_hits
+    skill_match_ratio = total_hits / total_skills if total_skills > 0 else 0
     if title_relevance == 0 and skill_match_ratio >= 0.7:
         # 70%+ of profile skills found in JD — strong evidence of relevance
         title_relevance = 15
