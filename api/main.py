@@ -526,6 +526,9 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 ("Naukri", ds.search_naukri),
                 ("Instahyre", ds.search_instahyre),
                 ("LinkedIn", ds.search_linkedin),
+                ("FoundIt", ds.search_foundit),
+                ("TimesJobs", ds.search_timesjobs),
+                ("Indeed", ds.search_indeed),
             ]
         elif is_germany_search:
             # Germany-specific job boards

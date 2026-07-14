@@ -163,7 +163,11 @@ PROFILE = {
     ],
     "current_role": "Senior Software Engineer",
     "seniority_keywords": ["senior", "staff", "lead", "principal", "sde-3", "sde 3"],
-    "junior_red_flags": ["junior", "intern", "entry level", "graduate", "0-2 years"],
+    "junior_red_flags": [
+        "junior", "intern", "entry level", "graduate", "0-2 years", "1-2 years",
+        "sde-1", "sde 1", "sde1", "sde-i", "sde i", "sdei", "se-1", "se 1", "se1",
+        "software engineer i", "software engineer 1", "associate software engineer", "associate engineer"
+    ],
     # Job titles that are NOT relevant (different career tracks)
     "title_red_flags": [
         # Infrastructure / network / devops roles outside backend/platform engineering
