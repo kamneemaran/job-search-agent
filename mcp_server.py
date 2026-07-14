@@ -836,14 +836,23 @@ def _search_jobs(
         # If score is low and visa info is missing, try career page fallback
         # to see if the company sponsors visas (can boost score via visa/relo bonus)
         if score > 0 and "Visa sponsorship details not mentioned" in note:
-            career_url = job.get("url", "") or None
-            has_visa = _check_career_page_visa(job["company"], career_url)
-            if has_visa:
-                desc += " visa sponsorship relocation support"
-                score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
-                note = (note + " | visa confirmed from career page").strip(" |")
-            elif require_visa:
-                return 0, "Filtered: no visa/relocation signal found (require_visa=True)"
+            # Check if job is actually outside India
+            loc_lower = job.get("location", "").lower()
+            text_lower = (job["title"] + " " + job.get("description", "")).lower()
+            _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                              "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                              "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
+            is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
+            
+            if is_outside_india:
+                career_url = job.get("url", "") or None
+                has_visa = _check_career_page_visa(job["company"], career_url)
+                if has_visa:
+                    desc += " visa sponsorship relocation support"
+                    score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
+                    note = (note + " | visa confirmed from career page").strip(" |")
+                elif require_visa:
+                    return 0, "Filtered: no visa/relocation signal found (require_visa=True)"
         return score, note
 
     # Company ATS sources (not query-dependent - fetch all)
