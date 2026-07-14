@@ -477,9 +477,10 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             except Exception:
                 continue
 
-        # 2. Search remote company ATS
+        # 2. Search remote company ATS (skip heavy Playwright-based scrapers to ensure sub-5s response times)
         max_companies = get_max_companies(authorization)
-        for src in ds.REMOTE_JOB_SOURCES[:max_companies if max_companies > 0 else len(ds.REMOTE_JOB_SOURCES)]:
+        non_pw_sources = [s for s in ds.REMOTE_JOB_SOURCES if not s.get("playwright")]
+        for src in non_pw_sources[:max_companies]:
             if _time.time() > _deadline:
                 break
             try:
