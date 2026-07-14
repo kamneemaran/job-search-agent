@@ -7,7 +7,7 @@ import {
   type TrackerJob,
 } from "@/lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-500/10 text-blue-400 border-blue-500/30",
