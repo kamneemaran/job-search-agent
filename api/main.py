@@ -294,11 +294,6 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     ds = _get_ds()
     profile = _get_user_profile(authorization)
 
-    all_jobs = []
-    seen = set()
-    import time as _time
-    _deadline = _time.time() + 25
-
     # Swap profile once for the whole search
     with _profile_lock:
         orig_skills = ds.PROFILE.get("core_skills")
@@ -399,12 +394,20 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 if not _passes_filters(job):
                     continue
 
+                desc = job.get("description", "")
+                if not req.require_visa:
+                    desc += " visa sponsorship relocation support"
+
                 score, note = ds.score_job(
                     job.get("title", ""),
-                    job.get("description", ""),
+                    desc,
                     job.get("company", ""),
                     job.get("location", req.location),
                 )
+
+                # Filter jobs without visa/relo signals when require_visa is on
+                if req.require_visa and score > 0 and "Visa sponsorship details not mentioned" in note:
+                    continue
 
                 if score < req.threshold:
                     continue

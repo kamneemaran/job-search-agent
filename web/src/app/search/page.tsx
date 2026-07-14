@@ -10,6 +10,12 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("Remote");
   const [threshold, setThreshold] = useState(65);
+  const [requireVisa, setRequireVisa] = useState(true);
+  const [jobType, setJobType] = useState("");
+  const [workMode, setWorkMode] = useState("");
+  const [skills, setSkills] = useState("");
+  const [excludeCompanies, setExcludeCompanies] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<JobResult[]>([]);
   const [error, setError] = useState("");
@@ -34,6 +40,11 @@ export default function SearchPage() {
         location,
         threshold,
         max_results: 20,
+        require_visa: requireVisa,
+        job_type: jobType,
+        work_mode: workMode,
+        skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
       });
       setResults(res.jobs);
     } catch (err: unknown) {
@@ -141,6 +152,13 @@ export default function SearchPage() {
               <span className="text-sm font-mono text-indigo-400 w-8">{threshold}</span>
             </div>
             <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              {showFilters ? "Hide filters" : "More filters"}
+            </button>
+            <button
               type="submit"
               disabled={loading || !query.trim()}
               className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -148,6 +166,67 @@ export default function SearchPage() {
               {loading ? "Searching..." : "Search"}
             </button>
           </div>
+          {showFilters && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2 border-t border-gray-800">
+              <div className="flex items-center gap-3">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={requireVisa}
+                    onChange={(e) => setRequireVisa(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                </label>
+                <span className="text-sm text-gray-300">Require visa/relo</span>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Job type</label>
+                <select
+                  value={jobType}
+                  onChange={(e) => setJobType(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Any</option>
+                  <option value="full-time">Full-time</option>
+                  <option value="contract">Contract</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Work mode</label>
+                <select
+                  value={workMode}
+                  onChange={(e) => setWorkMode(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Any</option>
+                  <option value="remote">Remote</option>
+                  <option value="on-site">On-site</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Skills filter (comma-separated)</label>
+                <input
+                  type="text"
+                  value={skills}
+                  onChange={(e) => setSkills(e.target.value)}
+                  placeholder="e.g. rust, kubernetes"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Exclude companies (comma-separated)</label>
+                <input
+                  type="text"
+                  value={excludeCompanies}
+                  onChange={(e) => setExcludeCompanies(e.target.value)}
+                  placeholder="e.g. acme corp, mollie"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
         </form>
       </div>
 

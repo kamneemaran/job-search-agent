@@ -285,7 +285,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "require_visa": {
                         "type": "boolean",
-                        "description": "Optional: require visa sponsorship/relocation support (default: true). Set to false for exploratory searches.",
+                        "description": "Optional: require visa sponsorship/relocation support (default: true). When true, jobs outside India without explicit visa/relocation signals in the JD, known-sponsor lists, or career page are filtered out (score=0). Set to false for exploratory searches — this injects synthetic visa keywords so all jobs score without the visa penalty, but does NOT guarantee the company actually sponsors.",
                         "default": True,
                     },
                     "focus_role": {
@@ -835,13 +835,15 @@ def _search_jobs(
         score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
         # If score is low and visa info is missing, try career page fallback
         # to see if the company sponsors visas (can boost score via visa/relo bonus)
-        if score > 0 and score < threshold and "Visa sponsorship details not mentioned" in note:
+        if score > 0 and "Visa sponsorship details not mentioned" in note:
             career_url = job.get("url", "") or None
             has_visa = _check_career_page_visa(job["company"], career_url)
             if has_visa:
                 desc += " visa sponsorship relocation support"
                 score, note = score_job(job["title"], desc, job["company"], job.get("location", ""))
                 note = (note + " | visa confirmed from career page").strip(" |")
+            elif require_visa:
+                return 0, "Filtered: no visa/relocation signal found (require_visa=True)"
         return score, note
 
     # Company ATS sources (not query-dependent - fetch all)

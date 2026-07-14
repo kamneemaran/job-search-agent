@@ -31,6 +31,7 @@ Filter out these role types in `daily_scan.py` → `PROFILE["title_red_flags"]`:
 - **Tools available:**
   - `about` — describes the job search engine (sources, scoring, how it works)
   - `search_jobs` — on-demand job search across ATS APIs + 15+ job boards. Auto-expands to relevant title variants (senior/staff/principal + domain) based on profile. Shows salary from JD or Levels.fyi static table (35+ companies). Supports filters: `locations` (multi-select OR), `skills` (multi-select OR), `job_type` (full-time/contract), `work_mode` (remote/on-site/hybrid).
+    - `require_visa` (default: true) — when true, jobs outside India without an explicit visa/relocation signal (from JD text, known-sponsor lists, IND register, or career page fallback) are filtered out with score=0. Set to false for exploratory searches; this injects synthetic visa keywords so all jobs score without the visa penalty, but does **not** guarantee the company actually sponsors.
   - `score_job` — score any job title/description against profile (0-100). Includes salary info.
   - `tracker_status` — view tracked jobs and their statuses
   - `update_tracker` — update job status (applied/rejected/offer). Jobs go to separate Google Sheet tabs organized by resume version.

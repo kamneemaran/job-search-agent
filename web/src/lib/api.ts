@@ -82,6 +82,10 @@ export async function searchJobs(params: {
   max_results?: number;
   require_visa?: boolean;
   exclude_companies?: string[];
+  locations?: string[];
+  skills?: string[];
+  job_type?: string;
+  work_mode?: string;
 }): Promise<SearchResponse> {
   return apiFetch("/api/search", {
     method: "POST",
@@ -92,6 +96,10 @@ export async function searchJobs(params: {
       max_results: params.max_results || 10,
       require_visa: params.require_visa ?? true,
       exclude_companies: params.exclude_companies || [],
+      locations: params.locations || [],
+      skills: params.skills || [],
+      job_type: params.job_type || "",
+      work_mode: params.work_mode || "",
     }),
   });
 }
@@ -171,6 +179,7 @@ export async function updateProfile(params: {
 
 export interface DigestPreferences {
   enabled: boolean;
+  frequency: string;
   email: string;
 }
 
@@ -180,10 +189,18 @@ export async function getDigestPreferences(): Promise<DigestPreferences> {
 
 export async function updateDigestPreferences(params: {
   enabled: boolean;
+  frequency: string;
   email: string;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",
     body: JSON.stringify(params),
+  });
+}
+
+export async function sendDigestNow(email?: string): Promise<{ message: string; sent: boolean; count: number }> {
+  return apiFetch("/api/digest/send", {
+    method: "POST",
+    body: JSON.stringify({ schedule: "now", email: email || "" }),
   });
 }

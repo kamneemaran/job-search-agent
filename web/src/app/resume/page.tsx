@@ -3,22 +3,35 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/client";
-import { updateProfile } from "@/lib/api";
+import { getProfile, updateProfile, type Profile } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function ResumePage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [existing, setExisting] = useState<Profile | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const [parsed, setParsed] = useState<{
     name: string;
     current_role: string;
     core_skills: string[];
     years_experience: number;
   } | null>(null);
+
+  useEffect(() => {
+    getProfile()
+      .then((p) => {
+        if (p.core_skills?.length > 0) {
+          setExisting(p);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -31,7 +44,6 @@ export default function ResumePage() {
       const token = session?.session?.access_token;
       if (!token) throw new Error("Not signed in");
 
-      // Upload and parse resume
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch(`${API_BASE}/api/resume/upload`, {
@@ -47,7 +59,6 @@ export default function ResumePage() {
 
       const data = await res.json();
 
-      // Auto-save profile from parsed resume
       await updateProfile({
         name: data.name || "",
         current_role: data.current_role || "",
@@ -55,13 +66,17 @@ export default function ResumePage() {
         years_experience: data.years_experience || 0,
       });
 
-      setParsed({
+      const profile: Profile = {
         name: data.name,
         current_role: data.current_role,
         core_skills: data.core_skills,
         years_experience: data.years_experience,
-      });
-      setSuccess(true);
+        seniority_keywords: [],
+      };
+      setParsed(data);
+      setExisting(profile);
+      setShowUpload(false);
+      setFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -69,46 +84,88 @@ export default function ResumePage() {
     }
   };
 
-  if (success && parsed) {
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-12">
+        <div className="text-center py-16 text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show existing resume profile
+  if (existing && !showUpload) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <div className="text-5xl mb-4">✅</div>
-          <h1 className="text-2xl font-bold mb-2">Resume Parsed!</h1>
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 text-left space-y-2 mb-8">
-            <p className="text-sm"><span className="text-gray-500">Name:</span> <span className="text-white">{parsed.name}</span></p>
-            <p className="text-sm"><span className="text-gray-500">Role:</span> <span className="text-white">{parsed.current_role}</span></p>
-            <p className="text-sm"><span className="text-gray-500">Experience:</span> <span className="text-white">{parsed.years_experience} years</span></p>
-            <div className="text-sm">
-              <span className="text-gray-500">Skills:</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {parsed.core_skills.slice(0, 8).map((s, i) => (
-                  <span key={i} className="rounded-md bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 text-xs text-indigo-400">{s}</span>
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold mb-2">Your Resume</h1>
+            <p className="text-gray-400 text-sm">
+              {parsed ? "Resume uploaded and parsed successfully." : "Your current profile from your uploaded resume."}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-8 space-y-4 mb-6">
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Name</span>
+              <p className="text-white font-medium">{existing.name || "N/A"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Current Role</span>
+              <p className="text-white font-medium">{existing.current_role || "N/A"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Experience</span>
+              <p className="text-white font-medium">{existing.years_experience} years</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Skills</span>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {existing.core_skills.slice(0, 12).map((s, i) => (
+                  <span
+                    key={i}
+                    className="rounded-md bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 text-xs text-indigo-400"
+                  >
+                    {s}
+                  </span>
                 ))}
-                {parsed.core_skills.length > 8 && (
-                  <span className="text-xs text-gray-500">+{parsed.core_skills.length - 8} more</span>
+                {existing.core_skills.length > 12 && (
+                  <span className="text-xs text-gray-500">+{existing.core_skills.length - 12} more</span>
                 )}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => router.push("/search")}
-            className="rounded-lg bg-indigo-600 px-8 py-3 font-semibold text-white hover:bg-indigo-500"
-          >
-            Start Job Search
-          </button>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-6 py-3 font-semibold text-gray-300 hover:bg-gray-700 transition-colors"
+            >
+              Replace Resume
+            </button>
+            <button
+              onClick={() => router.push("/search")}
+              className="flex-1 rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500 transition-colors"
+            >
+              Search Jobs
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Upload form (no resume yet, or user clicked Replace)
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Upload Your Resume</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {existing ? "Replace Your Resume" : "Upload Your Resume"}
+          </h1>
           <p className="text-gray-400">
-            We&apos;ll parse your skills, experience, and role to find the best job matches.
+            {existing
+              ? "Upload a new PDF to update your profile and skills."
+              : "We'll parse your skills, experience, and role to find the best job matches."}
           </p>
         </div>
 
@@ -135,6 +192,15 @@ export default function ResumePage() {
             </button>
           )}
         </div>
+
+        {existing && (
+          <button
+            onClick={() => setShowUpload(false)}
+            className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Cancel and go back
+          </button>
+        )}
 
         {error && (
           <div className="mt-4 rounded-lg bg-red-900/20 border border-red-800 p-3 text-sm text-red-400">

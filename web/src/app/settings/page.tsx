@@ -6,6 +6,7 @@ import {
   updateProfile,
   getDigestPreferences,
   updateDigestPreferences,
+  sendDigestNow,
   type Profile,
   type DigestPreferences,
 } from "@/lib/api";
@@ -27,7 +28,10 @@ export default function SettingsPage() {
 
   // Digest state
   const [digestEnabled, setDigestEnabled] = useState(false);
+  const [digestFrequency, setDigestFrequency] = useState("weekly");
   const [digestEmail, setDigestEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState("");
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -52,6 +56,7 @@ export default function SettingsPage() {
       setSkillsInput((profile.core_skills || []).join(", "));
 
       setDigestEnabled(digest.enabled);
+      setDigestFrequency(digest.frequency || "weekly");
       setDigestEmail(digest.email || "");
 
       // Get email from auth if digest email is empty
@@ -98,6 +103,7 @@ export default function SettingsPage() {
         }),
         updateDigestPreferences({
           enabled: digestEnabled,
+          frequency: digestEnabled ? digestFrequency : "never",
           email: digestEmail,
         }),
       ]);
@@ -214,8 +220,8 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-white">Weekly Digest</p>
-                <p className="text-xs text-gray-500">Receive a weekly summary of new job matches</p>
+                <p className="text-sm text-white">Enable Digest</p>
+                <p className="text-xs text-gray-500">Receive periodic summaries of new job matches</p>
               </div>
               <button
                 onClick={() => setDigestEnabled(!digestEnabled)}
@@ -230,6 +236,19 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
+            {digestEnabled && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Frequency</label>
+                <select
+                  value={digestFrequency}
+                  onChange={(e) => setDigestFrequency(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm text-gray-400 mb-1">Email Address</label>
               <input
@@ -239,6 +258,34 @@ export default function SettingsPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 placeholder="you@example.com"
               />
+            </div>
+            <div className="pt-2 border-t border-gray-800">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    setSending(true);
+                    setSendResult("");
+                    try {
+                      const res = await sendDigestNow(digestEmail);
+                      setSendResult(res.message);
+                    } catch (err) {
+                      setSendResult(`Error: ${err instanceof Error ? err.message : "Failed to send"}`);
+                    } finally {
+                      setSending(false);
+                    }
+                  }}
+                  disabled={sending}
+                  className="rounded-lg border border-indigo-600 bg-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sending ? "Sending..." : "Send Now"}
+                </button>
+                <p className="text-xs text-gray-500">Get a digest of current matches immediately</p>
+              </div>
+              {sendResult && (
+                <p className={`mt-2 text-xs ${sendResult.startsWith("Error") ? "text-red-400" : "text-emerald-400"}`}>
+                  {sendResult}
+                </p>
+              )}
             </div>
           </div>
         </div>
