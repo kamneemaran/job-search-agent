@@ -410,16 +410,18 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     job.get("location", req.location),
                 )
 
-                # Filter jobs without visa/relo signals when require_visa is on AND job is outside India
+                # Filter jobs without visa/relo signals when require_visa is on AND job is outside India AND is NOT remote
                 if req.require_visa and score > 0 and "Visa sponsorship details not mentioned" in note:
                     loc_lower = job.get("location", "").lower()
                     text_lower = (job.get("title", "") + " " + job.get("description", "")).lower()
-                    _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
-                                      "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
-                                      "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
-                    is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
-                    if is_outside_india:
-                        continue
+                    is_remote_job = "remote" in loc_lower or "remote" in text_lower
+                    if not is_remote_job:
+                        _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                                          "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                                          "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
+                        is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
+                        if is_outside_india:
+                            continue
 
                 if score < req.threshold:
                     continue

@@ -50,14 +50,18 @@ export default function SearchPage() {
     setError("");
     setSearched(true);
     try {
+      const locList = location.split(",").map((l) => l.trim()).filter(Boolean);
+      const primaryLoc = locList[0] || "Remote";
+
       const res = await searchJobs({
         query: query.trim(),
-        location,
+        location: primaryLoc,
         threshold,
         max_results: 20,
         require_visa: requireVisa,
         job_type: jobType,
         work_mode: workMode,
+        locations: locList,
         skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
         exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
       });

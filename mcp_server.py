@@ -843,8 +843,9 @@ def _search_jobs(
                               "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
                               "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
             is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
+            is_remote_job = "remote" in loc_lower or "remote" in text_lower
             
-            if is_outside_india:
+            if is_outside_india and not is_remote_job:
                 career_url = job.get("url", "") or None
                 has_visa = _check_career_page_visa(job["company"], career_url)
                 if has_visa:
