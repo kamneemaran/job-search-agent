@@ -171,7 +171,10 @@ async def upload_resume(file: UploadFile = File(...), authorization: Optional[st
         tmp_path = tmp.name
 
     try:
-        profile, missing = ds.parse_resume_pdf(tmp_path)
+        try:
+            profile, missing = ds.parse_resume_pdf(tmp_path)
+        except Exception as e:
+            raise HTTPException(400, f"Failed to parse resume: {e}")
 
         # Save to Supabase if authenticated
         if authorization:
@@ -207,8 +210,8 @@ async def upload_resume(file: UploadFile = File(...), authorization: Optional[st
                     "current_role": profile.get("current_role", ""),
                     "years_experience": profile.get("years_experience", 0),
                 }, on_conflict="id").execute()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [resume] Supabase save failed: {e}")
 
         return ResumeUploadResponse(
             name=profile.get("name", ""),
@@ -233,10 +236,12 @@ def score_job(req: ScoreRequest, authorization: Optional[str] = Header(None)):
         try:
             ds.PROFILE["core_skills"] = profile["core_skills"]
             ds.PROFILE["years_experience"] = profile["years_experience"]
+            ds._rebuild_precompiled_patterns()
             score, note = ds.score_job(req.title, req.description, req.company, req.location)
         finally:
             ds.PROFILE["core_skills"] = orig_skills
             ds.PROFILE["years_experience"] = orig_years
+            ds._rebuild_precompiled_patterns()
 
     return ScoreResponse(score=score, note=note, title=req.title, company=req.company)
 
@@ -254,94 +259,104 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     import time as _time
     _deadline = _time.time() + 25
 
-    def _collect(jobs, src_name):
-        if _time.time() > _deadline:
-            return
-        for job in jobs:
-            key = (job.get("title", "").lower(), job.get("company", "").lower())
-            if key in seen:
+    # Swap profile once for the whole search
+    with _profile_lock:
+        orig_skills = ds.PROFILE.get("core_skills")
+        orig_years = ds.PROFILE.get("years_experience")
+        ds.PROFILE["core_skills"] = profile["core_skills"]
+        ds.PROFILE["years_experience"] = profile["years_experience"]
+        ds._rebuild_precompiled_patterns()
+
+    try:
+        all_jobs = []
+        seen = set()
+        import time as _time
+        _deadline = _time.time() + 25
+
+        def _collect(jobs, src_name):
+            if _time.time() > _deadline:
+                return
+            for job in jobs:
+                key = (job.get("title", "").lower(), job.get("company", "").lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                score, note = ds.score_job(
+                    job.get("title", ""),
+                    job.get("description", ""),
+                    job.get("company", ""),
+                    job.get("location", req.location),
+                )
+
+                if score < req.threshold:
+                    continue
+                ec = [c.lower() for c in req.exclude_companies]
+                if ec and job.get("company", "").lower() in ec:
+                    continue
+
+                salary_info = ds.get_salary_info(
+                    job.get("company", ""), job.get("title", ""), job.get("description", "")
+                )
+                salary_str = ds._format_salary(salary_info) if salary_info else None
+
+                all_jobs.append(JobResult(
+                    title=job.get("title", ""),
+                    company=job.get("company", ""),
+                    location=job.get("location", ""),
+                    url=job.get("url", ""),
+                    score=score,
+                    note=note,
+                    salary=salary_str,
+                    description=job.get("description", "")[:500],
+                    source=src_name,
+                ))
+
+        # 1. Search job boards
+        for name, fn in [
+            ("LinkedIn", ds.search_linkedin),
+            ("Indeed", ds.search_indeed),
+            ("Naukri", ds.search_naukri),
+            ("Glassdoor", ds.search_glassdoor),
+            ("SimplyHired", ds.search_simplyhired),
+        ]:
+            if _time.time() > _deadline:
+                break
+            try:
+                _collect(fn(req.query, req.location, max_results // 2), name)
+            except Exception:
                 continue
-            seen.add(key)
 
-            with _profile_lock:
-                orig_skills = ds.PROFILE.get("core_skills")
-                orig_years = ds.PROFILE.get("years_experience")
-                try:
-                    ds.PROFILE["core_skills"] = profile["core_skills"]
-                    ds.PROFILE["years_experience"] = profile["years_experience"]
-                    score, note = ds.score_job(
-                        job.get("title", ""),
-                        job.get("description", ""),
-                        job.get("company", ""),
-                        job.get("location", req.location),
-                    )
-                finally:
-                    ds.PROFILE["core_skills"] = orig_skills
-                    ds.PROFILE["years_experience"] = orig_years
-
-            if score < req.threshold:
-                continue
-            ec = [c.lower() for c in req.exclude_companies]
-            if ec and job.get("company", "").lower() in ec:
+        # 2. Search remote company ATS
+        max_companies = get_max_companies(authorization)
+        for src in ds.REMOTE_JOB_SOURCES[:max_companies if max_companies > 0 else len(ds.REMOTE_JOB_SOURCES)]:
+            if _time.time() > _deadline:
+                break
+            try:
+                _collect(ds.fetch_jobs_from_source(src), src.get("name", ""))
+            except Exception:
                 continue
 
-            salary_info = ds.get_salary_info(
-                job.get("company", ""), job.get("title", ""), job.get("description", "")
-            )
-            salary_str = ds._format_salary(salary_info) if salary_info else None
+        all_jobs.sort(key=lambda j: j.score, reverse=True)
 
-            all_jobs.append(JobResult(
-                title=job.get("title", ""),
-                company=job.get("company", ""),
-                location=job.get("location", ""),
-                url=job.get("url", ""),
-                score=score,
-                note=note,
-                salary=salary_str,
-                description=job.get("description", "")[:500],
-                source=src_name,
-            ))
+        increment_search_count(authorization)
 
-    # 1. Search job boards
-    for name, fn in [
-        ("LinkedIn", ds.search_linkedin),
-        ("Indeed", ds.search_indeed),
-        ("Naukri", ds.search_naukri),
-        ("Glassdoor", ds.search_glassdoor),
-        ("SimplyHired", ds.search_simplyhired),
-    ]:
-        if _time.time() > _deadline:
-            break
-        try:
-            _collect(fn(req.query, req.location, max_results // 2), name)
-        except Exception:
-            continue
+        if authorization:
+            try:
+                sb = get_user_client(authorization)
+                user = sb.auth.get_user().user
+                sb.table("searches").insert({
+                    "user_id": user.id,
+                    "query": req.query,
+                    "location": req.location,
+                    "results_count": len(all_jobs),
+                }).execute()
+            except Exception:
+                pass
 
-    # 2. Search remote company ATS
-    max_companies = get_max_companies(authorization)
-    for src in ds.REMOTE_JOB_SOURCES[:max_companies if max_companies > 0 else len(ds.REMOTE_JOB_SOURCES)]:
-        if _time.time() > _deadline:
-            break
-        try:
-            _collect(ds.fetch_jobs_from_source(src), src.get("name", ""))
-        except Exception:
-            continue
-
-    all_jobs.sort(key=lambda j: j.score, reverse=True)
-
-    increment_search_count(authorization)
-
-    if authorization:
-        try:
-            sb = get_user_client(authorization)
-            user = sb.auth.get_user().user
-            sb.table("searches").insert({
-                "user_id": user.id,
-                "query": req.query,
-                "location": req.location,
-                "results_count": len(all_jobs),
-            }).execute()
-        except Exception:
-            pass
-
-    return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=req.query)
+        return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=req.query)
+    finally:
+        with _profile_lock:
+            ds.PROFILE["core_skills"] = orig_skills
+            ds.PROFILE["years_experience"] = orig_years
+            ds._rebuild_precompiled_patterns()
