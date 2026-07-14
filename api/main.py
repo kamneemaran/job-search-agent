@@ -214,6 +214,7 @@ async def upload_resume(
                 # Update profiles table
                 sb.table("profiles").upsert({
                     "id": user_id,
+                    "full_name": profile.get("name", ""),
                     "core_skills": profile.get("core_skills", []),
                     "current_role": profile.get("current_role", ""),
                     "years_experience": profile.get("years_experience", 0),
