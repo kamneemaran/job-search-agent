@@ -48,19 +48,20 @@ def _get_ds():
 
 
 def _get_user_profile(authorization: Optional[str]) -> dict:
-    """Fetch user profile from Supabase. Returns empty profile if not set up."""
-    empty = {"name": "", "current_role": "", "core_skills": [], "years_experience": 0}
-
+    """Fetch user profile from Supabase. Raises 401 if unauthorized or expired."""
     if not authorization:
-        return empty
+        raise HTTPException(status_code=401, detail="Authentication token missing")
 
     try:
         sb = get_user_client(authorization)
         resp = sb.auth.get_user()
         user = resp.user if hasattr(resp, "user") else resp
+        if not user or not getattr(user, "id", None):
+            raise HTTPException(status_code=401, detail="Session expired or invalid")
+
         result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
         if not result.data:
-            return empty
+            raise HTTPException(status_code=401, detail="Profile not found. Please log in.")
 
         row = result.data
         core_skills = row.get("core_skills")
@@ -72,7 +73,12 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
                 core_skills = []
 
         if not core_skills or not isinstance(core_skills, list) or len(core_skills) == 0:
-            return empty
+            return {
+                "name": row.get("full_name", "") or "",
+                "current_role": row.get("current_role", "") or "",
+                "core_skills": [],
+                "years_experience": row.get("years_experience", 0) or 0,
+            }
 
         return {
             "name": row.get("full_name", "") or "",
@@ -80,11 +86,13 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
             "core_skills": core_skills,
             "years_experience": row.get("years_experience", 0) or 0,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"Error in _get_user_profile: {e}")
-        return empty
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
 
 
 @asynccontextmanager

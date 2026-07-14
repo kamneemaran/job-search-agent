@@ -70,6 +70,16 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       ...options?.headers,
     },
   });
+  if (res.status === 401) {
+    try {
+      const supabase = getBrowserClient();
+      await supabase.auth.signOut();
+    } catch {}
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/signin";
+    }
+    throw new Error("Session expired. Please sign in again.");
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `API error ${res.status}`);
