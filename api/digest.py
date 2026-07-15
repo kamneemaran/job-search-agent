@@ -372,13 +372,7 @@ async def send_digest(
 
         # If "now" (start over), clear any running or matches entries
         elif req.schedule == "now":
-            any_running = any(isinstance(x, str) and x.startswith("RUNNING:") for x in sent_history)
-            if any_running:
-                logger.warning(f"[DIGEST-TRIGGER] Rejected start-over request for user_id={user_id} — scan already running.")
-                raise HTTPException(400, "A background scan is already in progress. Please use force-reset or wait for it.")
-
-            # Clean and filter sent history
-            sent_history = [x for x in sent_history if isinstance(x, str) and not x.startswith("MATCH:") and not x.startswith("RUNNING:") and not x.startswith("FINISHED:")]
+            pass
 
         logger.info(f"[DIGEST-TRIGGER] Checking rate limit history for user_id={user_id}. Past sent count: {len(sent_history)}")
 
@@ -429,9 +423,41 @@ async def send_digest(
 
         logger.info(f"[DIGEST-TRIGGER] Active target batches list: {batches_list}")
 
+        # Check active scans limits and duplicates
+        in_progress_scans = [x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")]
+        
+        # 1. Enforce max limit of 5 concurrent runs
+        if len(in_progress_scans) >= 5:
+            logger.warning(f"[DIGEST-TRIGGER] Rejected request for user_id={user_id} — maximum concurrent scans limit (5) reached.")
+            raise HTTPException(
+                status_code=400,
+                detail="Maximum limit of 5 concurrent scans exceeded. You must cancel an existing scan or wait for it to complete."
+            )
+            
+        # 2. Check if duplicate batch selection is already active
+        target_batches_set = set(batches_list)
+        for item in in_progress_scans:
+            parts = item.replace("RUNNING:", "").split("|")
+            item_batches = []
+            for part in parts:
+                if part.startswith("batches:"):
+                    item_batches = part.replace("batches:", "").split(",")
+                    break
+            if set(item_batches) == target_batches_set:
+                batches_title = ", ".join(batches_list) if batches_list != ["all"] else "Master Scan"
+                logger.warning(f"[DIGEST-TRIGGER] Rejected duplicate scan request for user_id={user_id} on batches: {batches_list}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"A scan for the selected batch combination ({batches_title}) is already active. Please cancel it or wait for it to complete."
+                )
+
+        import uuid
+        scan_id = str(uuid.uuid4())[:8]
+        batches_str = ",".join(batches_list)
+
         # Set the running token in sent_history
         import time
-        running_token = f"RUNNING:Initializing...|{int(time.time())}"
+        running_token = f"RUNNING:Starting Cloud Scan...|batches:{batches_str}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
         # If we are resuming, we keep the existing running item (which will be updated soon)
         if req.schedule == "resume":
             existing_running = next((x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")), None)
@@ -476,9 +502,9 @@ async def send_digest(
             
             # Update database running token to reflect GitHub Actions progress
             import time
-            dispatch_token = f"RUNNING:Starting scan in GitHub Actions Cloud...|{int(time.time())}"
-            # Replace any old running items
-            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+            dispatch_token = f"RUNNING:Starting scan in GitHub Actions Cloud...|batches:{batches_str}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
+            # Replace the Initializing running token for this specific scan_id
+            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x)]
             clean_history.append(dispatch_token)
             
             try:
@@ -499,6 +525,7 @@ async def send_digest(
                 "event_type": "manual_scan",
                 "client_payload": {
                     "user_id": user_id,
+                    "scan_id": scan_id,
                 }
             }
             
@@ -507,9 +534,10 @@ async def send_digest(
                 if resp.status_code == 204:
                     logger.info(f"[DIGEST-TRIGGER] Successfully dispatched repository_dispatch to {repo_clean}!")
                     return {
-                        "message": "Scan dispatched to GitHub Actions Cloud. Your master scan is compiling on high-performance cloud servers. Check your inbox soon!",
+                        "message": "Scan dispatched to GitHub Actions Cloud. Check your inbox soon!",
                         "sent": True,
-                        "count": len(initial_matches)
+                        "count": len(initial_matches),
+                        "scan_id": scan_id,
                     }
                 else:
                     fallback_warning = f"GitHub API dispatch failed with status {resp.status_code}: {resp.text}"
@@ -518,10 +546,10 @@ async def send_digest(
                 fallback_warning = f"GitHub API request failed: {str(e)}"
                 logger.error(f"[DIGEST-TRIGGER] {fallback_warning}. Local scraper fallback is disabled.", exc_info=True)
 
-        # If we reach here, the dispatch failed. We clean up the RUNNING token from the database
+        # If we reach here, the dispatch failed. We clean up this specific RUNNING token from the database
         # and throw an error back to the user, preventing local fallback as requested!
         try:
-            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x)]
             sb.table("email_preferences").update({
                 "sent_history": clean_history,
             }).eq("user_id", user_id).execute()
@@ -552,8 +580,94 @@ async def send_digest(
     return {"message": f"Unknown schedule: {req.schedule}", "sent": False, "count": 0}
 
 
+@router.get("/scans")
+async def get_active_scans(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "Authorization required")
+        
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    user_id = user.id
+    
+    pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+    active_scans = []
+    
+    if pref_result and pref_result.data:
+        curr_history = pref_result.data.get("sent_history") or []
+        gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
+        gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
+        
+        repo_clean = None
+        if gh_token and gh_repo:
+            repo_clean = gh_repo.strip()
+            if "github.com/" in repo_clean:
+                repo_clean = repo_clean.split("github.com/")[-1]
+            if repo_clean.endswith(".git"):
+                repo_clean = repo_clean[:-4]
+            repo_clean = repo_clean.strip("/")
+            
+        import requests
+        
+        for item in curr_history:
+            if isinstance(item, str) and item.startswith("RUNNING:"):
+                parts = item.replace("RUNNING:", "").split("|")
+                status = parts[0] if parts else "queued"
+                batches = []
+                scan_id = "unknown"
+                run_id = "pending"
+                timestamp = 0
+                
+                for part in parts:
+                    if part.startswith("batches:"):
+                        batches = part.replace("batches:", "").split(",")
+                    elif part.startswith("scan_id:"):
+                        scan_id = part.replace("scan_id:", "")
+                    elif part.startswith("run_id:"):
+                        run_id = part.replace("run_id:", "")
+                    elif part.isdigit():
+                        timestamp = int(part)
+                        
+                # Check live GitHub Action status
+                live_status = status
+                if run_id and run_id != "pending" and gh_token and repo_clean:
+                    try:
+                        run_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{run_id}"
+                        headers = {
+                            "Authorization": f"token {gh_token}",
+                            "Accept": "application/vnd.github.v3+json",
+                            "User-Agent": "JobPilot-API"
+                        }
+                        resp = requests.get(run_url, headers=headers, timeout=5)
+                        if resp.status_code == 200:
+                            run_data = resp.json()
+                            gh_status = run_data.get("status")  # queued, in_progress, completed
+                            gh_conclusion = run_data.get("conclusion") # success, failure, cancelled, etc.
+                            
+                            if gh_status == "completed":
+                                live_status = gh_conclusion or "completed"
+                            else:
+                                live_status = gh_status or "in_progress"
+                        else:
+                            logger.warning(f"[DIGEST-STATUS] GitHub returned status {resp.status_code} for run {run_id}")
+                    except Exception as ge:
+                        logger.error(f"[DIGEST-STATUS] Error checking GitHub status for run {run_id}: {ge}")
+                        
+                active_scans.append({
+                    "scan_id": scan_id,
+                    "run_id": run_id,
+                    "batches": batches,
+                    "status": live_status,
+                    "timestamp": timestamp
+                })
+                
+    return active_scans
+
+
 @router.post("/reset")
-async def reset_digest_status(authorization: Optional[str] = Header(None)):
+async def reset_digest_status(
+    scan_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
     if not authorization:
         raise HTTPException(401, "Authorization required")
 
@@ -566,27 +680,40 @@ async def reset_digest_status(authorization: Optional[str] = Header(None)):
     if pref_result and pref_result.data:
         curr_history = pref_result.data.get("sent_history") or []
         
-        # Extract target GITHUB_RUN_ID specifically belonging to this user's current scan
+        # Extract target GITHUB_RUN_ID specifically belonging to the targeted scan_id
         target_run_id = None
-        for item in curr_history:
-            if isinstance(item, str) and item.startswith("GITHUB_RUN_ID:"):
-                target_run_id = item.replace("GITHUB_RUN_ID:", "").strip()
-                break
-                
-        # Filter out RUNNING: and GITHUB_RUN_ID: tokens from database sent_history
-        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("GITHUB_RUN_ID:")))]
+        new_history = []
         
+        for item in curr_history:
+            if isinstance(item, str) and item.startswith("RUNNING:"):
+                is_target = False
+                if scan_id and f"scan_id:{scan_id}" in item:
+                    is_target = True
+                elif not scan_id:
+                    is_target = True # If no scan_id is specified, reset/cancel all running ones
+                    
+                if is_target:
+                    # Extract run_id from token
+                    parts = item.split("|")
+                    for part in parts:
+                        if part.startswith("run_id:"):
+                            target_run_id = part.replace("run_id:", "").strip()
+                            break
+                    continue # Remove this token
+                    
+            new_history.append(item)
+            
         sb.table("email_preferences").update({
             "sent_history": new_history,
         }).eq("user_id", user_id).execute()
-        logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}")
+        logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}, scan_id={scan_id}")
 
-        # Cancel the specific GitHub Action workflow if target_run_id was captured
+        # Cancel the specific GitHub Action workflow if target_run_id was captured and valid
         gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
         gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
         gh_cancelled_count = 0
         
-        if target_run_id and gh_token and gh_repo:
+        if target_run_id and target_run_id != "pending" and gh_token and gh_repo:
             repo_clean = gh_repo.strip()
             if "github.com/" in repo_clean:
                 repo_clean = repo_clean.split("github.com/")[-1]
@@ -614,10 +741,12 @@ async def reset_digest_status(authorization: Optional[str] = Header(None)):
 
         if gh_cancelled_count > 0:
             msg = f"Scan status reset successfully. Aborted your active GitHub Actions cloud workflow run (ID: {target_run_id})."
-        elif target_run_id:
+        elif target_run_id and target_run_id != "pending":
             msg = f"Scan status reset successfully. Requested abort for your cloud workflow run (ID: {target_run_id})."
+        elif scan_id:
+            msg = f"Scan status reset successfully. Removed scan {scan_id}."
         else:
-            msg = "Scan status reset successfully. You can now start a new scan."
+            msg = "Scan status reset successfully. All active scans have been reset."
 
         return {"status": "success", "message": msg}
 
