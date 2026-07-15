@@ -254,7 +254,13 @@ export default function SettingsPage() {
   };
 
   const runningItem = sentHistory.find((x) => x.startsWith("RUNNING:"));
-  const progressText = runningItem ? runningItem.replace("RUNNING:", "") : "";
+  const runningParts = runningItem ? runningItem.replace("RUNNING:", "").split("|") : [];
+  const progressText = runningParts[0] || "";
+  const progressTimestampStr = runningParts[1] || "";
+  const progressTimestamp = progressTimestampStr ? parseInt(progressTimestampStr, 10) : 0;
+
+  const currentEpoch = Math.floor(Date.now() / 1000);
+  const isStalled = progressTimestamp > 0 && (currentEpoch - progressTimestamp) > 300;
 
   if (loading) {
     return (
@@ -413,25 +419,27 @@ export default function SettingsPage() {
                     You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
                   </span>
 
-                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
-                    <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can resume progress or force-reset.</span>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={handleResumeScan}
-                        disabled={sending || resetting}
-                        className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                      >
-                        {sending ? "Resuming..." : "Resume Interrupted Scan"}
-                      </button>
-                      <button
-                        onClick={handleResetStatus}
-                        disabled={sending || resetting}
-                        className="rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                      >
-                        {resetting ? "Resetting..." : "Force Reset Status"}
-                      </button>
+                  {isStalled && (
+                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
+                      <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can resume progress or force-reset.</span>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={handleResumeScan}
+                          disabled={sending || resetting}
+                          className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                        >
+                          {sending ? "Resuming..." : "Resume Interrupted Scan"}
+                        </button>
+                        <button
+                          onClick={handleResetStatus}
+                          disabled={sending || resetting}
+                          className="rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                        >
+                          {resetting ? "Resetting..." : "Force Reset Status"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

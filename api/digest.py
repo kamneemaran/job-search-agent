@@ -151,7 +151,8 @@ def run_background_digest_scan(
             
             # Update database with current progress!
             try:
-                progress_token = f"RUNNING:Scraping {source_name} ({idx}/{len(all_sources)})"
+                import time
+                progress_token = f"RUNNING:Scraping {source_name} ({idx}/{len(all_sources)})|{int(time.time())}"
                 pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
                 if pref_result and pref_result.data:
                     curr_history = pref_result.data.get("sent_history") or []
@@ -416,7 +417,8 @@ async def send_digest(
         logger.info(f"[DIGEST-TRIGGER] Active target batches list: {batches_list}")
 
         # Set the running token in sent_history
-        running_token = f"RUNNING:Initializing..."
+        import time
+        running_token = f"RUNNING:Initializing...|{int(time.time())}"
         # If we are resuming, we keep the existing running item (which will be updated soon)
         if req.schedule == "resume":
             existing_running = next((x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")), None)
