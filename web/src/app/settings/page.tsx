@@ -426,17 +426,21 @@ export default function SettingsPage() {
                     You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
                   </span>
 
-                  {!(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) && isStalled && (
+                  {!(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) && (
                     <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
-                      <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can resume progress or force-reset.</span>
+                      <span className="text-[10px] text-gray-500">
+                        {isStalled ? "Scan stuck or interrupted? You can resume progress or force-reset." : "Need to abort or re-trigger the scan? You can force-reset."}
+                      </span>
                       <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={handleResumeScan}
-                          disabled={sending || resetting}
-                          className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                        >
-                          {sending ? "Resuming..." : "Resume Interrupted Scan"}
-                        </button>
+                        {isStalled && (
+                          <button
+                            onClick={handleResumeScan}
+                            disabled={sending || resetting}
+                            className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                          >
+                            {sending ? "Resuming..." : "Resume Interrupted Scan"}
+                          </button>
+                        )}
                         <button
                           onClick={handleResetStatus}
                           disabled={sending || resetting}
