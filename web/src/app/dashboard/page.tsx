@@ -21,7 +21,14 @@ const STATUS_OPTIONS = ["new", "applied", "rejected", "offer"];
 export default function DashboardPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
   const [filter, setFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 5;
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, sortBy]);
 
   // Advanced Editing State
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -285,6 +292,30 @@ export default function DashboardPage() {
 
   const filteredJobs = filter ? jobs.filter((j) => j.status === filter) : jobs;
 
+  const sortedJobs = [...filteredJobs].sort((a, b) => {
+    if (sortBy === "newest") {
+      const dA = a.date_found ? new Date(a.date_found).getTime() : 0;
+      const dB = b.date_found ? new Date(b.date_found).getTime() : 0;
+      return dB - dA;
+    } else if (sortBy === "oldest") {
+      const dA = a.date_found ? new Date(a.date_found).getTime() : 0;
+      const dB = b.date_found ? new Date(b.date_found).getTime() : 0;
+      return dA - dB;
+    } else if (sortBy === "score_desc") {
+      return (b.score || 0) - (a.score || 0);
+    } else if (sortBy === "score_asc") {
+      return (a.score || 0) - (b.score || 0);
+    } else if (sortBy === "title_az") {
+      return a.title.localeCompare(b.title);
+    } else if (sortBy === "company_az") {
+      return a.company.localeCompare(b.company);
+    }
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedJobs.length / jobsPerPage);
+  const paginatedJobs = sortedJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
+
   const formatDate = (d: string) => {
     if (!d) return "";
     try {
@@ -394,36 +425,56 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-        {(["", "new", "applied", "rejected", "offer"] as const).map((s) => (
-          <button
-            key={s || "all"}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === s
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
+      {/* Filter and Sort Row */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-gray-800 pb-4">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          {(["", "new", "applied", "rejected", "offer"] as const).map((s) => (
+            <button
+              key={s || "all"}
+              onClick={() => setFilter(s)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === s
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              <span className="ml-1.5 text-xs opacity-60">
+                {s === "" ? counts.all : counts[s as keyof typeof counts]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Sort By Dropdown */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500 whitespace-nowrap">Sort by</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs sm:text-sm text-white focus:border-indigo-500 focus:outline-none"
           >
-            {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            <span className="ml-1.5 text-xs opacity-60">
-              {s === "" ? counts.all : counts[s as keyof typeof counts]}
-            </span>
-          </button>
-        ))}
+            <option value="newest">Newest (Updated)</option>
+            <option value="oldest">Oldest (Updated)</option>
+            <option value="score_desc">Score: Highest First</option>
+            <option value="score_asc">Score: Lowest First</option>
+            <option value="title_az">Title: A-Z</option>
+            <option value="company_az">Company: A-Z</option>
+          </select>
+        </div>
       </div>
 
       {/* Jobs List */}
       {loading ? (
         <div className="text-center py-16 text-gray-500">Loading...</div>
-      ) : filteredJobs.length === 0 ? (
+      ) : sortedJobs.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           No jobs found in this section. Add or import jobs to track.
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredJobs.map((job, i) => {
+          {paginatedJobs.map((job, i) => {
             const editKey = `${job.company}|${job.title}`;
             const isEditing = editingKey === editKey;
             return (
@@ -580,6 +631,43 @@ export default function DashboardPage() {
               </div>
             );
           })}
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8 pt-4 border-t border-gray-800">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      currentPage === page
+                        ? "bg-indigo-600 text-white"
+                        : "bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

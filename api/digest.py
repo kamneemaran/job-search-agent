@@ -269,6 +269,38 @@ def run_background_digest_scan(
             logger.error(f"[DIGEST-BG-WORKER] Exception raised during email compilation/dispatch: {e}", exc_info=True)
             ok = False
 
+        # Auto-log emailed jobs to user's tracker
+        try:
+            logged = 0
+            for job in results:
+                existing = (
+                    sb.table("jobs")
+                    .select("id")
+                    .eq("user_id", user_id)
+                    .eq("title", job["title"])
+                    .eq("company", job["company"])
+                    .limit(1)
+                    .execute()
+                )
+                if existing.data:
+                    continue
+                sb.table("jobs").insert({
+                    "user_id": user_id,
+                    "title": job["title"],
+                    "company": job["company"],
+                    "url": job.get("url", ""),
+                    "score": job.get("score", 0),
+                    "location": job.get("location", ""),
+                    "salary": job.get("salary", ""),
+                    "source": "email_digest",
+                    "status": "new",
+                }).execute()
+                logged += 1
+            if logged:
+                logger.info(f"[DIGEST-BG-WORKER] Auto-logged {logged} jobs to tracker for user_id={user_id}")
+        except Exception as e:
+            logger.warning(f"[DIGEST-BG-WORKER] Failed to auto-log jobs for user_id={user_id}: {e}")
+
         # Clear active status/matches and save clean run history to database
         clean_history.append(f"FINISHED:{len(results)}")
         sb.table("email_preferences").upsert({
