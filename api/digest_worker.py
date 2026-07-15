@@ -99,8 +99,6 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
             all_sources += ds.JOB_SOURCES
         if "europe_companies" in batches_list:
             all_sources += ds.EU_JOB_SOURCES
-        if "europe_boards" in batches_list:
-            all_sources += [s for s in ds.GLOBAL_JOB_SOURCES if s.get("name") in ("Arbeitnow", "IamExpat", "TogetherAbroad")]
         if "middle_east" in batches_list:
             all_sources += ds.MIDDLE_EAST_JOB_SOURCES
         if "apac" in batches_list:
@@ -171,6 +169,74 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                     "salary": salary_str,
                     "url": job.get("url", ""),
                 })
+
+    # 2. Run Europe Job Boards directly if "europe_boards" is requested!
+    if "europe_boards" in batches_list:
+        logger.info("[DIGEST-BG-WORKER] Triggering direct Europe Job Boards scrapers (Arbeitnow, IamExpat, TogetherAbroad)...")
+        
+        # Build queries based on core skills
+        queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
+        if not queries:
+            queries = ["Python"]
+            
+        board_mapping = [
+            ("Arbeitnow", ds.search_arbeitnow, ["Remote"]),
+            ("IamExpat", ds.search_iamexpat, ["Netherlands"]),
+            ("TogetherAbroad", ds.search_togetherabroad, ["Netherlands"])
+        ]
+        
+        for board_name, board_fn, locations in board_mapping:
+            logger.info(f"[DIGEST-BG-WORKER] Scraping Europe Board: '{board_name}'...")
+            for query in queries:
+                for loc in locations:
+                    try:
+                        logger.info(f"[DIGEST-BG-WORKER] Calling {board_name} for query='{query}' @ location='{loc}'...")
+                        board_jobs = board_fn(query, location=loc)
+                        logger.info(f"[DIGEST-BG-WORKER] {board_name} returned {len(board_jobs) if board_jobs else 0} jobs.")
+                        if not board_jobs:
+                            continue
+                            
+                        for job in board_jobs:
+                            key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
+                            if key in seen:
+                                continue
+                            seen.add(key)
+                            
+                            # Score job
+                            with _profile_lock:
+                                orig_skills = ds.PROFILE.get("core_skills")
+                                orig_years = ds.PROFILE.get("years_experience")
+                                try:
+                                    ds.PROFILE["core_skills"] = profile["core_skills"]
+                                    ds.PROFILE["years_experience"] = profile["years_experience"]
+                                    score, note = ds.score_job(
+                                        job.get("title", ""),
+                                        job.get("description", ""),
+                                        job.get("company", ""),
+                                        job.get("location", ""),
+                                    )
+                                finally:
+                                    ds.PROFILE["core_skills"] = orig_skills
+                                    ds.PROFILE["years_experience"] = orig_years
+                                    
+                            if score >= SCORE_THRESHOLD:
+                                logger.info(f"[DIGEST-BG-WORKER] Match verified on Board {board_name}! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
+                                salary_info = ds.get_salary_info(
+                                    job.get("company", ""),
+                                    job.get("title", ""),
+                                    job.get("description", ""),
+                                )
+                                salary_str = ds._format_salary(salary_info) if salary_info else ""
+                                results.append({
+                                    "title": job.get("title", ""),
+                                    "company": job.get("company", ""),
+                                    "score": score,
+                                    "location": job.get("location", ""),
+                                    "salary": salary_str,
+                                    "url": job.get("url", ""),
+                                })
+                    except Exception as be:
+                        logger.error(f"[DIGEST-BG-WORKER] Board {board_name} failed for query='{query}': {be}")
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
