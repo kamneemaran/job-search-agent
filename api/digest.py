@@ -107,8 +107,10 @@ def run_background_digest_scan(
     history_dates: list,
     now_iso: str,
     running_token: str,
+    start_index: int = 1,
+    initial_matches: list = None,
 ):
-    logger.info(f"[DIGEST-BG-WORKER] Starting async background job scan for user_id={user_id}, target_email={to_email}")
+    logger.info(f"[DIGEST-BG-WORKER] Starting async background job scan for user_id={user_id}, target_email={to_email}, start_index={start_index}, initial_matches_count={len(initial_matches) if initial_matches else 0}")
     sb = get_user_client(authorization)
     try:
         all_sources = []
@@ -136,10 +138,14 @@ def run_background_digest_scan(
 
         logger.info(f"[DIGEST-BG-WORKER] Compiled {len(all_sources)} total job sources to fetch.")
 
-        results = []
-        seen = set()
+        results = list(initial_matches) if initial_matches else []
+        seen = {(j.get("title", "").lower().strip(), j.get("company", "").lower().strip()) for j in results}
 
         for idx, source in enumerate(all_sources, 1):
+            if idx < start_index:
+                logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Skipping already completed source: '{source.get('name')}'")
+                continue
+
             source_name = source.get("name", f"Source #{idx}")
             logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Scraping: '{source_name}'...")
             
@@ -169,7 +175,7 @@ def run_background_digest_scan(
                 continue
 
             for job in jobs:
-                key = (job.get("title", "").lower(), job.get("company", "").lower())
+                key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                 if key in seen:
                     continue
                 seen.add(key)
@@ -192,18 +198,36 @@ def run_background_digest_scan(
                     salary_info = ds.get_salary_info(
                         job.get("company", ""), job.get("title", ""), job.get("description", ""),
                     )
-                    results.append({
+                    job_match = {
                         "title": job.get("title", ""),
                         "company": job.get("company", ""),
                         "score": score,
                         "location": job.get("location", ""),
                         "salary": ds._format_salary(salary_info) if salary_info else "",
                         "url": job.get("url", ""),
-                    })
+                    }
+                    results.append(job_match)
+
+                    # Persist match in real-time inside database to safeguard progress
+                    try:
+                        import json
+                        match_token = f"MATCH:{json.dumps(job_match)}"
+                        pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                        if pref_result and pref_result.data:
+                            curr_history = pref_result.data.get("sent_history") or []
+                            new_history = list(curr_history)
+                            new_history.append(match_token)
+                            sb.table("email_preferences").update({
+                                "sent_history": new_history,
+                            }).eq("user_id", user_id).execute()
+                            logger.info(f"[DIGEST-BG-WORKER] Real-time saved job match in database sent_history.")
+                    except Exception as pe:
+                        logger.error(f"[DIGEST-BG-WORKER] Failed to persist job match to sent_history: {pe}")
 
         results.sort(key=lambda x: x["score"], reverse=True)
         logger.info(f"[DIGEST-BG-WORKER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
 
+        # Clean sent_history: keep only non-RUNNING and non-MATCH entries, and append now_iso
         clean_history = [dt.isoformat() for dt in history_dates]
         clean_history.append(now_iso)
 
@@ -230,13 +254,13 @@ def run_background_digest_scan(
             logger.error(f"[DIGEST-BG-WORKER] Exception raised during email compilation/dispatch: {e}", exc_info=True)
             ok = False
 
-        # Update last_sent_at and sent_history
+        # Clear active status/matches and save clean run history to database
         sb.table("email_preferences").upsert({
             "user_id": user_id,
             "last_sent_at": now_iso,
             "sent_history": clean_history,
         }, on_conflict="user_id").execute()
-        logger.info(f"[DIGEST-BG-WORKER] Successfully updated sent history in Supabase for user_id={user_id}")
+        logger.info(f"[DIGEST-BG-WORKER] Successfully updated sent history in Supabase (cleared progress tokens) for user_id={user_id}")
 
     except Exception as e:
         logger.error(f"[DIGEST-BG-WORKER] Unexpected error in background worker: {e}", exc_info=True)
@@ -296,7 +320,7 @@ async def send_digest(
     logger.info(f"[DIGEST-TRIGGER] Manual email digest send initiated for user_id={user_id}, target_email={to_email}, schedule={req.schedule}")
     logger.info(f"[DIGEST-TRIGGER] Matching profile: years_experience={profile['years_experience']}, core_skills={profile['core_skills']}")
 
-    if req.schedule == "now":
+    if req.schedule in ("now", "resume"):
         # Get email preferences for frequency and sent history
         pref_result = sb.table("email_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
         pref_row = pref_result.data if pref_result else None
@@ -304,21 +328,50 @@ async def send_digest(
         frequency = pref_row.get("frequency", "weekly") if pref_row else "weekly"
         sent_history = pref_row.get("sent_history", []) if pref_row else []
 
-        # Check if already running
-        any_running = any(isinstance(x, str) and x.startswith("RUNNING:") for x in sent_history)
-        if any_running:
-            logger.warning(f"[DIGEST-TRIGGER] Rejected send for user_id={user_id} — a scan is already running.")
-            raise HTTPException(400, "A background scan is already in progress. Please wait for it to complete.")
+        start_index = 1
+        initial_matches = []
+        now = datetime.now()
+
+        # If resume is requested
+        if req.schedule == "resume":
+            import re
+            running_item = next((x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")), None)
+            if running_item:
+                # Find (X/Y) progress
+                match_idx = re.search(r"\((\d+)/\d+\)", running_item)
+                if match_idx:
+                    start_index = int(match_idx.group(1))
+                    logger.info(f"[DIGEST-TRIGGER] Resuming scan for user_id={user_id} from index {start_index} based on active status.")
+
+            # Load all real-time MATCH: tokens stored previously
+            for item in sent_history:
+                if isinstance(item, str) and item.startswith("MATCH:"):
+                    try:
+                        import json
+                        match_data = json.loads(item.replace("MATCH:", "", 1))
+                        initial_matches.append(match_data)
+                    except Exception:
+                        pass
+            logger.info(f"[DIGEST-TRIGGER] Loaded {len(initial_matches)} pre-saved matches for user_id={user_id} during resume.")
+
+        # If "now" (start over), clear any running or matches entries
+        elif req.schedule == "now":
+            any_running = any(isinstance(x, str) and x.startswith("RUNNING:") for x in sent_history)
+            if any_running:
+                logger.warning(f"[DIGEST-TRIGGER] Rejected start-over request for user_id={user_id} — scan already running.")
+                raise HTTPException(400, "A background scan is already in progress. Please use force-reset or wait for it.")
+
+            # Clean and filter sent history
+            sent_history = [x for x in sent_history if isinstance(x, str) and not x.startswith("MATCH:") and not x.startswith("RUNNING:")]
 
         logger.info(f"[DIGEST-TRIGGER] Checking rate limit history for user_id={user_id}. Past sent count: {len(sent_history)}")
 
         # Enforce rate limits based on user requirements:
-        now = datetime.now()
         history_dates = []
         for ts in sent_history:
             if not isinstance(ts, str):
                 continue
-            if ts.startswith("RUNNING:"):
+            if ts.startswith("RUNNING:") or ts.startswith("MATCH:"):
                 continue
             try:
                 # Parse ISO timestamp
@@ -361,18 +414,23 @@ async def send_digest(
         logger.info(f"[DIGEST-TRIGGER] Active target batches list: {batches_list}")
 
         # Set the running token in sent_history
-        running_token = f"RUNNING:{now.isoformat()}"
-        updated_history = list(sent_history)
-        updated_history.append(running_token)
+        running_token = f"RUNNING:Initializing..."
+        # If we are resuming, we keep the existing running item (which will be updated soon)
+        if req.schedule == "resume":
+            existing_running = next((x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")), None)
+            if existing_running:
+                running_token = existing_running
+        else:
+            sent_history.append(running_token)
 
         try:
             sb.table("email_preferences").upsert({
                 "user_id": user_id,
-                "sent_history": updated_history,
+                "sent_history": sent_history,
             }, on_conflict="user_id").execute()
-            logger.info(f"[DIGEST-TRIGGER] Marked scan as RUNNING in sent_history for user_id={user_id}")
+            logger.info(f"[DIGEST-TRIGGER] Initialized scan state in database sent_history for user_id={user_id}")
         except Exception as e:
-            logger.error(f"[DIGEST-TRIGGER] Failed to mark scan as RUNNING in sent_history: {e}")
+            logger.error(f"[DIGEST-TRIGGER] Failed to initialize scan state: {e}")
             raise HTTPException(500, "Failed to initialize scan state in database.")
 
         # Dispatched background task
@@ -386,12 +444,14 @@ async def send_digest(
             history_dates=history_dates,
             now_iso=now.isoformat(),
             running_token=running_token,
+            start_index=start_index,
+            initial_matches=initial_matches,
         )
 
         return {
-            "message": "Scan initiated in background. Your custom digest is compiling and will be emailed directly to your inbox.",
+            "message": "Scan resumed in background." if req.schedule == "resume" else "Scan initiated in background.",
             "sent": True,
-            "count": 0,
+            "count": len(initial_matches),
         }
 
     elif req.schedule == "never":

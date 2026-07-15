@@ -226,9 +226,9 @@ export async function updateDigestPreferences(params: {
   });
 }
 
-export async function sendDigestNow(email?: string): Promise<{ message: string; sent: boolean; count: number }> {
+export async function sendDigestNow(email?: string, schedule: string = "now"): Promise<{ message: string; sent: boolean; count: number }> {
   return apiFetch("/api/digest/send", {
     method: "POST",
-    body: JSON.stringify({ schedule: "now", email: email || "" }),
+    body: JSON.stringify({ schedule, email: email || "" }),
   });
 }

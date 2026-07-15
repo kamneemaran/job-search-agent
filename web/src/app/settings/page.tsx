@@ -107,6 +107,26 @@ export default function SettingsPage() {
     setTimeout(() => setSendResult(""), 5000);
   };
 
+  const handleResumeScan = async () => {
+    setSending(true);
+    setSendResult("");
+    setSendError(false);
+    try {
+      const res = await sendDigestNow(digestEmail, "resume");
+      setSendResult(res.message);
+      
+      const d = await getDigestPreferences().catch(() => null);
+      if (d) {
+        setSentHistory(d.sent_history || []);
+      }
+    } catch (err) {
+      setSendResult(err instanceof Error ? err.message : "Failed to resume digest");
+      setSendError(true);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const loadSettings = async () => {
     setLoading(true);
     try {
@@ -382,14 +402,23 @@ export default function SettingsPage() {
                   </span>
 
                   <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
-                    <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can force-reset the running status.</span>
-                    <button
-                      onClick={handleResetStatus}
-                      disabled={resetting}
-                      className="shrink-0 rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                    >
-                      {resetting ? "Resetting..." : "Force Reset Status"}
-                    </button>
+                    <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can resume progress or force-reset.</span>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={handleResumeScan}
+                        disabled={sending || resetting}
+                        className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                      >
+                        {sending ? "Resuming..." : "Resume Interrupted Scan"}
+                      </button>
+                      <button
+                        onClick={handleResetStatus}
+                        disabled={sending || resetting}
+                        className="rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                      >
+                        {resetting ? "Resetting..." : "Force Reset Status"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
