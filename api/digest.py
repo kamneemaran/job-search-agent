@@ -451,7 +451,7 @@ async def send_digest(
             raise HTTPException(500, "Failed to initialize scan state in database.")
 
         # Check if GitHub Dispatch token is configured.
-        # If so, we delegate the scan to GitHub Actions for massive speed, abundant RAM, and 0% Railway CPU/Memory consumption!
+        # We delegate the scan to GitHub Actions for massive speed, abundant RAM, and 0% Railway CPU/Memory consumption!
         gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
         gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
         
@@ -513,35 +513,25 @@ async def send_digest(
                     }
                 else:
                     fallback_warning = f"GitHub API dispatch failed with status {resp.status_code}: {resp.text}"
-                    logger.error(f"[DIGEST-TRIGGER] {fallback_warning}. Falling back to Railway local worker.")
+                    logger.error(f"[DIGEST-TRIGGER] {fallback_warning}. Local scraper fallback is disabled.")
             except Exception as e:
                 fallback_warning = f"GitHub API request failed: {str(e)}"
-                logger.error(f"[DIGEST-TRIGGER] {fallback_warning}. Falling back to Railway local worker.", exc_info=True)
+                logger.error(f"[DIGEST-TRIGGER] {fallback_warning}. Local scraper fallback is disabled.", exc_info=True)
 
-        # Dispatched background task (Fallback)
-        background_tasks.add_task(
-            run_background_digest_scan,
-            user_id=user_id,
-            to_email=to_email,
-            profile=profile,
-            batches_list=batches_list,
-            authorization=authorization,
-            history_dates=history_dates,
-            now_iso=now.isoformat(),
-            running_token=running_token,
-            start_index=start_index,
-            initial_matches=initial_matches,
+        # If we reach here, the dispatch failed. We clean up the RUNNING token from the database
+        # and throw an error back to the user, preventing local fallback as requested!
+        try:
+            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+            sb.table("email_preferences").update({
+                "sent_history": clean_history,
+            }).eq("user_id", user_id).execute()
+        except Exception as se:
+            logger.error(f"[DIGEST-TRIGGER] Failed to clean up running token after dispatch failure: {se}")
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"GitHub Cloud scan failed to start: {fallback_warning}"
         )
-
-        msg = "Scan resumed in background." if req.schedule == "resume" else "Scan initiated in background."
-        if fallback_warning:
-            msg += f" (Cloud dispatch failed: {fallback_warning})"
-
-        return {
-            "message": msg,
-            "sent": True,
-            "count": len(initial_matches),
-        }
 
     elif req.schedule == "never":
         logger.info(f"[DIGEST-TRIGGER] Disabling email digest for user_id={user_id}")
@@ -581,6 +571,49 @@ async def reset_digest_status(authorization: Optional[str] = Header(None)):
             "sent_history": new_history,
         }).eq("user_id", user_id).execute()
         logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}")
-        return {"status": "success", "message": "Scan status reset successfully. You can now start a new scan."}
+
+        # Try to automatically cancel any active GitHub Action workflows
+        gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
+        gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
+        gh_cancelled_count = 0
+        
+        if gh_token and gh_repo:
+            repo_clean = gh_repo.strip()
+            if "github.com/" in repo_clean:
+                repo_clean = repo_clean.split("github.com/")[-1]
+            if repo_clean.endswith(".git"):
+                repo_clean = repo_clean[:-4]
+            repo_clean = repo_clean.strip("/")
+            
+            import requests
+            runs_url = f"https://api.github.com/repos/{repo_clean}/actions/runs"
+            headers = {
+                "Authorization": f"token {gh_token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "JobPilot-API"
+            }
+            try:
+                # Fetch in-progress runs
+                resp = requests.get(runs_url, params={"status": "in_progress"}, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    runs_data = resp.json()
+                    for run in runs_data.get("workflow_runs", []):
+                        run_id = run.get("id")
+                        cancel_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{run_id}/cancel"
+                        cancel_resp = requests.post(cancel_url, headers=headers, timeout=10)
+                        if cancel_resp.status_code == 202:
+                            logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={run_id}")
+                            gh_cancelled_count += 1
+                        else:
+                            logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={run_id}: {cancel_resp.status_code} {cancel_resp.text}")
+            except Exception as ge:
+                logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflows: {ge}")
+
+        if gh_cancelled_count > 0:
+            msg = f"Scan status reset successfully. Aborted {gh_cancelled_count} active Cloud Actions workflow run(s) on GitHub."
+        else:
+            msg = "Scan status reset successfully. You can now start a new scan."
+
+        return {"status": "success", "message": msg}
 
     return {"status": "no_changes", "message": "No active scan was found to reset."}
