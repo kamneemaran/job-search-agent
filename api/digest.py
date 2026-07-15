@@ -852,6 +852,7 @@ async def reset_digest_status(
         gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
         gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
         gh_cancelled_count = 0
+        gh_error_msg = None
         
         if target_run_id and target_run_id != "pending" and gh_token and gh_repo:
             repo_clean = gh_repo.strip()
@@ -875,14 +876,16 @@ async def reset_digest_status(
                     logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={target_run_id}")
                     gh_cancelled_count += 1
                 else:
-                    logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={target_run_id}: {cancel_resp.status_code} {cancel_resp.text}")
+                    gh_error_msg = f"GitHub API status {cancel_resp.status_code}: {cancel_resp.text}"
+                    logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={target_run_id}: {gh_error_msg}")
             except Exception as ge:
+                gh_error_msg = f"Request exception: {str(ge)}"
                 logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflow {target_run_id}: {ge}")
 
         if gh_cancelled_count > 0:
             msg = f"Scan status reset successfully. Aborted your active GitHub Actions cloud workflow run (ID: {target_run_id})."
         elif target_run_id and target_run_id != "pending":
-            msg = f"Scan status reset successfully. Requested abort for your cloud workflow run (ID: {target_run_id})."
+            msg = f"Scan status reset. Warning: Failed to abort cloud run {target_run_id} on GitHub. ({gh_error_msg or 'Check GITHUB_TOKEN permissions'})"
         elif scan_id:
             msg = f"Scan status reset successfully. Removed scan {scan_id}."
         else:
