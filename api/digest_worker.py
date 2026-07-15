@@ -17,11 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Remove current directory (api/) from sys.path to prevent namespace shadowing of 'supabase' package
-current_dir = str(Path(__file__).resolve().parent)
-if current_dir in sys.path:
-    sys.path.remove(current_dir)
-if "" in sys.path:
-    sys.path.remove("")
+sys.path = [p for p in sys.path if p and p != "" and Path(p).resolve() != Path(__file__).resolve().parent]
 
 from supabase import create_client
 
@@ -336,8 +332,8 @@ def run():
         }).eq("user_id", user_id).execute()
 
 
-def run_one_user(user_id: str):
-    logger.info(f"Forcing immediate manual digest run for user_id: {user_id}")
+def run_one_user(user_id: str, scan_id: str = None):
+    logger.info(f"Forcing immediate manual digest run for user_id: {user_id}, scan_id: {scan_id}")
     sb = get_service_client()
     
     pref_result = sb.table("email_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
@@ -368,32 +364,68 @@ def run_one_user(user_id: str):
         logger.error(f"User {user_id} has no core_skills")
         return
 
+    batches_list = ["all"]
+    # Look for the target RUNNING token in sent_history to extract batches
+    curr_history = pref.get("sent_history") or []
+    target_token = None
+    for x in curr_history:
+        if isinstance(x, str) and x.startswith("RUNNING:"):
+            if scan_id and f"scan_id:{scan_id}" in x:
+                target_token = x
+                break
+            elif not scan_id:
+                target_token = x
+                break
+
+    if target_token:
+        # Extract batches from token e.g. "batches:india,europe"
+        parts = target_token.split("|")
+        for part in parts:
+            if part.startswith("batches:"):
+                batches_list = part.replace("batches:", "").split(",")
+                break
+    else:
+        batches_list = pref.get("batches") or ["all"]
+
     profile = {
         "core_skills": core_skills,
         "years_experience": row.get("years_experience", 0),
         "current_role": row.get("current_role", ""),
-        "batches": pref.get("batches") or ["all"]
+        "batches": batches_list
     }
 
     # Write RUNNING:Scraping to sent_history in database
-    running_token = f"RUNNING:Scraping in GitHub Actions...|{int(datetime.now().timestamp())}"
+    github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
+    batches_str = ",".join(batches_list)
+    running_token = f"RUNNING:Scraping in GitHub Actions...|batches:{batches_str}|scan_id:{scan_id or 'unknown'}|run_id:{github_run_id}|{int(datetime.now().timestamp())}"
+    
     try:
-        curr_history = pref.get("sent_history") or []
-        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("FINISHED:") or x.startswith("GITHUB_RUN_ID:")))]
-        new_history.append(running_token)
-        
-        github_run_id = os.environ.get("GITHUB_RUN_ID")
-        if github_run_id:
-            new_history.append(f"GITHUB_RUN_ID:{github_run_id}")
-            logger.info(f"Detected GITHUB_RUN_ID={github_run_id}. Registered in sent_history.")
+        new_history = []
+        replaced = False
+        for x in curr_history:
+            if isinstance(x, str) and x.startswith("RUNNING:"):
+                if scan_id and f"scan_id:{scan_id}" in x:
+                    new_history.append(running_token)
+                    replaced = True
+                elif not scan_id and not replaced:
+                    new_history.append(running_token)
+                    replaced = True
+                else:
+                    new_history.append(x)
+            else:
+                new_history.append(x)
+                
+        if not replaced:
+            new_history.append(running_token)
             
         sb.table("email_preferences").update({
             "sent_history": new_history,
         }).eq("user_id", user_id).execute()
+        logger.info(f"Registered/updated RUNNING token in sent_history with GITHUB_RUN_ID={github_run_id}")
     except Exception as e:
         logger.error(f"Failed to set running token: {e}")
 
-    logger.info(f"Searching jobs for user {user_id} ({to_email})")
+    logger.info(f"Searching jobs for user {user_id} ({to_email}) in batches: {batches_list}")
     try:
         jobs = search_jobs_for_user(profile)
     except Exception as e:
@@ -402,7 +434,14 @@ def run_one_user(user_id: str):
             pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
             if pref_result and pref_result.data:
                 curr_history = pref_result.data.get("sent_history") or []
-                filtered = [x for x in curr_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+                filtered = []
+                for x in curr_history:
+                    if isinstance(x, str) and x.startswith("RUNNING:"):
+                        if scan_id and f"scan_id:{scan_id}" in x:
+                            continue
+                        elif not scan_id:
+                            continue
+                    filtered.append(x)
                 sb.table("email_preferences").update({"sent_history": filtered}).eq("user_id", user_id).execute()
         except Exception:
             pass
@@ -412,7 +451,17 @@ def run_one_user(user_id: str):
         # Load final history
         pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
         curr_history = pref_result.data.get("sent_history") or [] if pref_result and pref_result.data else []
-        clean_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("MATCH:") or x.startswith("FINISHED:")))]
+        
+        # Remove only the specific running token
+        clean_history = []
+        for x in curr_history:
+            if isinstance(x, str) and x.startswith("RUNNING:"):
+                if scan_id and f"scan_id:{scan_id}" in x:
+                    continue
+                elif not scan_id:
+                    continue
+            clean_history.append(x)
+            
         clean_history.append(f"FINISHED:{len(jobs)}")
         
         sb.table("email_preferences").update({
@@ -469,9 +518,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run digest worker")
     parser.add_argument("--user-id", type=str, help="Run immediately for a specific user ID")
+    parser.add_argument("--scan-id", type=str, help="Specify scan ID to track")
     args = parser.parse_args()
     
     if args.user_id:
-        run_one_user(args.user_id)
+        run_one_user(args.user_id, scan_id=args.scan_id)
     else:
         run()
