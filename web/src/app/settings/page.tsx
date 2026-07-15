@@ -370,35 +370,44 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-500">Automated scheduler preferences</p>
             </div>
             {digestFrequency !== "never" && (
-              <button
-                onClick={async () => {
-                  setSending(true);
-                  setSendResult("");
-                  setSendError(false);
-                  try {
-                    const res = await sendDigestNow(digestEmail);
-                    setSendResult(res.message);
-                    const isMsgError = res.message.toLowerCase().includes("fail") || 
-                                       res.message.toLowerCase().includes("error") || 
-                                       res.message.toLowerCase().includes("limit") || 
-                                       res.message.toLowerCase().includes("unauthorized") ||
-                                       !res.sent;
-                    if (isMsgError) {
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleResetStatus}
+                  disabled={resetting}
+                  className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-900/25 disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {resetting ? "Resetting..." : "Force Reset All"}
+                </button>
+                <button
+                  onClick={async () => {
+                    setSending(true);
+                    setSendResult("");
+                    setSendError(false);
+                    try {
+                      const res = await sendDigestNow(digestEmail);
+                      setSendResult(res.message);
+                      const isMsgError = res.message.toLowerCase().includes("fail") || 
+                                         res.message.toLowerCase().includes("error") || 
+                                         res.message.toLowerCase().includes("limit") || 
+                                         res.message.toLowerCase().includes("unauthorized") ||
+                                         !res.sent;
+                      if (isMsgError) {
+                        setSendError(true);
+                      }
+                      await fetchActiveScans();
+                    } catch (err) {
+                      setSendResult(err instanceof Error ? err.message : "Failed to send digest");
                       setSendError(true);
+                    } finally {
+                      setSending(false);
                     }
-                    await fetchActiveScans();
-                  } catch (err) {
-                    setSendResult(err instanceof Error ? err.message : "Failed to send digest");
-                    setSendError(true);
-                  } finally {
-                    setSending(false);
-                  }
-                }}
-                disabled={sending || activeScans.length >= 5}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {sending ? "Starting..." : activeScans.length >= 5 ? "Limit Reached" : "Send Now"}
-              </button>
+                  }}
+                  disabled={sending || activeScans.length >= 5}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sending ? "Starting..." : activeScans.length >= 5 ? "Limit Reached" : "Send Now"}
+                </button>
+              </div>
             )}
           </div>
 
