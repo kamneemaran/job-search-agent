@@ -21,6 +21,9 @@ sys.path = [p for p in sys.path if p and p != "" and Path(p).resolve() != Path(_
 
 from supabase import create_client
 
+class ScanCancelledException(Exception):
+    pass
+
 logger = logging.getLogger("digest_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -61,7 +64,7 @@ def should_send(frequency: str, last_sent_at: str | None) -> bool:
     return False
 
 
-def search_jobs_for_user(profile: dict) -> list[dict]:
+def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> list[dict]:
     """Run job search using user's profile and return scored results."""
     import daily_scan as ds
 
@@ -110,7 +113,21 @@ def search_jobs_for_user(profile: dict) -> list[dict]:
     results = []
     seen = set()
 
-    for source in all_sources:
+    for idx, source in enumerate(all_sources, 1):
+        if sb and user_id and scan_id and idx % 2 == 0:  # Check database every 2 sources
+            try:
+                pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                if pref_result and pref_result.data:
+                    curr_history = pref_result.data.get("sent_history") or []
+                    has_running = any(isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x for x in curr_history)
+                    if not has_running:
+                        logger.info(f"Target scan_id {scan_id} was cancelled by user. Terminating search.")
+                        raise ScanCancelledException("Scan was cancelled by user")
+            except ScanCancelledException:
+                raise
+            except Exception as e:
+                logger.warning(f"Error checking cancel status in runner loop: {e}")
+
         try:
             jobs = ds.fetch_jobs_from_source(source)
         except Exception:
@@ -430,6 +447,19 @@ def run_one_user(user_id: str, scan_id: str = None):
         "batches": batches_list
     }
 
+    # Check if this scan has already been cancelled by the user before execution starts
+    if scan_id:
+        try:
+            pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+            if pref_result and pref_result.data:
+                curr_history = pref_result.data.get("sent_history") or []
+                has_running = any(isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x for x in curr_history)
+                if not has_running:
+                    logger.info(f"Target scan_id {scan_id} was cancelled before starting. Terminating runner.")
+                    return
+        except Exception as e:
+            logger.warning(f"Error checking initial cancel: {e}")
+
     # Write RUNNING:Scraping to sent_history in database
     github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
     batches_str = ",".join(batches_list)
@@ -463,7 +493,10 @@ def run_one_user(user_id: str, scan_id: str = None):
 
     logger.info(f"Searching jobs for user {user_id} ({to_email}) in batches: {batches_list}")
     try:
-        jobs = search_jobs_for_user(profile)
+        jobs = search_jobs_for_user(profile, sb=sb, user_id=user_id, scan_id=scan_id)
+    except ScanCancelledException:
+        logger.info(f"Scan {scan_id} was cancelled by user. Exiting runner silently.")
+        return
     except Exception as e:
         logger.error(f"Error searching for user {user_id}: {e}")
         try:
