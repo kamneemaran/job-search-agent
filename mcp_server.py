@@ -1518,7 +1518,7 @@ def _email_digest(schedule: str = "now", email: str = "") -> str:
         matches.sort(key=lambda m: m["score"], reverse=True)
 
         html = build_email_html(matches)
-        ok = send_email(html, subject=f"Job Matches — {len(matches)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+        ok = send_email(html, subject=f"Job Matches — {len(matches)} opportunities — {datetime.now().strftime('%d %b %Y')}", recipient=recipient)
 
         if ok:
             _save_digest_schedule({

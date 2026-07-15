@@ -142,6 +142,25 @@ def run_background_digest_scan(
         for idx, source in enumerate(all_sources, 1):
             source_name = source.get("name", f"Source #{idx}")
             logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Scraping: '{source_name}'...")
+            
+            # Update database with current progress!
+            try:
+                progress_token = f"RUNNING:Scraping {source_name} ({idx}/{len(all_sources)})"
+                pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                if pref_result and pref_result.data:
+                    curr_history = pref_result.data.get("sent_history") or []
+                    new_history = []
+                    for item in curr_history:
+                        if isinstance(item, str) and item.startswith("RUNNING:"):
+                            continue
+                        new_history.append(item)
+                    new_history.append(progress_token)
+                    sb.table("email_preferences").update({
+                        "sent_history": new_history,
+                    }).eq("user_id", user_id).execute()
+            except Exception as e:
+                logger.error(f"[DIGEST-BG-WORKER] Failed to update progress token: {e}")
+
             try:
                 jobs = ds.fetch_jobs_from_source(source)
                 logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Successfully parsed '{source_name}': fetched {len(jobs) if jobs else 0} raw jobs")
@@ -202,7 +221,7 @@ def run_background_digest_scan(
         try:
             from daily_scan import build_email_html, send_email
             html = build_email_html(results)
-            ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}")
+            ok = send_email(html, subject=f"Your Job Matches — {len(results)} opportunities — {datetime.now().strftime('%d %b %Y')}", recipient=to_email)
             if ok:
                 logger.info(f"[DIGEST-BG-WORKER] Email dispatch successful for user_id={user_id} -> {to_email}")
             else:

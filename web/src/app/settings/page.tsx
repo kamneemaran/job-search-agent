@@ -187,6 +187,9 @@ export default function SettingsPage() {
     }
   };
 
+  const runningItem = sentHistory.find((x) => x.startsWith("RUNNING:"));
+  const progressText = runningItem ? runningItem.replace("RUNNING:", "") : "";
+
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -316,8 +319,27 @@ export default function SettingsPage() {
             <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-4 shadow-lg shadow-indigo-500/5">
               <div className="flex gap-3 items-start">
                 <span className="text-xl animate-spin shrink-0">⏳</span>
-                <div className="text-xs text-indigo-200 leading-relaxed">
+                <div className="text-xs text-indigo-200 leading-relaxed w-full">
                   <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">Deep Digest Scan in Progress</span>
+                  
+                  {progressText ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                      </span>
+                      <span>Live Scraper Status: <span className="text-white font-bold">{progressText}</span></span>
+                    </div>
+                  ) : (
+                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                      </span>
+                      <span>Live Scraper Status: <span className="text-white font-bold">Initializing background search...</span></span>
+                    </div>
+                  )}
+
                   Our automated backend scraper is initiating a comprehensive search across 250+ companies and multiple global ATS platforms. 
                   Because this is an extremely thorough, anti-bot-bypassing background task matching against your unique profile, 
                   <strong>it will take approximately 3-4 hours to complete</strong>. 
@@ -434,8 +456,9 @@ export default function SettingsPage() {
                   { id: "apac", label: "APAC job boards & company careers" },
                   { id: "us_canada", label: "US & Canada job boards & company careers" },
                   { id: "remote", label: "Global Remote boards (WeWorkRemotely, Remotive)" },
-                ].map((batch) => {
+                 ].map((batch) => {
                   const isChecked = digestBatches.includes(batch.id);
+
                   return (
                     <label
                       key={batch.id}
