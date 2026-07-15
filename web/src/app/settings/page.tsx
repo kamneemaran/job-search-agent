@@ -49,7 +49,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    const isScanning = sentHistory.some((x) => x.startsWith("RUNNING:"));
+    const runningItem = sentHistory.find((x) => x.startsWith("RUNNING:"));
+    const isGitHubActions = runningItem?.includes("GitHub Actions") || runningItem?.includes("GitHub");
+    const isScanning = !!runningItem && !isGitHubActions;
 
     if (isScanning) {
       interval = setInterval(async () => {

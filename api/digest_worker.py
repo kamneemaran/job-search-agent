@@ -16,6 +16,13 @@ from pathlib import Path
 # Add project root so we can import daily_scan
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Remove current directory (api/) from sys.path to prevent namespace shadowing of 'supabase' package
+current_dir = str(Path(__file__).resolve().parent)
+if current_dir in sys.path:
+    sys.path.remove(current_dir)
+if "" in sys.path:
+    sys.path.remove("")
+
 from supabase import create_client
 
 logger = logging.getLogger("digest_worker")
