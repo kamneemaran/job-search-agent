@@ -278,20 +278,48 @@ def run():
         }
 
         logger.info(f"Searching jobs for user {user_id} ({to_email})")
+        import time
         try:
             jobs = search_jobs_for_user(profile)
         except Exception as e:
             logger.error(f"Error searching for user {user_id}: {e}")
+            try:
+                pref_res = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                curr_history = pref_res.data.get("sent_history") or [] if pref_res and pref_res.data else []
+                new_history = list(curr_history)
+                new_history.append(f"FAILED_DAILY:{int(time.time())}|error:{str(e)}")
+                sb.table("email_preferences").update({"sent_history": new_history}).eq("user_id", user_id).execute()
+            except Exception as he:
+                logger.error(f"Failed to update scheduled failure history: {he}")
             continue
 
         if not jobs:
             logger.info(f"No matches above {SCORE_THRESHOLD} for user {user_id}")
+            try:
+                pref_res = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                curr_history = pref_res.data.get("sent_history") or [] if pref_res and pref_res.data else []
+                new_history = list(curr_history)
+                new_history.append(f"COMPLETED_DAILY:{int(time.time())}|jobs:0")
+                sb.table("email_preferences").update({
+                    "last_sent_at": datetime.now(timezone.utc).isoformat(),
+                    "sent_history": new_history
+                }).eq("user_id", user_id).execute()
+            except Exception as he:
+                logger.error(f"Failed to update scheduled zero-match success history: {he}")
             continue
 
         try:
             send_email(to_email, jobs)
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {e}")
+            try:
+                pref_res = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                curr_history = pref_res.data.get("sent_history") or [] if pref_res and pref_res.data else []
+                new_history = list(curr_history)
+                new_history.append(f"FAILED_DAILY:{int(time.time())}|error:Email dispatch failed - {str(e)}")
+                sb.table("email_preferences").update({"sent_history": new_history}).eq("user_id", user_id).execute()
+            except Exception as he:
+                logger.error(f"Failed to update scheduled email failure history: {he}")
             continue
 
         # Auto-log emailed jobs to user's tracker
@@ -326,10 +354,18 @@ def run():
         except Exception as e:
             logger.warning(f"Failed to auto-log jobs for user {user_id}: {e}")
 
-        # Update last_sent_at
-        sb.table("email_preferences").update({
-            "last_sent_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("user_id", user_id).execute()
+        # Update last_sent_at and save success history
+        try:
+            pref_res = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+            curr_history = pref_res.data.get("sent_history") or [] if pref_res and pref_res.data else []
+            new_history = list(curr_history)
+            new_history.append(f"COMPLETED_DAILY:{int(time.time())}|jobs:{len(jobs)}")
+            sb.table("email_preferences").update({
+                "last_sent_at": datetime.now(timezone.utc).isoformat(),
+                "sent_history": new_history,
+            }).eq("user_id", user_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to update scheduled success history: {e}")
 
 
 def run_one_user(user_id: str, scan_id: str = None):
@@ -442,9 +478,11 @@ def run_one_user(user_id: str, scan_id: str = None):
                         elif not scan_id:
                             continue
                     filtered.append(x)
+                import time
+                filtered.append(f"FAILED_INSTANT:{int(time.time())}|error:{str(e)}")
                 sb.table("email_preferences").update({"sent_history": filtered}).eq("user_id", user_id).execute()
-        except Exception:
-            pass
+        except Exception as he:
+            logger.error(f"Failed to update instant failure history: {he}")
         return
 
     try:
@@ -462,7 +500,8 @@ def run_one_user(user_id: str, scan_id: str = None):
                     continue
             clean_history.append(x)
             
-        clean_history.append(f"FINISHED:{len(jobs)}")
+        import time
+        clean_history.append(f"COMPLETED_INSTANT:{int(time.time())}|jobs:{len(jobs)}")
         
         sb.table("email_preferences").update({
             "sent_history": clean_history,

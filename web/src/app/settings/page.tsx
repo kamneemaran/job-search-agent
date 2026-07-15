@@ -52,7 +52,17 @@ export default function SettingsPage() {
     estimated_duration: number;
   }
 
+  interface ScanSummary {
+    instant_completed_today: number;
+    instant_failed_today: number;
+    daily_completed_today: number;
+    daily_failed_today: number;
+    last_daily_status: string;
+    last_daily_time: number;
+  }
+
   const [activeScans, setActiveScans] = useState<ActiveScan[]>([]);
+  const [scanSummary, setScanSummary] = useState<ScanSummary | null>(null);
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
@@ -80,7 +90,8 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setActiveScans(data || []);
+        setActiveScans(data.active_scans || []);
+        setScanSummary(data.summary || null);
       }
     } catch (err) {
       console.error("Failed to fetch active scans:", err);
@@ -508,6 +519,51 @@ export default function SettingsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {scanSummary && (
+            <div className="mt-4 border-t border-gray-800/60 pt-4 mb-4">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Today's Scan Summary</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                  <span className="text-[10px] text-gray-500 font-medium">Instant Runs Completed</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-emerald-400 font-bold text-lg">{scanSummary.instant_completed_today}</span>
+                    <span className="text-emerald-500 text-xs">✓</span>
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                  <span className="text-[10px] text-gray-500 font-medium">Instant Runs Failed</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={`font-bold text-lg ${scanSummary.instant_failed_today > 0 ? "text-red-400" : "text-gray-400"}`}>
+                      {scanSummary.instant_failed_today}
+                    </span>
+                    {scanSummary.instant_failed_today > 0 && <span className="text-red-500 text-xs">⚠</span>}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                  <span className="text-[10px] text-gray-500 font-medium">Daily Scheduled Digest</span>
+                  <div className="flex flex-col mt-1">
+                    <span className={`font-semibold text-xs ${
+                      scanSummary.last_daily_status === "Completed" 
+                        ? "text-emerald-400" 
+                        : scanSummary.last_daily_status === "Failed" 
+                        ? "text-red-400" 
+                        : "text-gray-400"
+                    }`}>
+                      {scanSummary.last_daily_status}
+                    </span>
+                    {scanSummary.last_daily_time > 0 && (
+                      <span className="text-[9px] text-gray-500 mt-0.5">
+                        {new Date(scanSummary.last_daily_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

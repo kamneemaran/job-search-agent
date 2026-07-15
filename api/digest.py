@@ -718,8 +718,69 @@ async def get_active_scans(
                 }).eq("user_id", user_id).execute()
             except Exception as se:
                 logger.error(f"[DIGEST-STATUS] Failed to update sent_history with cleaned finished runs: {se}")
-                
-    return active_scans
+
+        # Calculate Today's Summary (last 24 hours)
+        now_epoch = int(time.time())
+        day_seconds = 24 * 3600
+        
+        instant_completed_today = 0
+        instant_failed_today = 0
+        daily_completed_today = 0
+        daily_failed_today = 0
+        
+        last_daily_status = "Not run today"
+        last_daily_time = 0
+        
+        for item in curr_history:
+            if not isinstance(item, str):
+                continue
+            if item.startswith("COMPLETED_INSTANT:") or item.startswith("FAILED_INSTANT:") or item.startswith("COMPLETED_DAILY:") or item.startswith("FAILED_DAILY:"):
+                parts = item.split("|")
+                head = parts[0]
+                t_part = head.split(":")[-1]
+                try:
+                    ts = int(t_part)
+                except ValueError:
+                    continue
+                    
+                if (now_epoch - ts) <= day_seconds:
+                    if item.startswith("COMPLETED_INSTANT:"):
+                        instant_completed_today += 1
+                    elif item.startswith("FAILED_INSTANT:"):
+                        instant_failed_today += 1
+                    elif item.startswith("COMPLETED_DAILY:"):
+                        daily_completed_today += 1
+                        if ts > last_daily_time:
+                            last_daily_time = ts
+                            last_daily_status = "Completed"
+                    elif item.startswith("FAILED_DAILY:"):
+                        daily_failed_today += 1
+                        if ts > last_daily_time:
+                            last_daily_time = ts
+                            last_daily_status = "Failed"
+                            
+        summary = {
+            "instant_completed_today": instant_completed_today,
+            "instant_failed_today": instant_failed_today,
+            "daily_completed_today": daily_completed_today,
+            "daily_failed_today": daily_failed_today,
+            "last_daily_status": last_daily_status,
+            "last_daily_time": last_daily_time
+        }
+    else:
+        summary = {
+            "instant_completed_today": 0,
+            "instant_failed_today": 0,
+            "daily_completed_today": 0,
+            "daily_failed_today": 0,
+            "last_daily_status": "Not run today",
+            "last_daily_time": 0
+        }
+        
+    return {
+        "active_scans": active_scans,
+        "summary": summary
+    }
 
 
 @router.post("/reset")
