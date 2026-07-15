@@ -2556,6 +2556,16 @@ def fetch_jobs_from_source(source):
                             offices = posting.get("offices", [])
                             location = posting.get("office") or (offices[0] if offices and isinstance(offices[0], str) else "Germany")
                             # Fetch full description from individual job page (JSON-LD)
+                            title_name = posting.get("name", "")
+                            title_lower = title_name.lower()
+                            
+                            # Skip obviously irrelevant titles to prevent hitting details API and hanging
+                            is_tech_role = any(kw in title_lower for kw in ["backend", "python", "node", "go", "java", "developer", "engineer", "fullstack", "full stack", "software", "sap", "data", "cloud", "aws", "platform", "infrastructure", "systems"])
+                            is_red_flag = any(rf in title_lower for rf in ["frontend", "front-end", "ui", "qa", "quality assurance", "test engineer", "android", "ios", "sdet", "marketing", "sales", "hr", "recruiter", "accountant", "product manager", "scrum master", "design"])
+                            
+                            if is_red_flag or (not is_tech_role and len(postings) > 10):
+                                continue
+
                             description = posting.get("description", "")
                             job_id = posting.get("id", "")
                             job_url = source["url"]
