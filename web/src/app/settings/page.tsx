@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [sendResult, setSendResult] = useState("");
   const [sendError, setSendError] = useState(false);
   const [sentHistory, setSentHistory] = useState<string[]>([]);
+  const [resetting, setResetting] = useState(false);
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -72,6 +73,39 @@ export default function SettingsPage() {
       if (interval) clearInterval(interval);
     };
   }, [sentHistory]);
+
+  const handleResetStatus = async () => {
+    setResetting(true);
+    setSendResult("");
+    setSendError(false);
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/api/digest/reset`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSendResult(data.message);
+        const d = await getDigestPreferences().catch(() => null);
+        if (d) {
+          setSentHistory(d.sent_history || []);
+        }
+      } else {
+        setSendResult("Failed to reset scan status");
+        setSendError(true);
+      }
+    } catch {
+      setSendResult("Failed to reset scan status");
+      setSendError(true);
+    }
+    setResetting(false);
+    setTimeout(() => setSendResult(""), 5000);
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -346,6 +380,17 @@ export default function SettingsPage() {
                   <span className="block mt-2 text-gray-400">
                     You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
                   </span>
+
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
+                    <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can force-reset the running status.</span>
+                    <button
+                      onClick={handleResetStatus}
+                      disabled={resetting}
+                      className="shrink-0 rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
+                    >
+                      {resetting ? "Resetting..." : "Force Reset Status"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

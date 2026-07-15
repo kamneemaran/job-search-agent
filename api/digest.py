@@ -411,3 +411,27 @@ async def send_digest(
 
     logger.warning(f"[DIGEST-TRIGGER] Unknown schedule value received: {req.schedule}")
     return {"message": f"Unknown schedule: {req.schedule}", "sent": False, "count": 0}
+
+
+@router.post("/reset")
+async def reset_digest_status(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "Authorization required")
+
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    user_id = user.id
+
+    # Get current sent history
+    pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+    if pref_result and pref_result.data:
+        curr_history = pref_result.data.get("sent_history") or []
+        new_history = [x for x in curr_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+        
+        sb.table("email_preferences").update({
+            "sent_history": new_history,
+        }).eq("user_id", user_id).execute()
+        logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}")
+        return {"status": "success", "message": "Scan status reset successfully. You can now start a new scan."}
+
+    return {"status": "no_changes", "message": "No active scan was found to reset."}
