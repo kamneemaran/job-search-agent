@@ -43,50 +43,77 @@ export default function SettingsPage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [activeResume, setActiveResume] = useState("");
 
+  interface ActiveScan {
+    scan_id: string;
+    run_id: string;
+    batches: string[];
+    status: string;
+    timestamp: number;
+  }
+
+  const [activeScans, setActiveScans] = useState<ActiveScan[]>([]);
+
   useEffect(() => {
     loadSettings();
   }, []);
 
+  const fetchActiveScans = async () => {
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/api/digest/scans`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveScans(data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch active scans:", err);
+    }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    const runningItem = sentHistory.find((x) => x.startsWith("RUNNING:"));
-    const isGitHubActions = runningItem?.includes("GitHub Actions") || runningItem?.includes("GitHub");
-    const isScanning = !!runningItem && !isGitHubActions;
-
-    if (isScanning) {
-      interval = setInterval(async () => {
-        try {
-          const digest = await getDigestPreferences();
-          const newHistory = digest.sent_history || [];
-          setSentHistory(newHistory);
-          
-          const stillScanning = newHistory.some((x) => x.startsWith("RUNNING:"));
-          if (!stillScanning) {
-            const finishedItem = newHistory.find((x) => x.startsWith("FINISHED:"));
-            if (finishedItem) {
-              const count = parseInt(finishedItem.replace("FINISHED:", ""), 10);
-              if (count === 0) {
-                setSendResult("Scan completed! However, 0 job matches above your threshold (65%) were found. Try choosing different target regions or expanding your skills list!");
-                setSendError(true);
-              } else {
-                setSendResult(`Success! Scan completed. ${count} matching opportunities were found and sent to ${digestEmail || "your email"}!`);
-                setSendError(false);
-              }
-            } else {
-              setSendResult("Digest was completed, check your email!");
-              setSendError(false);
-            }
-          }
-        } catch (err) {
-          console.error("Polling status failed:", err);
-        }
-      }, 10000); // Poll every 10s
+    if (activeScans.length > 0) {
+      interval = setInterval(() => {
+        fetchActiveScans();
+      }, 10000); // Poll active scans every 10s
     }
-
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [sentHistory]);
+  }, [activeScans]);
+
+  const handleCancelScan = async (scanId: string) => {
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/api/digest/reset?scan_id=${scanId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSendResult(data.message);
+        setSendError(false);
+        await fetchActiveScans();
+      } else {
+        setSendResult("Failed to cancel scan");
+        setSendError(true);
+      }
+    } catch (err) {
+      setSendResult("Error cancelling scan");
+      setSendError(true);
+    }
+    setTimeout(() => setSendResult(""), 5000);
+  };
 
   const handleResetStatus = async () => {
     setResetting(true);
@@ -109,6 +136,7 @@ export default function SettingsPage() {
         if (d) {
           setSentHistory(d.sent_history || []);
         }
+        await fetchActiveScans();
       } else {
         setSendResult("Failed to reset scan status");
         setSendError(true);
@@ -133,6 +161,7 @@ export default function SettingsPage() {
       if (d) {
         setSentHistory(d.sent_history || []);
       }
+      await fetchActiveScans();
     } catch (err) {
       setSendResult(err instanceof Error ? err.message : "Failed to resume digest");
       setSendError(true);
@@ -185,6 +214,8 @@ export default function SettingsPage() {
       } catch (err) {
         console.error("Failed to fetch active resume:", err);
       }
+      
+      await fetchActiveScans();
     } catch (err) {
       console.error("Failed to load settings:", err);
     } finally {
@@ -355,11 +386,7 @@ export default function SettingsPage() {
                     if (isMsgError) {
                       setSendError(true);
                     }
-                    // Immediately fetch latest preferences to capture RUNNING token
-                    const d = await getDigestPreferences().catch(() => null);
-                    if (d) {
-                      setSentHistory(d.sent_history || []);
-                    }
+                    await fetchActiveScans();
                   } catch (err) {
                     setSendResult(err instanceof Error ? err.message : "Failed to send digest");
                     setSendError(true);
@@ -367,92 +394,74 @@ export default function SettingsPage() {
                     setSending(false);
                   }
                 }}
-                disabled={sending || sentHistory.some((x) => x.startsWith("RUNNING:"))}
+                disabled={sending || activeScans.length >= 5}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {sending || sentHistory.some((x) => x.startsWith("RUNNING:")) ? "Scanning..." : "Send Now"}
+                {sending ? "Starting..." : activeScans.length >= 5 ? "Limit Reached" : "Send Now"}
               </button>
             )}
           </div>
 
-          {(sending || sentHistory.some((x) => x.startsWith("RUNNING:"))) && (
-            <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-4 shadow-lg shadow-indigo-500/5">
-              <div className="flex gap-3 items-start">
-                <span className="text-xl animate-spin shrink-0">⏳</span>
-                <div className="text-xs text-indigo-200 leading-relaxed w-full">
-                  <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">
-                    {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? "Cloud Scan in Progress (GitHub Actions)" : "Deep Digest Scan in Progress"}
-                  </span>
-                  
-                  {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? (
-                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                      </span>
-                      <span>Cloud Worker Status: <span className="text-white font-bold">Compiling & matching on high-performance cloud servers...</span></span>
-                    </div>
-                  ) : progressText ? (
-                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                      </span>
-                      <span>Live Scraper Status: <span className="text-white font-bold">{progressText}</span></span>
-                    </div>
-                  ) : (
-                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                      </span>
-                      <span>Live Scraper Status: <span className="text-white font-bold">Initializing background search...</span></span>
-                    </div>
-                  )}
+          {activeScans.length > 0 && (
+            <div className="space-y-3 mb-6">
+              {activeScans.map((scan) => {
+                const formattedDate = scan.timestamp > 0 
+                  ? new Date(scan.timestamp * 1000).toLocaleString(undefined, {
+                      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                    })
+                  : "Just now";
 
-                  {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? (
-                    <span>
-                      Your complete master scan is running securely in the cloud across all 1,307 sources and 250+ domains. 
-                      Because this is executed on powerful GitHub Action runner servers, your Railway API remains lightweight, fast, and completely safe from memory/CPU constraints.
-                    </span>
-                  ) : (
-                    <span>
-                      Our automated backend scraper is initiating a comprehensive search across 250+ companies and multiple global ATS platforms. 
-                      Because this is an extremely thorough, anti-bot-bypassing background task matching against your unique profile, 
-                      <strong>it will take approximately 3-4 hours to complete</strong>. 
-                    </span>
-                  )}
-                  <span className="block mt-2 text-gray-400">
-                    You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
-                  </span>
+                const batchTitle = scan.batches.map(b => b === "all" ? "Master Scan" : b.charAt(0).toUpperCase() + b.slice(1).replace("_", " ")).join(", ");
 
-                  {!(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) && (
-                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
-                      <span className="text-[10px] text-gray-500">
-                        {isStalled ? "Scan stuck or interrupted? You can resume progress or force-reset." : "Need to abort or re-trigger the scan? You can force-reset."}
-                      </span>
-                      <div className="flex gap-2 shrink-0">
-                        {isStalled && (
-                          <button
-                            onClick={handleResumeScan}
-                            disabled={sending || resetting}
-                            className="rounded bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                          >
-                            {sending ? "Resuming..." : "Resume Interrupted Scan"}
-                          </button>
-                        )}
-                        <button
-                          onClick={handleResetStatus}
-                          disabled={sending || resetting}
-                          className="rounded bg-red-950/40 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 disabled:opacity-50 transition-all cursor-pointer text-center"
-                        >
-                          {resetting ? "Resetting..." : "Force Reset Status"}
-                        </button>
+                const statusColor = scan.status === "in_progress" 
+                  ? "text-emerald-400 bg-emerald-950/40 border-emerald-500/20"
+                  : scan.status === "queued" || scan.status === "Starting Cloud Scan..." || scan.status.startsWith("Starting")
+                  ? "text-yellow-400 bg-yellow-950/40 border-yellow-500/20"
+                  : "text-gray-400 bg-gray-900 border-gray-800";
+
+                const statusText = scan.status === "in_progress"
+                  ? "Running"
+                  : scan.status === "queued" || scan.status.startsWith("Starting")
+                  ? "Queued"
+                  : scan.status.replace("_", " ").charAt(0).toUpperCase() + scan.status.replace("_", " ").slice(1);
+
+                return (
+                  <div key={scan.scan_id} className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-4 shadow-lg shadow-indigo-500/5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex gap-3 items-start">
+                        <span className={`text-xl shrink-0 ${scan.status === "in_progress" ? "animate-spin" : ""}`}>
+                          {scan.status === "in_progress" ? "🌀" : "⏳"}
+                        </span>
+                        <div className="text-xs text-indigo-200 leading-relaxed w-full">
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                            <span className="font-bold text-indigo-400 uppercase tracking-wider text-[10px]">
+                              Cloud Scan Triggered ({formattedDate})
+                            </span>
+                            <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border ${statusColor}`}>
+                              {statusText}
+                            </span>
+                            <span className="rounded bg-indigo-900/40 border border-indigo-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-300">
+                              Batches: {batchTitle}
+                            </span>
+                          </div>
+                          <p className="text-indigo-200 text-xs leading-relaxed">
+                            Your <strong>{batchTitle}</strong> scan is started and running securely in the cloud. You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
+                          </p>
+                          <p className="mt-1 text-gray-500 text-[10px]">
+                            Run ID: <span className="font-mono text-gray-400">{scan.run_id === "pending" ? "Initializing on runner..." : scan.run_id}</span>
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleCancelScan(scan.scan_id)}
+                        className="self-end sm:self-center shrink-0 rounded bg-red-950/45 border border-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 transition-all cursor-pointer text-center"
+                      >
+                        Cancel Scan
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

@@ -33,9 +33,10 @@ jobs:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           CLIENT_USER_ID: ${{ github.event.client_payload.user_id }}
+          CLIENT_SCAN_ID: ${{ github.event.client_payload.scan_id }}
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-             python api/digest_worker.py --user-id "$CLIENT_USER_ID"
+             python api/digest_worker.py --user-id "$CLIENT_USER_ID" --scan-id "$CLIENT_SCAN_ID"
           else
              python api/digest_worker.py
           fi
