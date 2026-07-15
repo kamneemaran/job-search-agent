@@ -637,6 +637,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-xs text-gray-600 mb-2">
                           Added: {formatDate(job.date_found)}
+                          {job.posted_date && <> · Posted: {job.posted_date}</>}
                           {job.date_updated && job.date_updated !== job.date_found && (
                             <> · Updated: {formatDate(job.date_updated)}</>
                           )}

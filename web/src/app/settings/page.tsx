@@ -38,7 +38,6 @@ export default function SettingsPage() {
   const [sendResult, setSendResult] = useState("");
   const [sendError, setSendError] = useState(false);
   const [sentHistory, setSentHistory] = useState<string[]>([]);
-  const [resetting, setResetting] = useState(false);
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -135,40 +134,6 @@ export default function SettingsPage() {
       setSendResult("Error cancelling scan");
       setSendError(true);
     }
-    setTimeout(() => setSendResult(""), 5000);
-  };
-
-  const handleResetStatus = async () => {
-    setResetting(true);
-    setSendResult("");
-    setSendError(false);
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE}/api/digest/reset`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSendResult(data.message);
-        const d = await getDigestPreferences().catch(() => null);
-        if (d) {
-          setSentHistory(d.sent_history || []);
-        }
-        await fetchActiveScans();
-      } else {
-        setSendResult("Failed to reset scan status");
-        setSendError(true);
-      }
-    } catch {
-      setSendResult("Failed to reset scan status");
-      setSendError(true);
-    }
-    setResetting(false);
     setTimeout(() => setSendResult(""), 5000);
   };
 
@@ -396,13 +361,6 @@ export default function SettingsPage() {
             </div>
             {digestFrequency !== "never" && (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleResetStatus}
-                  disabled={resetting}
-                  className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-900/25 disabled:opacity-50 transition-colors cursor-pointer"
-                >
-                  {resetting ? "Resetting..." : "Force Reset All"}
-                </button>
                 <button
                   onClick={async () => {
                     setSending(true);

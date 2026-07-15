@@ -13,6 +13,7 @@ class JobResult(BaseModel):
     salary: Optional[str] = None
     description: str = ""
     source: str = ""
+    posted_date: str = ""
 
 
 class ScoreRequest(BaseModel):
@@ -103,6 +104,7 @@ class TrackerJob(BaseModel):
     notes: str = ""
     location: str = ""
     salary: str = ""
+    posted_date: str = ""
 
 
 class TrackerUpdateRequest(BaseModel):
@@ -125,6 +127,7 @@ class TrackerAddRequest(BaseModel):
     description: str = ""
     salary: str = ""
     location: str = ""
+    posted_date: str = ""
 
 
 class TrackerResponse(BaseModel):

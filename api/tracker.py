@@ -44,6 +44,7 @@ async def get_tracker(
             notes=r.get("notes", ""),
             location=r.get("location", "") or "",
             salary=r.get("salary", "") or "",
+            posted_date=r.get("posted_date", "") or "",
         )
         for r in result.data
     ]
@@ -81,21 +82,20 @@ async def add_to_tracker(
     if existing.data:
         raise HTTPException(409, "Job already in tracker")
 
-    result = (
-        sb.table("jobs")
-        .insert({
-            "user_id": user_id,
-            "title": req.title,
-            "company": req.company,
-            "url": req.url,
-            "score": req.score,
-            "description": req.description,
-            "salary": req.salary,
-            "location": req.location,
-            "status": "new",
-        })
-        .execute()
-    )
+    insert_data = {
+        "user_id": user_id,
+        "title": req.title,
+        "company": req.company,
+        "url": req.url,
+        "score": req.score,
+        "description": req.description,
+        "salary": req.salary,
+        "location": req.location,
+        "status": "new",
+    }
+    if req.posted_date:
+        insert_data["posted_date"] = req.posted_date
+    result = sb.table("jobs").insert(insert_data).execute()
 
     return {"status": "added", "id": result.data[0]["id"] if result.data else None}
 

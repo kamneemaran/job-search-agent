@@ -533,6 +533,11 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 )
                 salary_str = ds._format_salary(salary_info) if salary_info else None
 
+                posted_raw = job.get("posted_at") or ""
+                if hasattr(posted_raw, 'strftime'):
+                    posted_str = posted_raw.strftime("%Y-%m-%d")
+                else:
+                    posted_str = str(posted_raw)[:10]
                 all_jobs.append(JobResult(
                     title=job.get("title", ""),
                     company=job.get("company", ""),
@@ -543,12 +548,18 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     salary=salary_str,
                     description=job.get("description", "")[:500],
                     source=src_name,
+                    posted_date=posted_str,
                 ))
 
-        # Select highly-targeted search boards based on location and work mode (reduces latency & boosts relevance)
-        loc_lower = req.location.lower()
-        is_remote_search = req.work_mode == "remote" or "remote" in loc_lower
-        is_india_search = "india" in loc_lower or any(city in loc_lower for city in ["pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon"])
+        # Derive effective location: prefer explicit locations[] filter over the default "Remote"
+        effective_location = req.location
+        if (not effective_location or effective_location == "Remote") and req.locations:
+            effective_location = req.locations[0]
+        loc_lower = effective_location.lower()
+        is_remote_search = req.work_mode == "remote"
+        if not is_remote_search:
+            is_remote_search = "remote" in loc_lower
+        is_india_search = any(city in loc_lower for city in ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon", "kolkata", "ahmedabad", "jaipur"])
         is_germany_search = "germany" in loc_lower or "de" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower
         is_netherlands_search = "netherlands" in loc_lower or "nl" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
 
@@ -628,7 +639,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
         with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
             future_to_board = {
-                executor.submit(fn, search_query, req.location, max_results // 2): name
+                executor.submit(fn, search_query, effective_location, max_results // 2): name
                 for name, fn in target_boards
             }
 

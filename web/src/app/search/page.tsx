@@ -53,7 +53,7 @@ export default function SearchPage() {
     setSearched(true);
     try {
       const locList = location.split(",").map((l) => l.trim()).filter(Boolean);
-      const primaryLoc = locList[0] || "Remote";
+      const primaryLoc = locList[0] || "";
 
       const res = await searchJobs({
         query: query.trim(),
@@ -89,6 +89,7 @@ export default function SearchPage() {
         description: job.description,
         salary: job.salary || "",
         location: job.location,
+        posted_date: job.posted_date,
       });
       setTracked((prev) => new Set(prev).add(key));
     } catch (err: unknown) {
@@ -356,6 +357,7 @@ export default function SearchPage() {
                       <div className="text-sm text-gray-400 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span>{job.company}</span>
                         {job.location && <span>· {job.location}</span>}
+                        {job.posted_date && <span>· Posted {job.posted_date}</span>}
                         {jobTypeBadge && (
                           <span className="inline-block rounded bg-gray-800 border border-gray-700/60 px-1.5 py-0.5 text-[10px] font-medium text-indigo-400 uppercase tracking-wider">
                             {jobTypeBadge}

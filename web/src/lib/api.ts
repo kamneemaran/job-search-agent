@@ -12,6 +12,7 @@ export interface JobResult {
   salary: string | null;
   description: string;
   source: string;
+  posted_date: string;
 }
 
 export interface SearchResponse {
@@ -38,6 +39,7 @@ export interface TrackerJob {
   notes: string;
   location?: string;
   salary?: string;
+  posted_date?: string;
 }
 
 export interface Profile {
@@ -154,6 +156,7 @@ export async function addToTracker(params: {
   description?: string;
   salary?: string;
   location?: string;
+  posted_date?: string;
 }): Promise<{ status: string; id: string | null }> {
   return apiFetch("/api/tracker/add", {
     method: "POST",
@@ -165,6 +168,7 @@ export async function addToTracker(params: {
       description: params.description || "",
       salary: params.salary || "",
       location: params.location || "",
+      posted_date: params.posted_date || "",
     }),
   });
 }

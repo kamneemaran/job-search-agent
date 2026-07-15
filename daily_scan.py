@@ -4954,7 +4954,18 @@ def _card_rows(matches):
             date_label = f" on {tr_date}" if tr_date else ""
             tr_html = f"""<br><span style="display:inline-block;background:{tr_bg};color:{tr_color};font-size:12px;padding:3px 8px;border-radius:4px;margin-top:6px;">{tr_icon} Already {tr_status}{date_label}</span>"""
         ago = m.get("ago", "") or ""
-        ago_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {ago}</span>""" if ago else ""
+        posted = m.get("posted_at") or ""
+        if hasattr(posted, 'strftime'):
+            posted_str = posted.strftime("%Y-%m-%d")
+        elif posted:
+            posted_str = str(posted)[:10]
+        else:
+            posted_str = ""
+        date_html = ""
+        if ago:
+            date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">{ago}</span>"""
+        elif posted_str:
+            date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {posted_str}</span>"""
         co_desc = _company_description(m.get("company", ""))
         co_desc_html = f"""<br><span style="font-size:12px;color:#888;">{co_desc}</span>""" if co_desc else ""
         rows += f"""
@@ -4966,7 +4977,7 @@ def _card_rows(matches):
             <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
             <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
             {jt_html}{ea_html}
-            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}{ago_html}
+            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}{date_html}
           </p>
         </div>
         <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>
