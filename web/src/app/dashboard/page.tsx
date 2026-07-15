@@ -102,6 +102,26 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteJob = async (title: string, company: string) => {
+    if (!confirm(`Are you sure you want to delete ${title} at ${company}?`)) return;
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/api/tracker/${encodeURIComponent(title)}/${encodeURIComponent(company)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setJobs((prev) => prev.filter((j) => !(j.title === title && j.company === company)));
+      }
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+    }
+  };
+
   const startEditing = (job: TrackerJob) => {
     setEditingKey(`${job.company}|${job.title}`);
     setEditTitle(job.title);
@@ -594,9 +614,15 @@ export default function DashboardPage() {
                           {job.score > 0 && <span className="text-xs text-gray-500">Score: {job.score}</span>}
                           <button
                             onClick={() => startEditing(job)}
-                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium ml-2"
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium ml-2 cursor-pointer"
                           >
                             ✏️ Edit Details
+                          </button>
+                          <button
+                            onClick={() => handleDeleteJob(job.title, job.company)}
+                            className="text-xs text-red-400 hover:text-red-300 font-medium ml-2 cursor-pointer"
+                          >
+                            🗑️ Delete
                           </button>
                         </div>
                         <div className="text-sm text-gray-400 mb-1">
