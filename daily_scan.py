@@ -50,9 +50,12 @@ _personio_lock = threading.Lock()
 
 def _get_browser():
     """Retrieve or create a thread-local Playwright browser to ensure thread-safety."""
-    if not hasattr(_local_playwright, "browser") or _local_playwright.browser is None:
+    if not hasattr(_local_playwright, "pw") or _local_playwright.pw is None:
         from playwright.sync_api import sync_playwright
         _local_playwright.pw = sync_playwright().start()
+        _local_playwright.page_count = 0
+        
+    if not hasattr(_local_playwright, "browser") or _local_playwright.browser is None:
         _local_playwright.browser = _local_playwright.pw.chromium.launch(
             headless=True,
             args=[
@@ -67,7 +70,6 @@ def _get_browser():
                 "--disable-extensions"
             ]
         )
-        _local_playwright.page_count = 0
     return _local_playwright.browser
 
 def _check_reclaim_playwright():
@@ -79,12 +81,9 @@ def _check_reclaim_playwright():
         try:
             if hasattr(_local_playwright, "browser") and _local_playwright.browser:
                 _local_playwright.browser.close()
-            if hasattr(_local_playwright, "pw") and _local_playwright.pw:
-                _local_playwright.pw.stop()
         except Exception:
             pass
         _local_playwright.browser = None
-        _local_playwright.pw = None
         _local_playwright.page_count = 0
 
 def _with_stealth(page):
