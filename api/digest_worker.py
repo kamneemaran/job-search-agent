@@ -329,5 +329,136 @@ def run():
         }).eq("user_id", user_id).execute()
 
 
+def run_one_user(user_id: str):
+    logger.info(f"Forcing immediate manual digest run for user_id: {user_id}")
+    sb = get_service_client()
+    
+    pref_result = sb.table("email_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
+    if not pref_result.data:
+        logger.error(f"No email preferences found for user_id {user_id}")
+        return
+    pref = pref_result.data
+    to_email = pref.get("email") or ""
+    if not to_email:
+        logger.error(f"No email address configured for user_id {user_id}")
+        return
+
+    profile_result = sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+    if not profile_result.data:
+        logger.error(f"No profile found for user_id {user_id}")
+        return
+        
+    row = profile_result.data
+    core_skills = row.get("core_skills") or []
+    if isinstance(core_skills, str):
+        try:
+            import json
+            core_skills = json.loads(core_skills)
+        except Exception:
+            core_skills = []
+
+    if not core_skills or not isinstance(core_skills, list):
+        logger.error(f"User {user_id} has no core_skills")
+        return
+
+    profile = {
+        "core_skills": core_skills,
+        "years_experience": row.get("years_experience", 0),
+        "current_role": row.get("current_role", ""),
+        "batches": pref.get("batches") or ["all"]
+    }
+
+    # Write RUNNING:Scraping to sent_history in database
+    running_token = f"RUNNING:Scraping in GitHub Actions...|{int(datetime.now().timestamp())}"
+    try:
+        curr_history = pref.get("sent_history") or []
+        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("FINISHED:")))]
+        new_history.append(running_token)
+        sb.table("email_preferences").update({
+            "sent_history": new_history,
+        }).eq("user_id", user_id).execute()
+    except Exception as e:
+        logger.error(f"Failed to set running token: {e}")
+
+    logger.info(f"Searching jobs for user {user_id} ({to_email})")
+    try:
+        jobs = search_jobs_for_user(profile)
+    except Exception as e:
+        logger.error(f"Error searching for user {user_id}: {e}")
+        try:
+            pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+            if pref_result and pref_result.data:
+                curr_history = pref_result.data.get("sent_history") or []
+                filtered = [x for x in curr_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+                sb.table("email_preferences").update({"sent_history": filtered}).eq("user_id", user_id).execute()
+        except Exception:
+            pass
+        return
+
+    try:
+        # Load final history
+        pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+        curr_history = pref_result.data.get("sent_history") or [] if pref_result and pref_result.data else []
+        clean_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("MATCH:") or x.startswith("FINISHED:")))]
+        clean_history.append(f"FINISHED:{len(jobs)}")
+        
+        sb.table("email_preferences").update({
+            "sent_history": clean_history,
+            "last_sent_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("user_id", user_id).execute()
+    except Exception as e:
+        logger.error(f"Failed to update final history: {e}")
+
+    if not jobs:
+        logger.info(f"No matches above {SCORE_THRESHOLD} for user {user_id}")
+        return
+
+    try:
+        send_email(to_email, jobs)
+        logger.info(f"Successfully emailed {len(jobs)} matches to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {e}")
+
+    # Auto-log emailed jobs to user's tracker
+    try:
+        logged = 0
+        for job in jobs:
+            existing = (
+                sb.table("jobs")
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("title", job["title"])
+                .eq("company", job["company"])
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                continue
+            sb.table("jobs").insert({
+                "user_id": user_id,
+                "title": job["title"],
+                "company": job["company"],
+                "url": job.get("url", ""),
+                "score": job.get("score", 0),
+                "location": job.get("location", ""),
+                "salary": job.get("salary", ""),
+                "source": "email_digest",
+                "status": "new",
+            }).execute()
+            logged += 1
+        if logged:
+            logger.info(f"Auto-logged {logged} jobs to tracker for user {user_id}")
+    except Exception as e:
+        logger.warning(f"Failed to auto-log jobs for user {user_id}: {e}")
+
+
 if __name__ == "__main__":
-    run()
+    import argparse
+    parser = argparse.ArgumentParser(description="Run digest worker")
+    parser.add_argument("--user-id", type=str, help="Run immediately for a specific user ID")
+    args = parser.parse_args()
+    
+    if args.user_id:
+        run_one_user(args.user_id)
+    else:
+        run()

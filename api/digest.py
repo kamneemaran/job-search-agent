@@ -437,7 +437,56 @@ async def send_digest(
             logger.error(f"[DIGEST-TRIGGER] Failed to initialize scan state: {e}")
             raise HTTPException(500, "Failed to initialize scan state in database.")
 
-        # Dispatched background task
+        # Check if GitHub Dispatch token is configured.
+        # If so, we delegate the scan to GitHub Actions for massive speed, abundant RAM, and 0% Railway CPU/Memory consumption!
+        gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
+        gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
+        if gh_token and gh_repo:
+            logger.info(f"[DIGEST-TRIGGER] GitHub token and repo detected. Dispatching scan to GitHub Actions cloud worker for user_id={user_id}...")
+            
+            # Update database running token to reflect GitHub Actions progress
+            import time
+            dispatch_token = f"RUNNING:Starting scan in GitHub Actions Cloud...|{int(time.time())}"
+            # Replace any old running items
+            clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+            clean_history.append(dispatch_token)
+            
+            try:
+                sb.table("email_preferences").update({
+                    "sent_history": clean_history,
+                }).eq("user_id", user_id).execute()
+            except Exception as se:
+                logger.error(f"[DIGEST-TRIGGER] Failed to update sent_history with GitHub token: {se}")
+
+            import requests
+            dispatch_url = f"https://api.github.com/repos/{gh_repo}/dispatches"
+            headers = {
+                "Authorization": f"token {gh_token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "JobPilot-API"
+            }
+            payload = {
+                "event_type": "manual_scan",
+                "client_payload": {
+                    "user_id": user_id,
+                }
+            }
+            
+            try:
+                resp = requests.post(dispatch_url, json=payload, headers=headers, timeout=10)
+                if resp.status_code == 204:
+                    logger.info(f"[DIGEST-TRIGGER] Successfully dispatched repository_dispatch to {gh_repo}!")
+                    return {
+                        "message": "Scan dispatched to GitHub Actions Cloud. Your master scan is compiling on high-performance cloud servers. Check your inbox soon!",
+                        "sent": True,
+                        "count": len(initial_matches)
+                    }
+                else:
+                    logger.error(f"[DIGEST-TRIGGER] GitHub dispatch returned status {resp.status_code}: {resp.text}. Falling back to Railway local worker.")
+            except Exception as e:
+                logger.error(f"[DIGEST-TRIGGER] Failed to dispatch repository_dispatch to GitHub: {e}. Falling back to Railway local worker.", exc_info=True)
+
+        # Dispatched background task (Fallback)
         background_tasks.add_task(
             run_background_digest_scan,
             user_id=user_id,
