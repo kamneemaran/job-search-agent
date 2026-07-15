@@ -55,7 +55,17 @@ def _get_browser():
         _local_playwright.pw = sync_playwright().start()
         _local_playwright.browser = _local_playwright.pw.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled", "--disable-http2", "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            args=[
+                "--disable-blink-features=AutomationControlled", 
+                "--disable-http2", 
+                "--no-sandbox", 
+                "--disable-setuid-sandbox", 
+                "--disable-dev-shm-usage",
+                "--single-process",
+                "--js-flags=--max-old-space-size=128",
+                "--disable-gpu",
+                "--disable-extensions"
+            ]
         )
         _local_playwright.page_count = 0
     return _local_playwright.browser

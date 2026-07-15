@@ -260,7 +260,7 @@ export default function SettingsPage() {
   const progressTimestamp = progressTimestampStr ? parseInt(progressTimestampStr, 10) : 0;
 
   const currentEpoch = Math.floor(Date.now() / 1000);
-  const isStalled = progressTimestamp > 0 && (currentEpoch - progressTimestamp) > 300;
+  const isStalled = !!runningItem && (progressTimestamp === 0 || (currentEpoch - progressTimestamp) > 300);
 
   if (loading) {
     return (

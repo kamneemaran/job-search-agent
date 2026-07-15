@@ -136,12 +136,6 @@ def run_background_digest_scan(
             if "remote" in batches_list:
                 all_sources += ds.REMOTE_JOB_SOURCES
 
-        # Filter out heavy Playwright scrapers on Railway to prevent memory crashes
-        on_railway = os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("PORT") or os.environ.get("RAILWAY_ENVIRONMENT")
-        if on_railway:
-            logger.info("[DIGEST-BG-WORKER] Running inside Railway container. Automatically skipping heavy Playwright scrapers to prevent OOM memory crashes.")
-            all_sources = [s for s in all_sources if not s.get("playwright")]
-
         logger.info(f"[DIGEST-BG-WORKER] Compiled {len(all_sources)} total job sources to fetch.")
 
         results = list(initial_matches) if initial_matches else []
