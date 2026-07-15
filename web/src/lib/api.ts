@@ -192,7 +192,12 @@ export async function updateProfile(params: {
 }): Promise<Profile> {
   return apiFetch("/api/profile", {
     method: "PUT",
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      full_name: params.name,
+      current_role: params.current_role,
+      core_skills: params.core_skills,
+      years_experience: params.years_experience,
+    }),
   });
 }
 
