@@ -52,6 +52,7 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
         time_of_day=row.get("time_of_day", "09:00"),
         sent_history=row.get("sent_history") or [],
         batches=batches_data,
+        posted_date_filter=row.get("posted_date_filter", "any"),
     )
 
 
@@ -76,23 +77,15 @@ async def update_digest_preferences(
         "time_of_day": prefs.time_of_day,
         "sent_history": prefs.sent_history,
         "batches": prefs.batches,
+        "posted_date_filter": prefs.posted_date_filter,
     }
 
     try:
         sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
     except Exception as e:
-        # If the column "batches" does not exist in the database, let's execute an alter script first!
-        try:
-            sb.table("email_preferences").select("batches").limit(1).execute()
-        except Exception:
-            try:
-                # Add column dynamically
-                # (Note: standard PostgREST cannot alter table, but if it fails we can catch and log)
-                print(f"Error: public.email_preferences has no 'batches' column. Please run the SQL alter table command. {e}")
-            except Exception:
-                pass
-        # Remove batches from dict so it can upsert successfully even if column hasn't been added yet
+        # Remove batches and posted_date_filter from dict so it can upsert successfully even if columns haven't been added yet
         data.pop("batches", None)
+        data.pop("posted_date_filter", None)
         sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
 
     return prefs
@@ -112,6 +105,22 @@ def run_background_digest_scan(
 ):
     logger.info(f"[DIGEST-BG-WORKER] Starting async background job scan for user_id={user_id}, target_email={to_email}, start_index={start_index}, initial_matches_count={len(initial_matches) if initial_matches else 0}")
     sb = get_user_client(authorization)
+    
+    # Globally swap ds.PROFILE with the target user's custom settings 
+    # BEFORE compiling any sources, so that all queries and filters are generated specifically for this user!
+    with _profile_lock:
+        orig_skills = ds.PROFILE.get("core_skills")
+        orig_years = ds.PROFILE.get("years_experience")
+        orig_role = ds.PROFILE.get("current_role")
+        
+        ds.PROFILE["core_skills"] = profile["core_skills"]
+        ds.PROFILE["years_experience"] = profile["years_experience"]
+        ds.PROFILE["current_role"] = profile.get("current_role", "")
+        try:
+            ds._rebuild_precompiled_patterns()
+        except Exception:
+            pass
+
     try:
         all_sources = []
         if "all" in batches_list:
@@ -322,6 +331,16 @@ def run_background_digest_scan(
                 }).eq("user_id", user_id).execute()
         except Exception as cleanup_err:
             logger.error(f"[DIGEST-BG-WORKER] Cleanup token failed: {cleanup_err}")
+    finally:
+        # 100% Guaranteed profile restoration to prevent leakage or cross-user collisions
+        with _profile_lock:
+            ds.PROFILE["core_skills"] = orig_skills
+            ds.PROFILE["years_experience"] = orig_years
+            ds.PROFILE["current_role"] = orig_role
+            try:
+                ds._rebuild_precompiled_patterns()
+            except Exception:
+                pass
 
 
 @router.post("/send")
@@ -503,13 +522,18 @@ async def send_digest(
                     detail=f"Cannot start scan for '{batches_title}': One or more selected batches are already being processed by {overlap_reason}. Please cancel it or wait for it to complete."
                 )
 
+        # Check if posted date filter is provided in the request payload, otherwise fall back to database preferences
+        posted_date_filter = req.posted_date_filter
+        if not posted_date_filter or posted_date_filter == "any":
+            posted_date_filter = pref_row.get("posted_date_filter") or "any" if pref_row else "any"
+
         import uuid
         scan_id = str(uuid.uuid4())[:8]
         batches_str = ",".join(batches_list)
 
         # Set the running token in sent_history
         import time
-        running_token = f"RUNNING:Starting Cloud Scan...|batches:{batches_str}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
+        running_token = f"RUNNING:Starting Cloud Scan...|batches:{batches_str}|posted_date_filter:{posted_date_filter}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
         # If we are resuming, we keep the existing running item (which will be updated soon)
         if req.schedule == "resume":
             existing_running = next((x for x in sent_history if isinstance(x, str) and x.startswith("RUNNING:")), None)
@@ -554,7 +578,7 @@ async def send_digest(
             
             # Update database running token to reflect GitHub Actions progress
             import time
-            dispatch_token = f"RUNNING:Starting scan in GitHub Actions Cloud...|batches:{batches_str}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
+            dispatch_token = f"RUNNING:Starting scan in GitHub Actions Cloud...|batches:{batches_str}|posted_date_filter:{posted_date_filter}|scan_id:{scan_id}|run_id:pending|{int(time.time())}"
             # Replace the Initializing running token for this specific scan_id
             clean_history = [x for x in sent_history if not (isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x)]
             clean_history.append(dispatch_token)
