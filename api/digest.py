@@ -410,14 +410,17 @@ async def send_digest(
         except Exception as e:
             logger.warning(f"[DIGEST-TRIGGER] Non-fatal: Pattern rebuild exception: {e}")
 
-        batches_list = pref_row.get("batches") if pref_row else ["all"]
-        if isinstance(batches_list, str):
-            try:
-                import json
-                batches_list = json.loads(batches_list)
-            except Exception as e:
-                logger.warning(f"[DIGEST-TRIGGER] Failed to parse batches string {batches_list}: {e}")
-                batches_list = ["all"]
+        # Check if batches list is provided in the request payload, otherwise fall back to database preferences
+        batches_list = req.batches
+        if not batches_list:
+            batches_list = pref_row.get("batches") if pref_row else ["all"]
+            if isinstance(batches_list, str):
+                try:
+                    import json
+                    batches_list = json.loads(batches_list)
+                except Exception as e:
+                    logger.warning(f"[DIGEST-TRIGGER] Failed to parse batches string {batches_list}: {e}")
+                    batches_list = ["all"]
         if not batches_list:
             batches_list = ["all"]
 

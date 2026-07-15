@@ -176,7 +176,7 @@ export default function SettingsPage() {
     setSendResult("");
     setSendError(false);
     try {
-      const res = await sendDigestNow(digestEmail, "resume");
+      const res = await sendDigestNow(digestEmail, "resume", digestBatches);
       setSendResult(res.message);
       
       const d = await getDigestPreferences().catch(() => null);
@@ -406,7 +406,7 @@ export default function SettingsPage() {
                     setSendResult("");
                     setSendError(false);
                     try {
-                      const res = await sendDigestNow(digestEmail);
+                      const res = await sendDigestNow(digestEmail, "now", digestBatches);
                       setSendResult(res.message);
                       const isMsgError = res.message.toLowerCase().includes("fail") || 
                                          res.message.toLowerCase().includes("error") || 

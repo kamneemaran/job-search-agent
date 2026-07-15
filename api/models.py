@@ -70,6 +70,7 @@ class ResumeUploadWithKeyRequest(BaseModel):
 class DigestSendRequest(BaseModel):
     schedule: str = "now"
     email: str = ""
+    batches: list[str] = None
 
 
 class ResumeUploadResponse(BaseModel):
