@@ -60,8 +60,20 @@ export default function SettingsPage() {
           
           const stillScanning = newHistory.some((x) => x.startsWith("RUNNING:"));
           if (!stillScanning) {
-            setSendResult("Digest was completed, check your email!");
-            setSendError(false);
+            const finishedItem = newHistory.find((x) => x.startsWith("FINISHED:"));
+            if (finishedItem) {
+              const count = parseInt(finishedItem.replace("FINISHED:", ""), 10);
+              if (count === 0) {
+                setSendResult("Scan completed! However, 0 job matches above your threshold (65%) were found. Try choosing different target regions or expanding your skills list!");
+                setSendError(true);
+              } else {
+                setSendResult(`Success! Scan completed. ${count} matching opportunities were found and sent to ${digestEmail || "your email"}!`);
+                setSendError(false);
+              }
+            } else {
+              setSendResult("Digest was completed, check your email!");
+              setSendError(false);
+            }
           }
         } catch (err) {
           console.error("Polling status failed:", err);

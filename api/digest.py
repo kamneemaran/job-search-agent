@@ -233,6 +233,7 @@ def run_background_digest_scan(
 
         if not results:
             logger.warning(f"[DIGEST-BG-WORKER] No job matches above 65 found for user_id={user_id}. Skipping email dispatch.")
+            clean_history.append("FINISHED:0")
             sb.table("email_preferences").upsert({
                 "user_id": user_id,
                 "last_sent_at": now_iso,
@@ -255,6 +256,7 @@ def run_background_digest_scan(
             ok = False
 
         # Clear active status/matches and save clean run history to database
+        clean_history.append(f"FINISHED:{len(results)}")
         sb.table("email_preferences").upsert({
             "user_id": user_id,
             "last_sent_at": now_iso,
@@ -362,7 +364,7 @@ async def send_digest(
                 raise HTTPException(400, "A background scan is already in progress. Please use force-reset or wait for it.")
 
             # Clean and filter sent history
-            sent_history = [x for x in sent_history if isinstance(x, str) and not x.startswith("MATCH:") and not x.startswith("RUNNING:")]
+            sent_history = [x for x in sent_history if isinstance(x, str) and not x.startswith("MATCH:") and not x.startswith("RUNNING:") and not x.startswith("FINISHED:")]
 
         logger.info(f"[DIGEST-TRIGGER] Checking rate limit history for user_id={user_id}. Past sent count: {len(sent_history)}")
 
@@ -371,7 +373,7 @@ async def send_digest(
         for ts in sent_history:
             if not isinstance(ts, str):
                 continue
-            if ts.startswith("RUNNING:") or ts.startswith("MATCH:"):
+            if ts.startswith("RUNNING:") or ts.startswith("MATCH:") or ts.startswith("FINISHED:"):
                 continue
             try:
                 # Parse ISO timestamp
