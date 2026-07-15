@@ -451,6 +451,11 @@ UNIVERSAL_RED_FLAGS = [
     "public policy", "government affairs", "regulatory affairs",
     "localization", "translator", "safety", "security guard",
     "incident manager", "incident response",
+    # User Preferences Red Flags (Mobile, Frontend, QA, SRE/Network)
+    "android", "ios", "swift", "kotlin",
+    "frontend", "front-end", "front end", "ui engineer", "web engineer",
+    "qa", "qa engineer", "quality assurance", "quality engineer", "test engineer", "sdet", "automation engineer",
+    "network infrastructure", "network engineer", "network architect", "sre", "site reliability engineer", "devops", "devops engineer"
 ]
 
 
