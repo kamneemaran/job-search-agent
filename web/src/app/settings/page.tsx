@@ -230,23 +230,6 @@ export default function SettingsPage() {
         }),
       ]);
 
-      // Upload resume if selected
-      if (resumeFile) {
-        const formData = new FormData();
-        formData.append("file", resumeFile);
-        const supabase = getBrowserClient();
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        const res = await fetch(`${API_BASE}/api/resume/upload`, {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: formData,
-        });
-        if (!res.ok) throw new Error("Resume upload failed");
-        setActiveResume(resumeFile.name);
-        setResumeFile(null);
-      }
-
       setMessage("Settings saved successfully.");
     } catch (err) {
       setMessage(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
@@ -323,6 +306,9 @@ export default function SettingsPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 placeholder="Python, TypeScript, AWS"
               />
+              <p className="mt-1 text-[11px] text-indigo-400 leading-relaxed">
+                💡 <strong>Note</strong>: Your job match scores are heavily calculated on the basis of these Core Skills. You can update this list or keep it as shown.
+              </p>
             </div>
           </div>
           {skills.length > 0 && (
@@ -614,30 +600,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Resume Section */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Resume</h2>
-          {activeResume && (
-            <p className="text-sm text-gray-400 mb-3">
-              Active resume: <span className="text-white">{activeResume}</span>
-            </p>
-          )}
-          <label className="block">
-            <span className="text-sm text-gray-400 mb-1 block">Upload PDF</span>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-500 file:cursor-pointer"
-            />
-          </label>
-          {resumeFile && (
-            <p className="text-xs text-gray-500 mt-2">
-              Selected: {resumeFile.name}
-            </p>
-          )}
         </div>
 
         {/* Save */}
