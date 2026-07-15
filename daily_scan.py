@@ -55,9 +55,27 @@ def _get_browser():
         _local_playwright.pw = sync_playwright().start()
         _local_playwright.browser = _local_playwright.pw.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled", "--disable-http2"]
+            args=["--disable-blink-features=AutomationControlled", "--disable-http2", "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         )
+        _local_playwright.page_count = 0
     return _local_playwright.browser
+
+def _check_reclaim_playwright():
+    """Check and recycle the browser process if we have loaded multiple pages, preventing OOM memory accumulation."""
+    if not hasattr(_local_playwright, "page_count"):
+        _local_playwright.page_count = 0
+    _local_playwright.page_count += 1
+    if _local_playwright.page_count >= 5:
+        try:
+            if hasattr(_local_playwright, "browser") and _local_playwright.browser:
+                _local_playwright.browser.close()
+            if hasattr(_local_playwright, "pw") and _local_playwright.pw:
+                _local_playwright.pw.stop()
+        except Exception:
+            pass
+        _local_playwright.browser = None
+        _local_playwright.pw = None
+        _local_playwright.page_count = 0
 
 def _with_stealth(page):
     """Apply stealth anti-detection to a page if playwright_stealth is available."""
@@ -3638,6 +3656,7 @@ def search_glassdoor(query, location="India", max_results=500):
 
 def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
     """Generic helper to scrape JS-rendered pages using Playwright + stealth."""
+    context = None
     try:
         browser = _get_browser()
         context = _create_context(browser, url)
@@ -3650,10 +3669,16 @@ def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
             page.wait_for_selector(wait_selector, timeout=10000)
         results = page.eval_on_selector_all(selector, extract_fn)
         _save_context_state(context, url)
-        context.close()
         return results
     except Exception as e:
         return []
+    finally:
+        if context:
+            try:
+                context.close()
+            except Exception:
+                pass
+        _check_reclaim_playwright()
 
 
 def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
@@ -3664,6 +3689,7 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
     - Buttons/links with text: Load More, Show More, More Results, View More, See More
     - Infinite scroll: scrolls to bottom and waits for new content
     """
+    context = None
     try:
         browser = _get_browser()
         context = _create_context(browser, url)
@@ -3737,10 +3763,16 @@ def _playwright_load_more(url, max_clicks=5, wait_ms=2000):
 
         html = page.content()
         _save_context_state(context, url)
-        context.close()
         return html
     except Exception as e:
         return ""
+    finally:
+        if context:
+            try:
+                context.close()
+            except Exception:
+                pass
+        _check_reclaim_playwright()
 
 def _playwright_html(url, timeout=30000, wait_ms=2000):
     """Load a JS-rendered page with Playwright + stealth and return full HTML."""
@@ -3765,6 +3797,7 @@ def _playwright_html(url, timeout=30000, wait_ms=2000):
                 context.close()
             except Exception:
                 pass
+        _check_reclaim_playwright()
 
 
 _remoteok_cache = None
