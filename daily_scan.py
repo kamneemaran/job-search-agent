@@ -1422,7 +1422,7 @@ def score_job(title, description, company, location=""):
         if skill_score >= 35:
             # Strong skill overlap (≥70% of adjusted denominator) — let score stand
             notes = (f"Title red-flag ({red_flag_match}) overridden by skill match "
-                     f"({skill_hits}/{total_skills})" + (" | " + notes if notes else ""))
+                     f"({total_hits}/{total_skills})" + (" | " + notes if notes else ""))
         else:
             # Skill overlap too low — enforce the filter
             return 0, f"Filtered: title matches non-relevant track ({red_flag_match})"
