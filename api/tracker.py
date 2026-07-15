@@ -221,6 +221,71 @@ async def sync_sheet(authorization: Optional[str] = Header(None)):
     return {"status": "synced", "count": len(jobs_result.data)}
 
 
+@router.post("/sheet/pull")
+async def pull_sheet(authorization: Optional[str] = Header(None)):
+    sb, user = _require_user(authorization)
+
+    # Get user's sheet URL
+    profile = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
+    if not profile.data or not profile.data.get("tracker_sheet_url"):
+        raise HTTPException(400, "No tracker sheet configured. Save a sheet URL first.")
+
+    sheet_url = profile.data["tracker_sheet_url"]
+    sa_json = profile.data.get("google_sa_json", "") or None
+
+    from api.gsheet_sync import read_jobs_from_sheet
+    sheet_jobs = read_jobs_from_sheet(sheet_url, sa_json)
+
+    if not sheet_jobs:
+        return {"status": "no_changes", "count": 0, "message": "No jobs found in sheet or failed to read."}
+
+    # Fetch existing jobs from DB
+    existing_q = sb.table("jobs").select("id, title, company").eq("user_id", user.id).execute()
+    existing_map = {(j["title"].lower().strip(), j["company"].lower().strip()): j["id"] for j in existing_q.data}
+
+    inserted_count = 0
+    updated_count = 0
+
+    for sj in sheet_jobs:
+        title = sj.get("title", "").strip()
+        company = sj.get("company", "").strip()
+        if not title or not company:
+            continue
+
+        key = (title.lower(), company.lower())
+        status = sj.get("status", "new").strip().lower()
+        if status not in ("new", "applied", "rejected", "offer"):
+            status = "new"
+
+        job_data = {
+            "title": title,
+            "company": company,
+            "location": sj.get("location", ""),
+            "score": sj.get("score", 0),
+            "url": sj.get("url", ""),
+            "notes": sj.get("notes", ""),
+            "status": status,
+        }
+
+        if key in existing_map:
+            # Update existing job
+            job_id = existing_map[key]
+            sb.table("jobs").update(job_data).eq("id", job_id).execute()
+            updated_count += 1
+        else:
+            # Insert new job
+            job_data["user_id"] = user.id
+            sb.table("jobs").insert(job_data).execute()
+            inserted_count += 1
+
+    return {
+        "status": "success",
+        "inserted": inserted_count,
+        "updated": updated_count,
+        "total": len(sheet_jobs)
+    }
+
+
 COLUMN_ALIASES = {
     "title": ["title", "job title", "position", "job", "role", "name"],
     "company": ["company", "employer", "organization", "firm", "company name", "employer name"],

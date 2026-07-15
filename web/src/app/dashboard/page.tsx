@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [sheetUrl, setSheetUrl] = useState("");
   const [sheetInput, setSheetInput] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [pulling, setPulling] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
 
   // Import/export state
@@ -192,6 +193,33 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 5000);
   };
 
+  const handlePull = async () => {
+    setPulling(true);
+    setSheetMsg("");
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/api/tracker/sheet/pull`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSheetMsg(`Imported ${data.inserted} new jobs, updated ${data.updated} jobs from sheet!`);
+        await loadJobs(); // Reload dashboard jobs
+      } else {
+        const err = await res.json();
+        setSheetMsg(err.detail || "Import from sheet failed");
+      }
+    } catch {
+      setSheetMsg("Import from sheet failed");
+    }
+    setPulling(false);
+    setTimeout(() => setSheetMsg(""), 5000);
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -296,14 +324,21 @@ export default function DashboardPage() {
             onClick={handleSaveSheet}
             className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 transition-colors"
           >
-            Save
+            Save URL
           </button>
           <button
             onClick={handleSync}
-            disabled={syncing || !sheetUrl}
+            disabled={syncing || pulling || !sheetUrl}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {syncing ? "Syncing..." : "Sync Now"}
+            {syncing ? "Exporting..." : "Export to Sheet"}
+          </button>
+          <button
+            onClick={handlePull}
+            disabled={syncing || pulling || !sheetUrl}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {pulling ? "Importing..." : "Import from Sheet"}
           </button>
         </div>
         {sheetMsg && (
