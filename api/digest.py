@@ -437,7 +437,7 @@ async def send_digest(
                 detail="Maximum limit of 5 concurrent scans exceeded. You must cancel an existing scan or wait for it to complete."
             )
             
-        # 2. Check if duplicate batch selection is already active
+        # 2. Check for any overlapping batches
         target_batches_set = set(batches_list)
         for item in in_progress_scans:
             parts = item.replace("RUNNING:", "").split("|")
@@ -446,12 +446,29 @@ async def send_digest(
                 if part.startswith("batches:"):
                     item_batches = part.replace("batches:", "").split(",")
                     break
-            if set(item_batches) == target_batches_set:
+            
+            # Intersection/overlap checks:
+            has_overlap = False
+            overlap_reason = ""
+            
+            if "all" in target_batches_set:
+                has_overlap = True
+                overlap_reason = f"the active scan covering ({', '.join(item_batches)})"
+            elif "all" in item_batches:
+                has_overlap = True
+                overlap_reason = "the active Master Scan"
+            else:
+                overlap_intersection = target_batches_set.intersection(set(item_batches))
+                if overlap_intersection:
+                    has_overlap = True
+                    overlap_reason = f"the active scan covering ({', '.join(overlap_intersection)})"
+                    
+            if has_overlap:
                 batches_title = ", ".join(batches_list) if batches_list != ["all"] else "Master Scan"
-                logger.warning(f"[DIGEST-TRIGGER] Rejected duplicate scan request for user_id={user_id} on batches: {batches_list}")
+                logger.warning(f"[DIGEST-TRIGGER] Rejected overlapping scan request for user_id={user_id} on batches: {batches_list} due to active run: {item_batches}")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"A scan for the selected batch combination ({batches_title}) is already active. Please cancel it or wait for it to complete."
+                    detail=f"Cannot start scan for '{batches_title}': One or more selected batches are already being processed by {overlap_reason}. Please cancel it or wait for it to complete."
                 )
 
         import uuid
