@@ -379,8 +379,14 @@ def run_one_user(user_id: str):
     running_token = f"RUNNING:Scraping in GitHub Actions...|{int(datetime.now().timestamp())}"
     try:
         curr_history = pref.get("sent_history") or []
-        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("FINISHED:")))]
+        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("FINISHED:") or x.startswith("GITHUB_RUN_ID:")))]
         new_history.append(running_token)
+        
+        github_run_id = os.environ.get("GITHUB_RUN_ID")
+        if github_run_id:
+            new_history.append(f"GITHUB_RUN_ID:{github_run_id}")
+            logger.info(f"Detected GITHUB_RUN_ID={github_run_id}. Registered in sent_history.")
+            
         sb.table("email_preferences").update({
             "sent_history": new_history,
         }).eq("user_id", user_id).execute()

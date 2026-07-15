@@ -565,19 +565,28 @@ async def reset_digest_status(authorization: Optional[str] = Header(None)):
     pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
     if pref_result and pref_result.data:
         curr_history = pref_result.data.get("sent_history") or []
-        new_history = [x for x in curr_history if not (isinstance(x, str) and x.startswith("RUNNING:"))]
+        
+        # Extract target GITHUB_RUN_ID specifically belonging to this user's current scan
+        target_run_id = None
+        for item in curr_history:
+            if isinstance(item, str) and item.startswith("GITHUB_RUN_ID:"):
+                target_run_id = item.replace("GITHUB_RUN_ID:", "").strip()
+                break
+                
+        # Filter out RUNNING: and GITHUB_RUN_ID: tokens from database sent_history
+        new_history = [x for x in curr_history if not (isinstance(x, str) and (x.startswith("RUNNING:") or x.startswith("GITHUB_RUN_ID:")))]
         
         sb.table("email_preferences").update({
             "sent_history": new_history,
         }).eq("user_id", user_id).execute()
         logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}")
 
-        # Try to automatically cancel any active GitHub Action workflows
+        # Cancel the specific GitHub Action workflow if target_run_id was captured
         gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
         gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
         gh_cancelled_count = 0
         
-        if gh_token and gh_repo:
+        if target_run_id and gh_token and gh_repo:
             repo_clean = gh_repo.strip()
             if "github.com/" in repo_clean:
                 repo_clean = repo_clean.split("github.com/")[-1]
@@ -586,31 +595,27 @@ async def reset_digest_status(authorization: Optional[str] = Header(None)):
             repo_clean = repo_clean.strip("/")
             
             import requests
-            runs_url = f"https://api.github.com/repos/{repo_clean}/actions/runs"
+            cancel_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{target_run_id}/cancel"
             headers = {
                 "Authorization": f"token {gh_token}",
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "JobPilot-API"
             }
             try:
-                # Fetch in-progress runs
-                resp = requests.get(runs_url, params={"status": "in_progress"}, headers=headers, timeout=10)
-                if resp.status_code == 200:
-                    runs_data = resp.json()
-                    for run in runs_data.get("workflow_runs", []):
-                        run_id = run.get("id")
-                        cancel_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{run_id}/cancel"
-                        cancel_resp = requests.post(cancel_url, headers=headers, timeout=10)
-                        if cancel_resp.status_code == 202:
-                            logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={run_id}")
-                            gh_cancelled_count += 1
-                        else:
-                            logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={run_id}: {cancel_resp.status_code} {cancel_resp.text}")
+                # Cancel only the specific run ID
+                cancel_resp = requests.post(cancel_url, headers=headers, timeout=10)
+                if cancel_resp.status_code == 202:
+                    logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={target_run_id}")
+                    gh_cancelled_count += 1
+                else:
+                    logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={target_run_id}: {cancel_resp.status_code} {cancel_resp.text}")
             except Exception as ge:
-                logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflows: {ge}")
+                logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflow {target_run_id}: {ge}")
 
         if gh_cancelled_count > 0:
-            msg = f"Scan status reset successfully. Aborted {gh_cancelled_count} active Cloud Actions workflow run(s) on GitHub."
+            msg = f"Scan status reset successfully. Aborted your active GitHub Actions cloud workflow run (ID: {target_run_id})."
+        elif target_run_id:
+            msg = f"Scan status reset successfully. Requested abort for your cloud workflow run (ID: {target_run_id})."
         else:
             msg = "Scan status reset successfully. You can now start a new scan."
 
