@@ -657,7 +657,7 @@ async def get_active_scans(
                 # Check estimated duration (in seconds)
                 batch_durations = {
                     "all": 10800, "india": 5400, "europe_companies": 3600,
-                    "europe_boards": 900, "middle_east": 900, "apac": 900,
+                    "europe_boards": 3600, "middle_east": 900, "apac": 900,
                     "us_canada": 900, "remote": 1800
                 }
                 est_duration = 0

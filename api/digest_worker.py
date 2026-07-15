@@ -172,7 +172,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
 
     # 2. Run Europe Job Boards directly if "europe_boards" is requested!
     if "europe_boards" in batches_list:
-        logger.info("[DIGEST-BG-WORKER] Triggering direct Europe Job Boards scrapers (Arbeitnow, IamExpat, TogetherAbroad)...")
+        logger.info("[DIGEST-BG-WORKER] Triggering comprehensive Europe Job Boards scrapers across Portugal, Spain, Germany, Netherlands, Luxembourg...")
         
         # Build queries based on core skills
         queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
@@ -180,9 +180,21 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
             queries = ["Python"]
             
         board_mapping = [
-            ("Arbeitnow", ds.search_arbeitnow, ["Remote"]),
+            ("NetEmpregos", ds.search_netempregos, ["Portugal"]),
+            ("SAPOEmprego", ds.search_sapoemprego, ["Portugal"]),
+            ("Infoempleo", ds.search_infoempleo, ["Spain"]),
+            ("Bundesagentur", ds.search_bundesagentur, ["Germany"]),
             ("IamExpat", ds.search_iamexpat, ["Netherlands"]),
-            ("TogetherAbroad", ds.search_togetherabroad, ["Netherlands"])
+            ("WorkInLux", ds.search_workinlux, ["Luxembourg"]),
+            ("IndeedNL", ds.search_indeed_nl, ["Netherlands"]),
+            ("WelcomeToNL", ds.search_welcome_to_nl, ["Netherlands"]),
+            ("TogetherAbroad", ds.search_togetherabroad, ["Netherlands"]),
+            ("StepStone", ds.search_stepstone, ["Germany"]),
+            ("Adzuna", ds.search_adzuna, ["Germany"]),
+            ("Freelancermap", ds.search_freelancermap, ["Germany"]),
+            ("Intermediair", ds.search_intermediair, ["Netherlands"]),
+            ("NationaleVacaturebank", ds.search_nationalevacaturebank, ["Netherlands"]),
+            ("Arbeitnow", ds.search_arbeitnow, ["Remote"])
         ]
         
         for board_name, board_fn, locations in board_mapping:
