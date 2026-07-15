@@ -141,6 +141,7 @@ def run_background_digest_scan(
         results = list(initial_matches) if initial_matches else []
         seen = {(j.get("title", "").lower().strip(), j.get("company", "").lower().strip()) for j in results}
 
+        aborted = False
         for idx, source in enumerate(all_sources, 1):
             if idx < start_index:
                 logger.info(f"[DIGEST-BG-WORKER] [{idx}/{len(all_sources)}] Skipping already completed source: '{source.get('name')}'")
@@ -156,6 +157,14 @@ def run_background_digest_scan(
                 pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
                 if pref_result and pref_result.data:
                     curr_history = pref_result.data.get("sent_history") or []
+                    
+                    # Check if there is an active RUNNING: token. If not, it means the user has cleared/reset the scan!
+                    has_running = any(isinstance(x, str) and x.startswith("RUNNING:") for x in curr_history)
+                    if not has_running:
+                        logger.info(f"[DIGEST-BG-WORKER] RUNNING token not found in sent_history (aborted/reset by user). Terminating background scraper loop.")
+                        aborted = True
+                        break
+                    
                     new_history = []
                     for item in curr_history:
                         if isinstance(item, str) and item.startswith("RUNNING:"):
@@ -224,6 +233,10 @@ def run_background_digest_scan(
                             logger.info(f"[DIGEST-BG-WORKER] Real-time saved job match in database sent_history.")
                     except Exception as pe:
                         logger.error(f"[DIGEST-BG-WORKER] Failed to persist job match to sent_history: {pe}")
+
+        if aborted:
+            logger.info(f"[DIGEST-BG-WORKER] Background scan was aborted. Skipping email generation and final updates.")
+            return
 
         results.sort(key=lambda x: x["score"], reverse=True)
         logger.info(f"[DIGEST-BG-WORKER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
