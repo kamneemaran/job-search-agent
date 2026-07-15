@@ -392,9 +392,19 @@ export default function SettingsPage() {
               <div className="flex gap-3 items-start">
                 <span className="text-xl animate-spin shrink-0">⏳</span>
                 <div className="text-xs text-indigo-200 leading-relaxed w-full">
-                  <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">Deep Digest Scan in Progress</span>
+                  <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">
+                    {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? "Cloud Scan in Progress (GitHub Actions)" : "Deep Digest Scan in Progress"}
+                  </span>
                   
-                  {progressText ? (
+                  {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                      </span>
+                      <span>Cloud Worker Status: <span className="text-white font-bold">Compiling & matching on high-performance cloud servers...</span></span>
+                    </div>
+                  ) : progressText ? (
                     <div className="mb-3 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-500/20 text-indigo-300 font-medium flex items-center gap-2">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -412,14 +422,23 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  Our automated backend scraper is initiating a comprehensive search across 250+ companies and multiple global ATS platforms. 
-                  Because this is an extremely thorough, anti-bot-bypassing background task matching against your unique profile, 
-                  <strong>it will take approximately 3-4 hours to complete</strong>. 
+                  {(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) ? (
+                    <span>
+                      Your complete master scan is running securely in the cloud across all 1,307 sources and 250+ domains. 
+                      Because this is executed on powerful GitHub Action runner servers, your Railway API remains lightweight, fast, and completely safe from memory/CPU constraints.
+                    </span>
+                  ) : (
+                    <span>
+                      Our automated backend scraper is initiating a comprehensive search across 250+ companies and multiple global ATS platforms. 
+                      Because this is an extremely thorough, anti-bot-bypassing background task matching against your unique profile, 
+                      <strong>it will take approximately 3-4 hours to complete</strong>. 
+                    </span>
+                  )}
                   <span className="block mt-2 text-gray-400">
                     You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
                   </span>
 
-                  {isStalled && (
+                  {!(progressText.includes("GitHub Actions") || progressText.includes("GitHub")) && isStalled && (
                     <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-indigo-500/10 pt-3">
                       <span className="text-[10px] text-gray-500">Scan stuck or interrupted? You can resume progress or force-reset.</span>
                       <div className="flex gap-2 shrink-0">
