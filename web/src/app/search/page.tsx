@@ -18,6 +18,7 @@ export default function SearchPage() {
   const [excludeCompanies, setExcludeCompanies] = useState("");
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [postedDateFilter, setPostedDateFilter] = useState("any");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<JobResult[]>([]);
   const [error, setError] = useState("");
@@ -66,6 +67,7 @@ export default function SearchPage() {
         skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
         exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
         sources: selectedSources,
+        posted_date_filter: postedDateFilter,
       });
       setResults(res.jobs);
     } catch (err: unknown) {
@@ -217,7 +219,7 @@ export default function SearchPage() {
             </button>
           </div>
           {showFilters && (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2 border-t border-gray-800">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-gray-800">
               <div className="flex items-center gap-3">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -249,6 +251,20 @@ export default function SearchPage() {
                   placeholder="e.g. rust, kubernetes"
                   className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Job Age Filter</label>
+                <select
+                  value={postedDateFilter}
+                  onChange={(e) => setPostedDateFilter(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="any">Any Time</option>
+                  <option value="1d">Last 24 Hours</option>
+                  <option value="1w">Last 1 Week</option>
+                  <option value="1m">Last 1 Month</option>
+                  <option value="3m">Last 3 Months</option>
+                </select>
               </div>
             </div>
           )}

@@ -33,6 +33,7 @@ export default function SettingsPage() {
   const [digestTimeOfDay, setDigestTimeOfDay] = useState("09:00");
   const [digestEmail, setDigestEmail] = useState("");
   const [digestBatches, setDigestBatches] = useState<string[]>(["all"]);
+  const [postedDateFilter, setPostedDateFilter] = useState("any");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
   const [sendError, setSendError] = useState(false);
@@ -176,7 +177,7 @@ export default function SettingsPage() {
     setSendResult("");
     setSendError(false);
     try {
-      const res = await sendDigestNow(digestEmail, "resume", digestBatches);
+      const res = await sendDigestNow(digestEmail, "resume", digestBatches, postedDateFilter);
       setSendResult(res.message);
       
       const d = await getDigestPreferences().catch(() => null);
@@ -197,7 +198,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [] })),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"] })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any" })),
       ]);
 
       setName(profile.name || "");
@@ -212,6 +213,7 @@ export default function SettingsPage() {
       setDigestTimeOfDay(digest.time_of_day || "09:00");
       setDigestEmail(digest.email || "");
       setDigestBatches(digest.batches || ["all"]);
+      setPostedDateFilter(digest.posted_date_filter || "any");
       setSentHistory(digest.sent_history || []);
 
       // Get email from auth if digest email is empty
@@ -280,6 +282,7 @@ export default function SettingsPage() {
           day_of_month: digestDayOfMonth,
           time_of_day: digestTimeOfDay,
           batches: digestBatches,
+          posted_date_filter: postedDateFilter,
         }),
       ]);
 
@@ -406,7 +409,7 @@ export default function SettingsPage() {
                     setSendResult("");
                     setSendError(false);
                     try {
-                      const res = await sendDigestNow(digestEmail, "now", digestBatches);
+                      const res = await sendDigestNow(digestEmail, "now", digestBatches, postedDateFilter);
                       setSendResult(res.message);
                       const isMsgError = res.message.toLowerCase().includes("fail") || 
                                          res.message.toLowerCase().includes("error") || 
@@ -586,6 +589,24 @@ export default function SettingsPage() {
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Scraper Job Age Filter</label>
+              <select
+                value={postedDateFilter}
+                onChange={(e) => setPostedDateFilter(e.target.value)}
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+              >
+                <option value="any">Any Time</option>
+                <option value="1d">Last 24 Hours</option>
+                <option value="1w">Last 1 Week</option>
+                <option value="1m">Last 1 Month</option>
+                <option value="3m">Last 3 Months</option>
+              </select>
+              <p className="mt-1 text-[10px] text-gray-500">
+                Only matches and emails jobs posted within this selected timeframe. Recommended to keep your pipeline completely fresh!
+              </p>
             </div>
 
             {digestFrequency === "weekly" && (

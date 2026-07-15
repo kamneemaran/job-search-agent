@@ -41,6 +41,7 @@ class SearchRequest(BaseModel):
     job_type: str = ""
     work_mode: str = ""
     sources: list[str] = []
+    posted_date_filter: str = "any"
 
 
 class SearchResponse(BaseModel):
@@ -71,6 +72,7 @@ class DigestSendRequest(BaseModel):
     schedule: str = "now"
     email: str = ""
     batches: list[str] = None
+    posted_date_filter: str = "any"
 
 
 class ResumeUploadResponse(BaseModel):
@@ -146,3 +148,4 @@ class DigestPreferences(BaseModel):
     time_of_day: Optional[str] = "09:00"
     sent_history: list[str] = []
     batches: list[str] = ["all"]
+    posted_date_filter: str = "any"

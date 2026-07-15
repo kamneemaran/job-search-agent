@@ -20,6 +20,39 @@ logger = logging.getLogger("jobpilot")
 # Add parent dir so we can import daily_scan
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+def is_within_date_filter(posted_at, date_filter: str) -> bool:
+    if not date_filter or date_filter == "any":
+        return True
+    if not posted_at:
+        return False
+    from datetime import datetime, date
+    now = datetime.now()
+    today = date.today()
+    days_cutoff = 365 * 10
+    if date_filter == "1d":
+        days_cutoff = 1
+    elif date_filter == "1w":
+        days_cutoff = 7
+    elif date_filter == "1m":
+        days_cutoff = 30
+    elif date_filter == "3m":
+        days_cutoff = 90
+    if isinstance(posted_at, str):
+        try:
+            if "T" in posted_at:
+                posted_dt = datetime.fromisoformat(posted_at.replace("Z", "+00:00"))
+                return (now - posted_dt.replace(tzinfo=None)).days <= days_cutoff
+            else:
+                posted_date = date.fromisoformat(posted_at)
+                return (today - posted_date).days <= days_cutoff
+        except Exception:
+            return False
+    if isinstance(posted_at, datetime):
+        return (now - posted_at.replace(tzinfo=None)).days <= days_cutoff
+    if isinstance(posted_at, date):
+        return (today - posted_at).days <= days_cutoff
+    return True
+
 from api.models import (
     ScoreRequest, ScoreResponse,
     SearchRequest, SearchResponse, JobResult,
@@ -439,6 +472,11 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                         return False
                     if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
                         return False
+
+            if req.posted_date_filter and req.posted_date_filter != "any":
+                if not is_within_date_filter(job.get("posted_at"), req.posted_date_filter):
+                    return False
+
             return True
 
         def _collect(jobs, src_name):

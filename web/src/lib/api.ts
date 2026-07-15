@@ -99,6 +99,7 @@ export async function searchJobs(params: {
   job_type?: string;
   work_mode?: string;
   sources?: string[];
+  posted_date_filter?: string;
 }): Promise<SearchResponse> {
   return apiFetch("/api/search", {
     method: "POST",
@@ -114,6 +115,7 @@ export async function searchJobs(params: {
       job_type: params.job_type || "",
       work_mode: params.work_mode || "",
       sources: params.sources || [],
+      posted_date_filter: params.posted_date_filter || "any",
     }),
   });
 }
@@ -210,6 +212,7 @@ export interface DigestPreferences {
   time_of_day: string;
   sent_history: string[];
   batches?: string[];
+  posted_date_filter?: string;
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -224,6 +227,7 @@ export async function updateDigestPreferences(params: {
   day_of_month: number;
   time_of_day: string;
   batches?: string[];
+  posted_date_filter?: string;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",
@@ -231,9 +235,9 @@ export async function updateDigestPreferences(params: {
   });
 }
 
-export async function sendDigestNow(email?: string, schedule: string = "now", batches?: string[]): Promise<{ message: string; sent: boolean; count: number }> {
+export async function sendDigestNow(email?: string, schedule: string = "now", batches?: string[], posted_date_filter?: string): Promise<{ message: string; sent: boolean; count: number }> {
   return apiFetch("/api/digest/send", {
     method: "POST",
-    body: JSON.stringify({ schedule, email: email || "", batches }),
+    body: JSON.stringify({ schedule, email: email || "", batches, posted_date_filter }),
   });
 }
