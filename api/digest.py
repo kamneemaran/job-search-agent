@@ -581,7 +581,10 @@ async def send_digest(
 
 
 @router.get("/scans")
-async def get_active_scans(authorization: Optional[str] = Header(None)):
+async def get_active_scans(
+    refresh_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
     if not authorization:
         raise HTTPException(401, "Authorization required")
         
@@ -607,6 +610,10 @@ async def get_active_scans(authorization: Optional[str] = Header(None)):
             repo_clean = repo_clean.strip("/")
             
         import requests
+        import time
+        
+        history_updated = False
+        new_history = []
         
         for item in curr_history:
             if isinstance(item, str) and item.startswith("RUNNING:"):
@@ -626,10 +633,32 @@ async def get_active_scans(authorization: Optional[str] = Header(None)):
                         run_id = part.replace("run_id:", "")
                     elif part.isdigit():
                         timestamp = int(part)
-                        
-                # Check live GitHub Action status
+                
+                # Check estimated duration (in seconds)
+                batch_durations = {
+                    "all": 10800, "india": 5400, "europe_companies": 3600,
+                    "europe_boards": 900, "middle_east": 900, "apac": 900,
+                    "us_canada": 900, "remote": 1800
+                }
+                est_duration = 0
+                if "all" in batches:
+                    est_duration = batch_durations["all"]
+                else:
+                    est_duration = sum(batch_durations.get(b, 900) for b in batches)
+                    
+                time_passed = int(time.time()) - timestamp
+                est_completed = time_passed > est_duration
+                
+                # We do a live check ONLY if:
+                # 1. This specific scan is being refreshed manually
+                # 2. Or if estimated complete time has passed (to automatically clean up finished runs)
+                # 3. Or refresh_id == "all"
+                should_check = (refresh_id == "all") or (refresh_id and (refresh_id == scan_id or refresh_id == run_id)) or est_completed
+                
                 live_status = status
-                if run_id and run_id != "pending" and gh_token and repo_clean:
+                is_finished = False
+                
+                if should_check and run_id and run_id != "pending" and gh_token and repo_clean:
                     try:
                         run_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{run_id}"
                         headers = {
@@ -645,20 +674,50 @@ async def get_active_scans(authorization: Optional[str] = Header(None)):
                             
                             if gh_status == "completed":
                                 live_status = gh_conclusion or "completed"
+                                is_finished = True
                             else:
                                 live_status = gh_status or "in_progress"
+                                # Update cached status in sent_history if it changed
+                                if live_status != status:
+                                    updated_token = f"RUNNING:{live_status}|batches:{','.join(batches)}|scan_id:{scan_id}|run_id:{run_id}|{timestamp}"
+                                    new_history.append(updated_token)
+                                    history_updated = True
+                                else:
+                                    new_history.append(item)
                         else:
                             logger.warning(f"[DIGEST-STATUS] GitHub returned status {resp.status_code} for run {run_id}")
+                            new_history.append(item)
                     except Exception as ge:
                         logger.error(f"[DIGEST-STATUS] Error checking GitHub status for run {run_id}: {ge}")
-                        
+                        new_history.append(item)
+                else:
+                    new_history.append(item)
+                
+                # If finished, we remove it from database (so we don't append it to new_history)
+                if is_finished:
+                    new_history.pop() # Remove the item we just appended
+                    history_updated = True
+                    logger.info(f"[DIGEST-STATUS] Detected finished cloud scan {run_id} ({live_status}). Cleaned from database.")
+                    continue
+                
                 active_scans.append({
                     "scan_id": scan_id,
                     "run_id": run_id,
                     "batches": batches,
                     "status": live_status,
-                    "timestamp": timestamp
+                    "timestamp": timestamp,
+                    "estimated_duration": est_duration
                 })
+            else:
+                new_history.append(item)
+                
+        if history_updated:
+            try:
+                sb.table("email_preferences").update({
+                    "sent_history": new_history,
+                }).eq("user_id", user_id).execute()
+            except Exception as se:
+                logger.error(f"[DIGEST-STATUS] Failed to update sent_history with cleaned finished runs: {se}")
                 
     return active_scans
 

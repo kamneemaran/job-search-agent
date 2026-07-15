@@ -49,22 +49,33 @@ export default function SettingsPage() {
     batches: string[];
     status: string;
     timestamp: number;
+    estimated_duration: number;
   }
 
   const [activeScans, setActiveScans] = useState<ActiveScan[]>([]);
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
   }, []);
 
-  const fetchActiveScans = async () => {
+  // Tick local countdown timer every second
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fetchActiveScans = async (refreshId?: string) => {
     try {
       const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
       const { data: session } = await supabase.auth.getSession();
       const token = session?.session?.access_token;
       if (!token) return;
 
-      const res = await fetch(`${API_BASE}/api/digest/scans`, {
+      const res = await fetch(`${API_BASE}/api/digest/scans${refreshId ? `?refresh_id=${refreshId}` : ""}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -81,7 +92,7 @@ export default function SettingsPage() {
     if (activeScans.length > 0) {
       interval = setInterval(() => {
         fetchActiveScans();
-      }, 10000); // Poll active scans every 10s
+      }, 120000); // Poll active scans every 2 minutes
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -434,10 +445,20 @@ export default function SettingsPage() {
                   ? "Queued"
                   : scan.status.replace("_", " ").charAt(0).toUpperCase() + scan.status.replace("_", " ").slice(1);
 
+                // Calculate countdown
+                const remainingSecs = Math.max(0, (scan.timestamp + scan.estimated_duration) - currentTime);
+                const formatCountdown = (secs: number) => {
+                  if (secs <= 0) return "Completing (verifying matches...)";
+                  const h = Math.floor(secs / 3600);
+                  const m = Math.floor((secs % 3600) / 60);
+                  const s = secs % 60;
+                  return `Est. remaining: ${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`;
+                };
+
                 return (
                   <div key={scan.scan_id} className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-4 shadow-lg shadow-indigo-500/5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex gap-3 items-start">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex gap-3 items-start w-full">
                         <span className={`text-xl shrink-0 ${scan.status === "in_progress" ? "animate-spin" : ""}`}>
                           {scan.status === "in_progress" ? "🌀" : "⏳"}
                         </span>
@@ -452,6 +473,9 @@ export default function SettingsPage() {
                             <span className="rounded bg-indigo-900/40 border border-indigo-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-300">
                               Batches: {batchTitle}
                             </span>
+                            <span className="rounded bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 animate-pulse">
+                              {formatCountdown(remainingSecs)}
+                            </span>
                           </div>
                           <p className="text-indigo-200 text-xs leading-relaxed">
                             Your <strong>{batchTitle}</strong> scan is started and running securely in the cloud. You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
@@ -461,12 +485,25 @@ export default function SettingsPage() {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleCancelScan(scan.scan_id)}
-                        className="self-end sm:self-center shrink-0 rounded bg-red-950/45 border border-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 transition-all cursor-pointer text-center"
-                      >
-                        Cancel Scan
-                      </button>
+                      <div className="flex md:flex-col gap-2 shrink-0 self-end md:self-center">
+                        <button
+                          onClick={async () => {
+                            setRefreshingId(scan.scan_id);
+                            await fetchActiveScans(scan.scan_id);
+                            setRefreshingId(null);
+                          }}
+                          disabled={refreshingId === scan.scan_id}
+                          className="rounded border border-indigo-500/20 bg-indigo-950/40 px-2.5 py-1 text-[11px] font-semibold text-indigo-300 hover:bg-indigo-900/30 disabled:opacity-50 transition-all cursor-pointer text-center whitespace-nowrap"
+                        >
+                          {refreshingId === scan.scan_id ? "Refreshing..." : "Refresh Status"}
+                        </button>
+                        <button
+                          onClick={() => handleCancelScan(scan.scan_id)}
+                          className="rounded bg-red-950/45 border border-red-500/20 px-2.5 py-1 text-[11px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 transition-all cursor-pointer text-center whitespace-nowrap"
+                        >
+                          Cancel Scan
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
