@@ -170,7 +170,7 @@ export default function SearchPage() {
           <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <label className="text-sm font-semibold text-gray-300 flex items-center gap-1.5">
-                <span>🎯</span> Scan Channels (Max 5 — Defaults to auto-targeted boards)
+                <span>🎯</span> Select Job Boards to Scan (Max 5 — Defaults to auto-targeted based on location)
               </label>
               <div className="flex flex-wrap items-center gap-1">
                 {Object.keys(CATEGORY_MAP).map((catName) => (
