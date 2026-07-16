@@ -69,7 +69,7 @@ def run_tests():
             "description": "Senior Backend Engineer at Polarsteps. Seniority: senior, Work mode: N/A, Functions: N/A. Visa sponsorship and relocation support available.",
             "location": "Netherlands",
             "min_score": 70,
-            "max_score": 74,
+            "max_score": 80,
             "expect_match": True,
             "label": "Kamnee - Generic Senior Backend (Thin JD with Visa/Relo)"
         },
@@ -79,9 +79,9 @@ def run_tests():
             "company": "DataSnipper",
             "description": "Senior Software Engineer, AI Agents at DataSnipper. Seniority: senior, Work mode: N/A, Functions: N/A. Visa sponsorship and relocation support available.",
             "location": "Netherlands",
-            "min_score": 50,
-            "max_score": 65,
-            "expect_match": False,
+            "min_score": 70,
+            "max_score": 80,
+            "expect_match": True,
             "label": "Kamnee - Senior AI Agents without specific backend stack (Punctuation comma-split check)"
         },
         {
@@ -90,9 +90,9 @@ def run_tests():
             "company": "GUTS Tickets",
             "description": "Backend Developer Customer Data Platform at GUTS Tickets. Seniority: N/A, Work mode: N/A, Functions: N/A. Visa sponsorship and relocation support available.",
             "location": "Netherlands",
-            "min_score": 60,
-            "max_score": 69,
-            "expect_match": False,
+            "min_score": 65,
+            "max_score": 75,
+            "expect_match": True,
             "label": "Kamnee - Mid-level Backend (no senior keyword, thin JD)"
         },
         {

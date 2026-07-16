@@ -1297,15 +1297,17 @@ def score_job(title, description, company, location=""):
     bonus_total = len(_BONUS_SKILL_RE)
 
     # Scale core and bonus denominators based on description length (prevents snippet penalties)
+    # Capped to a small, realistic maximum (2, 3, or 4) so that matching even 1-3 core skills
+    # contributes to a very good score, which is much more realistic for single-stack job postings!
     if len(description) < 500:
-        core_denom = max(int(core_total * 0.15), 2)
-        bonus_denom = max(int(bonus_total * 0.10), 2)
+        core_denom = min(max(int(core_total * 0.15), 1), 2)
+        bonus_denom = min(max(int(bonus_total * 0.10), 1), 2)
     elif len(description) < 1800:
-        core_denom = max(int(core_total * 0.35), 3)
-        bonus_denom = max(int(bonus_total * 0.20), 2)
+        core_denom = min(max(int(core_total * 0.35), 2), 3)
+        bonus_denom = min(max(int(bonus_total * 0.20), 1), 2)
     else:
-        core_denom = max(int(core_total * 0.60), 4)
-        bonus_denom = max(int(bonus_total * 0.40), 3)
+        core_denom = min(max(int(core_total * 0.60), 3), 4)
+        bonus_denom = min(max(int(bonus_total * 0.40), 2), 3)
 
     core_score = min(core_hits / core_denom, 1.0) * 35
     bonus_score = min(bonus_hits / bonus_denom, 1.0) * 15
@@ -1417,6 +1419,14 @@ def score_job(title, description, company, location=""):
         # +5 if JD mentions relocation support or company is known to relocate
         if has_relo_support or relocation_note:
             relo_bonus = 5
+
+    # --- Thin-JD title boost ---
+    # When a job title strongly matches the profile role (title_relevance >= 30)
+    # but the JD is ultra-short (scraper snippet with no real content), there are
+    # zero skills to match against. The job is very likely relevant based on title
+    # alone, so apply a minimum skill floor to avoid unfairly penalizing it.
+    if title_relevance >= 30 and len(description) < 200 and skill_score < 20:
+        skill_score = 20  # floor: title is a strong match, assume skill relevance
 
     score = round(skill_score + title_relevance + seniority_score + title_module_bonus + visa_bonus + relo_bonus)
     score = max(0, min(100, score))
