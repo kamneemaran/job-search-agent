@@ -55,6 +55,15 @@ def _get_browser():
         _local_playwright.pw = sync_playwright().start()
         _local_playwright.page_count = 0
         
+    if hasattr(_local_playwright, "browser") and _local_playwright.browser is not None:
+        try:
+            if not _local_playwright.browser.is_connected():
+                _local_playwright.browser = None
+                _local_playwright.page_count = 0
+        except Exception:
+            _local_playwright.browser = None
+            _local_playwright.page_count = 0
+        
     if not hasattr(_local_playwright, "browser") or _local_playwright.browser is None:
         _local_playwright.browser = _local_playwright.pw.chromium.launch(
             headless=True,
@@ -2230,9 +2239,12 @@ def _scrape_company_career_page(source):
             pass
         return result
 
+    context = None
     try:
         browser = _get_browser()
-        page = browser.new_page(ignore_https_errors=True)
+        context = _create_context(browser, source.get("url"))
+        page = context.new_page()
+        page.set_default_timeout(source.get("timeout", 20000))
         _with_stealth(page)
         pw_timeout = source.get("timeout", 20000)
         page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
@@ -2386,12 +2398,17 @@ def _scrape_company_career_page(source):
         pw_failed = True
         pw_error = str(e)
         print(f"  [pw] Playwright failed for {source['name']}: {e}")
+        if "browser has been closed" in pw_error.lower() or "Target page" in pw_error:
+            if hasattr(_local_playwright, "browser"):
+                _local_playwright.browser = None
+                _local_playwright.page_count = 0
     finally:
-        if page:
+        if context:
             try:
-                page.close()
+                context.close()
             except Exception:
                 pass
+        _check_reclaim_playwright()
 
     if pw_failed or not jobs:
         # Skip HTTP fallback if Playwright failed due to Cloudflare, download trigger, or connection reset
