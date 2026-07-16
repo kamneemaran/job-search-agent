@@ -327,14 +327,17 @@ def score_job(req: ScoreRequest, authorization: Optional[str] = Header(None)):
     with _profile_lock:
         orig_skills = ds.PROFILE.get("core_skills")
         orig_years = ds.PROFILE.get("years_experience")
+        orig_role = ds.PROFILE.get("current_role")
         try:
             ds.PROFILE["core_skills"] = profile["core_skills"]
             ds.PROFILE["years_experience"] = profile["years_experience"]
+            ds.PROFILE["current_role"] = profile.get("current_role", "")
             ds._rebuild_precompiled_patterns()
             score, note = ds.score_job(req.title, req.description, req.company, req.location)
         finally:
             ds.PROFILE["core_skills"] = orig_skills
             ds.PROFILE["years_experience"] = orig_years
+            ds.PROFILE["current_role"] = orig_role
             ds._rebuild_precompiled_patterns()
 
     return ScoreResponse(score=score, note=note, title=req.title, company=req.company)
@@ -375,8 +378,10 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     with _profile_lock:
         orig_skills = ds.PROFILE.get("core_skills")
         orig_years = ds.PROFILE.get("years_experience")
+        orig_role = ds.PROFILE.get("current_role")
         ds.PROFILE["core_skills"] = profile["core_skills"]
         ds.PROFILE["years_experience"] = profile["years_experience"]
+        ds.PROFILE["current_role"] = profile.get("current_role", "")
         ds._rebuild_precompiled_patterns()
 
     try:
@@ -689,4 +694,5 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         with _profile_lock:
             ds.PROFILE["core_skills"] = orig_skills
             ds.PROFILE["years_experience"] = orig_years
+            ds.PROFILE["current_role"] = orig_role
             ds._rebuild_precompiled_patterns()
