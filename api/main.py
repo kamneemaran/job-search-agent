@@ -374,7 +374,8 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         else:
             search_query = "software engineer"
 
-    # Swap profile once for the whole search
+    # Swap profile once for the whole search — hold the lock for the ENTIRE scoring duration
+    # to prevent concurrent requests from clobbering PROFILE mid-scoring (race condition fix)
     with _profile_lock:
         orig_skills = ds.PROFILE.get("core_skills")
         orig_years = ds.PROFILE.get("years_experience")
@@ -384,314 +385,326 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         ds.PROFILE["current_role"] = profile.get("current_role", "")
         ds._rebuild_precompiled_patterns()
 
-    try:
-        all_jobs = []
-        seen = set()
-        import time as _time
-        _deadline = _time.time() + 25
+        try:
+            all_jobs = []
+            seen = set()
+            import time as _time
+            _deadline = _time.time() + 25
 
-        # Filter keyword sets (mirrors mcp_server.py)
-        _CONTRACT_KW = ["contract", "freelance", "temporary", "temp ", "fixed-term", "consultant", "12-month", "6-month"]
-        _FULLTIME_KW = ["full-time", "full time", "permanent", "fte", "regular", "permanent employee"]
-        _REMOTE_KW = ["remote", "work from home", "wfh", "virtual", "100% remote", "fully remote"]
-        _ONSITE_KW = ["on-site", "on site", "in-office", "office based", "office-based"]
-        _HYBRID_KW = ["hybrid"]
+            # Filter keyword sets (mirrors mcp_server.py)
+            _CONTRACT_KW = ["contract", "freelance", "temporary", "temp ", "fixed-term", "consultant", "12-month", "6-month"]
+            _FULLTIME_KW = ["full-time", "full time", "permanent", "fte", "regular", "permanent employee"]
+            _REMOTE_KW = ["remote", "work from home", "wfh", "virtual", "100% remote", "fully remote"]
+            _ONSITE_KW = ["on-site", "on site", "in-office", "office based", "office-based"]
+            _HYBRID_KW = ["hybrid"]
 
-        locations_lower = [l.lower() for l in req.locations] if req.locations else None
-        skills_lower = [s.lower() for s in req.skills] if req.skills else None
+            locations_lower = [l.lower() for l in req.locations] if req.locations else None
+            skills_lower = [s.lower() for s in req.skills] if req.skills else None
+            # Pre-compute exclude_companies outside the loop (Bug 8 fix)
+            ec = [c.lower() for c in (req.exclude_companies or [])]
 
-        def _get_job_field(job, *names):
-            for n in names:
-                v = job.get(n)
-                if v is not None and v != "":
-                    return str(v).lower().replace(" ", "_").replace("-", "_")
-            return None
+            def _get_job_field(job, *names):
+                for n in names:
+                    v = job.get(n)
+                    if v is not None and v != "":
+                        return str(v).lower().replace(" ", "_").replace("-", "_")
+                return None
 
-        def _passes_filters(job):
-            """Check job against filters with dedicated field support (varies by ATS/board)."""
-            combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
-            loc = job.get("location", "").lower()
-            if locations_lower:
-                has_loc_match = False
-                for l in locations_lower:
-                    if l in loc:
-                        has_loc_match = True
-                        break
-                    if l in ("india", "ind"):
-                        _INDIA_CITIES = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
-                                         "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
-                                         "ahmedabad", "jaipur", "kochi", "coimbatore"]
-                        if any(c in loc for c in _INDIA_CITIES):
+            def _passes_filters(job):
+                """Check job against filters with dedicated field support (varies by ATS/board)."""
+                combined = (job.get("title", "") + " " + job.get("description", "") + " " + job.get("location", "")).lower()
+                loc = job.get("location", "").lower()
+                if locations_lower:
+                    has_loc_match = False
+                    for l in locations_lower:
+                        if l in loc:
                             has_loc_match = True
                             break
-                if not has_loc_match:
-                    print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
+                        if l in ("india", "ind"):
+                            _INDIA_CITIES = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                                             "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                                             "ahmedabad", "jaipur", "kochi", "coimbatore"]
+                            if any(c in loc for c in _INDIA_CITIES):
+                                has_loc_match = True
+                                break
+                    if not has_loc_match:
+                        print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
+                        return False
+                if skills_lower and not any(s in combined for s in skills_lower):
+                    print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - combined text doesn't match skills {req.skills}")
                     return False
-            if skills_lower and not any(s in combined for s in skills_lower):
-                print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - combined text doesn't match skills {req.skills}")
-                return False
 
-            if req.job_type:
-                emp = _get_job_field(job, "employment_type", "employmentType", "commitment", "job_type", "jobType", "type")
-                if emp:
-                    if req.job_type == "contract":
-                        if not any(t in emp for t in ("contract", "temporary", "temp", "freelance", "fixed_term")):
+                if req.job_type:
+                    emp = _get_job_field(job, "employment_type", "employmentType", "commitment", "job_type", "jobType", "type")
+                    if emp:
+                        if req.job_type == "contract":
+                            if not any(t in emp for t in ("contract", "temporary", "temp", "freelance", "fixed_term")):
+                                return False
+                        elif req.job_type == "full-time":
+                            if not any(t in emp for t in ("full_time", "fulltime", "permanent", "fte", "regular")):
+                                return False
+                    else:
+                        if req.job_type == "contract" and not any(kw in combined for kw in _CONTRACT_KW):
                             return False
-                    elif req.job_type == "full-time":
-                        if not any(t in emp for t in ("full_time", "fulltime", "permanent", "fte", "regular")):
+                        # Bug 7 fix: for full-time, only reject if it looks like a contract job
+                        # Most jobs are full-time by default and don't explicitly state it
+                        if req.job_type == "full-time" and any(kw in combined for kw in _CONTRACT_KW):
                             return False
-                else:
-                    if req.job_type == "contract" and not any(kw in combined for kw in _CONTRACT_KW):
-                        return False
-                    if req.job_type == "full-time" and not any(kw in combined for kw in _FULLTIME_KW):
-                        return False
 
-            if req.work_mode:
-                wfm = _get_job_field(job, "workplace_type", "workplaceType", "workplace", "locationType")
-                remote_bool = job.get("remote")
-                if wfm or remote_bool is not None:
-                    if req.work_mode == "remote":
-                        is_remote = bool(remote_bool is True)
-                        if wfm and any(t in wfm for t in ("remote", "fully_remote")):
-                            is_remote = True
-                        if not is_remote:
-                            return False
-                    elif req.work_mode == "on-site":
-                        if wfm and any(t in wfm for t in ("remote", "fully_remote", "hybrid")):
-                            return False
-                        if remote_bool is True:
-                            return False
-                    elif req.work_mode == "hybrid":
-                        is_hybrid = False
-                        if wfm:
-                            is_hybrid = "hybrid" in wfm
-                        if not is_hybrid:
+                if req.work_mode:
+                    wfm = _get_job_field(job, "workplace_type", "workplaceType", "workplace", "locationType")
+                    remote_bool = job.get("remote")
+                    if wfm or remote_bool is not None:
+                        if req.work_mode == "remote":
+                            is_remote = bool(remote_bool is True)
+                            if wfm and any(t in wfm for t in ("remote", "fully_remote")):
+                                is_remote = True
+                            if not is_remote:
+                                return False
+                        elif req.work_mode == "on-site":
+                            if wfm and any(t in wfm for t in ("remote", "fully_remote", "hybrid")):
+                                return False
                             if remote_bool is True:
                                 return False
-                            if not any(kw in combined for kw in _HYBRID_KW):
-                                return False
-                else:
-                    if req.work_mode == "remote" and not any(kw in combined for kw in _REMOTE_KW):
+                        elif req.work_mode == "hybrid":
+                            is_hybrid = False
+                            if wfm:
+                                is_hybrid = "hybrid" in wfm
+                            if not is_hybrid:
+                                if remote_bool is True:
+                                    return False
+                                if not any(kw in combined for kw in _HYBRID_KW):
+                                    return False
+                    else:
+                        if req.work_mode == "remote" and not any(kw in combined for kw in _REMOTE_KW):
+                            return False
+                        if req.work_mode == "on-site" and not any(kw in combined for kw in _ONSITE_KW):
+                            return False
+                        if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
+                            return False
+
+                if req.posted_date_filter and req.posted_date_filter != "any":
+                    if not is_within_date_filter(job.get("posted_at"), req.posted_date_filter):
                         return False
-                    if req.work_mode == "on-site" and not any(kw in combined for kw in _ONSITE_KW):
-                        return False
-                    if req.work_mode == "hybrid" and not any(kw in combined for kw in _HYBRID_KW):
-                        return False
 
-            if req.posted_date_filter and req.posted_date_filter != "any":
-                if not is_within_date_filter(job.get("posted_at"), req.posted_date_filter):
-                    return False
+                return True
 
-            return True
+            def _collect(jobs, src_name):
+                if _time.time() > _deadline:
+                    print(f"  [collect] WARNING: Search deadline exceeded during source '{src_name}'")
+                    return
+                print(f"  [collect] Processing {len(jobs)} jobs from {src_name}...")
+                for job in jobs:
+                    key = (job.get("title", "").lower(), job.get("company", "").lower())
+                    if key in seen:
+                        continue
+                    seen.add(key)
 
-        def _collect(jobs, src_name):
-            if _time.time() > _deadline:
-                print(f"  [collect] WARNING: Search deadline exceeded during source '{src_name}'")
-                return
-            print(f"  [collect] Processing {len(jobs)} jobs from {src_name}...")
-            for job in jobs:
-                key = (job.get("title", "").lower(), job.get("company", "").lower())
-                if key in seen:
-                    continue
-                seen.add(key)
+                    if not _passes_filters(job):
+                        continue
 
-                if not _passes_filters(job):
-                    continue
+                    desc = job.get("description", "")
+                    if not req.require_visa:
+                        desc += " visa sponsorship relocation support"
 
-                desc = job.get("description", "")
-                if not req.require_visa:
-                    desc += " visa sponsorship relocation support"
+                    score, note = ds.score_job(
+                        job.get("title", ""),
+                        desc,
+                        job.get("company", ""),
+                        job.get("location", effective_location),
+                    )
 
-                score, note = ds.score_job(
-                    job.get("title", ""),
-                    desc,
-                    job.get("company", ""),
-                    job.get("location", req.location),
-                )
+                    # Filter jobs without visa/relo signals when require_visa is on AND job is outside India AND is NOT remote
+                    if req.require_visa and score > 0 and "Visa sponsorship details not mentioned" in note:
+                        loc_lower_j = job.get("location", "").lower()
+                        text_lower = (job.get("title", "") + " " + job.get("description", "")).lower()
+                        is_remote_job = "remote" in loc_lower_j or "remote" in text_lower
+                        if not is_remote_job:
+                            _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                                              "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                                              "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
+                            is_outside_india = not any(m in loc_lower_j or m in text_lower for m in _INDIA_MARKERS)
+                            if is_outside_india:
+                                print(f"  [collect] SKIP Visa: '{job.get('title')}' @ '{job.get('company')}' - outside India & not remote & no visa info")
+                                continue
 
-                # Filter jobs without visa/relo signals when require_visa is on AND job is outside India AND is NOT remote
-                if req.require_visa and score > 0 and "Visa sponsorship details not mentioned" in note:
-                    loc_lower = job.get("location", "").lower()
-                    text_lower = (job.get("title", "") + " " + job.get("description", "")).lower()
-                    is_remote_job = "remote" in loc_lower or "remote" in text_lower
-                    if not is_remote_job:
-                        _INDIA_MARKERS = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
-                                          "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
-                                          "ahmedabad", "jaipur", "thiruvananthapuram", "kochi", "coimbatore"]
-                        is_outside_india = not any(m in loc_lower or m in text_lower for m in _INDIA_MARKERS)
-                        if is_outside_india:
-                            print(f"  [collect] SKIP Visa: '{job.get('title')}' @ '{job.get('company')}' - outside India & not remote & no visa info")
-                            continue
+                    print(f"  [collect] Scored: '{job.get('title')}' @ '{job.get('company')}' in '{job.get('location')}' -> score {score} (note: {note or 'N/A'})")
 
-                print(f"  [collect] Scored: '{job.get('title')}' @ '{job.get('company')}' in '{job.get('location')}' -> score {score} (note: {note or 'N/A'})")
+                    if score < req.threshold:
+                        print(f"  [collect] SKIP Threshold: '{job.get('title')}' @ '{job.get('company')}' - score {score} < {req.threshold}")
+                        continue
+                    if ec and job.get("company", "").lower() in ec:
+                        print(f"  [collect] SKIP Excluded: '{job.get('title')}' @ '{job.get('company')}'")
+                        continue
 
-                if score < req.threshold:
-                    print(f"  [collect] SKIP Threshold: '{job.get('title')}' @ '{job.get('company')}' - score {score} < {req.threshold}")
-                    continue
-                ec = [c.lower() for c in req.exclude_companies]
-                if ec and job.get("company", "").lower() in ec:
-                    print(f"  [collect] SKIP Excluded: '{job.get('title')}' @ '{job.get('company')}'")
-                    continue
+                    salary_info = ds.get_salary_info(
+                        job.get("company", ""), job.get("title", ""), job.get("description", "")
+                    )
+                    salary_str = ds._format_salary(salary_info) if salary_info else None
 
-                salary_info = ds.get_salary_info(
-                    job.get("company", ""), job.get("title", ""), job.get("description", "")
-                )
-                salary_str = ds._format_salary(salary_info) if salary_info else None
+                    posted_raw = job.get("posted_at") or ""
+                    if hasattr(posted_raw, 'strftime'):
+                        posted_str = posted_raw.strftime("%Y-%m-%d")
+                    else:
+                        posted_str = str(posted_raw)[:10]
+                    all_jobs.append(JobResult(
+                        title=job.get("title", ""),
+                        company=job.get("company", ""),
+                        location=job.get("location", ""),
+                        url=job.get("url", ""),
+                        score=score,
+                        note=note,
+                        salary=salary_str,
+                        description=job.get("description", "")[:500],
+                        source=src_name,
+                        posted_date=posted_str,
+                    ))
 
-                posted_raw = job.get("posted_at") or ""
-                if hasattr(posted_raw, 'strftime'):
-                    posted_str = posted_raw.strftime("%Y-%m-%d")
-                else:
-                    posted_str = str(posted_raw)[:10]
-                all_jobs.append(JobResult(
-                    title=job.get("title", ""),
-                    company=job.get("company", ""),
-                    location=job.get("location", ""),
-                    url=job.get("url", ""),
-                    score=score,
-                    note=note,
-                    salary=salary_str,
-                    description=job.get("description", "")[:500],
-                    source=src_name,
-                    posted_date=posted_str,
-                ))
+            # Derive effective location: prefer explicit locations[] filter over the default "Remote"
+            effective_location = req.location
+            if (not effective_location or effective_location == "Remote") and req.locations:
+                effective_location = req.locations[0]
+            # Bug 2 fix: default empty location to "Remote" so scrapers get a valid location
+            if not effective_location:
+                effective_location = "Remote"
+            loc_lower = effective_location.lower()
+            is_remote_search = req.work_mode == "remote"
+            if not is_remote_search:
+                is_remote_search = "remote" in loc_lower
+            is_india_search = any(city in loc_lower for city in ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon", "kolkata", "ahmedabad", "jaipur"])
+            # Bug 3 fix: removed "de" substring check which matches "hyderabad", "sweden", etc.
+            is_germany_search = "germany" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower or "frankfurt" in loc_lower
+            # Bug 4 fix: removed "nl" substring check which matches "online", "only", etc.
+            is_netherlands_search = "netherlands" in loc_lower or "holland" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
 
-        # Derive effective location: prefer explicit locations[] filter over the default "Remote"
-        effective_location = req.location
-        if (not effective_location or effective_location == "Remote") and req.locations:
-            effective_location = req.locations[0]
-        loc_lower = effective_location.lower()
-        is_remote_search = req.work_mode == "remote"
-        if not is_remote_search:
-            is_remote_search = "remote" in loc_lower
-        is_india_search = any(city in loc_lower for city in ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon", "kolkata", "ahmedabad", "jaipur"])
-        is_germany_search = "germany" in loc_lower or "de" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower
-        is_netherlands_search = "netherlands" in loc_lower or "nl" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
-
-        target_boards = []
-        BOARD_MAP = {
-            "LinkedIn": ds.search_linkedin,
-            "Indeed": ds.search_indeed,
-            "Naukri": ds.search_naukri,
-            "Instahyre": ds.search_instahyre,
-            "WeWorkRemotely": ds.search_weworkremotely,
-            "Remotive": ds.search_remotive,
-            "Arbeitnow": ds.search_arbeitnow,
-            "IamExpat": ds.search_iamexpat,
-            "TogetherAbroad": ds.search_togetherabroad,
-            "FoundIt": ds.search_foundit,
-            "TimesJobs": ds.search_timesjobs,
-            "Glassdoor": ds.search_glassdoor,
-        }
-
-        if req.sources:
-            target_boards = [
-                (name, BOARD_MAP[name])
-                for name in req.sources
-                if name in BOARD_MAP
-            ]
-        elif is_remote_search:
-            # Remote-specific high-signal job boards
-            target_boards = [
-                ("WeWorkRemotely", ds.search_weworkremotely),
-                ("Remotive", ds.search_remotive),
-                ("LinkedIn", ds.search_linkedin),
-            ]
-        elif is_india_search:
-            # India-specific job boards
-            target_boards = [
-                ("Naukri", ds.search_naukri),
-                ("Instahyre", ds.search_instahyre),
-                ("LinkedIn", ds.search_linkedin),
-                ("FoundIt", ds.search_foundit),
-                ("TimesJobs", ds.search_timesjobs),
-                ("Indeed", ds.search_indeed),
-            ]
-        elif is_germany_search:
-            # Germany-specific job boards
-            target_boards = [
-                ("Arbeitnow", ds.search_arbeitnow),
-                ("LinkedIn", ds.search_linkedin),
-                ("Indeed", ds.search_indeed),
-            ]
-        elif is_netherlands_search:
-            # Netherlands-specific job boards
-            target_boards = [
-                ("IamExpat", ds.search_iamexpat),
-                ("TogetherAbroad", ds.search_togetherabroad),
-                ("LinkedIn", ds.search_linkedin),
-                ("Indeed", ds.search_indeed),
-            ]
-        else:
-            # Default / Global / Europe boards
-            target_boards = [
-                ("LinkedIn", ds.search_linkedin),
-                ("Indeed", ds.search_indeed),
-                ("Glassdoor", ds.search_glassdoor),
-            ]
-
-        print(f"=== Starting On-Demand Search ===")
-        print(f"Query: {search_query}")
-        print(f"Location: {req.location}")
-        print(f"Locations filter: {req.locations}")
-        print(f"Threshold: {req.threshold}")
-        print(f"Profile: {profile['name']} | {profile['years_experience']} yrs exp | {len(profile['core_skills'])} skills")
-        print(f"Job boards targeted: {[name for name, _ in target_boards]}")
-
-        # 1. Search targeted job boards in parallel to prevent a slow scraper (like LinkedIn) from blocking others
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        scraper_timeout = 12.0
-
-        with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
-            future_to_board = {
-                executor.submit(fn, search_query, effective_location, max_results // 2): name
-                for name, fn in target_boards
+            target_boards = []
+            BOARD_MAP = {
+                "LinkedIn": ds.search_linkedin,
+                "Indeed": ds.search_indeed,
+                "Naukri": ds.search_naukri,
+                "Instahyre": ds.search_instahyre,
+                "WeWorkRemotely": ds.search_weworkremotely,
+                "Remotive": ds.search_remotive,
+                "Arbeitnow": ds.search_arbeitnow,
+                "IamExpat": ds.search_iamexpat,
+                "TogetherAbroad": ds.search_togetherabroad,
+                "FoundIt": ds.search_foundit,
+                "TimesJobs": ds.search_timesjobs,
+                "Glassdoor": ds.search_glassdoor,
             }
 
-            for future in as_completed(future_to_board):
-                name = future_to_board[future]
+            if req.sources:
+                target_boards = [
+                    (name, BOARD_MAP[name])
+                    for name in req.sources
+                    if name in BOARD_MAP
+                ]
+            elif is_remote_search:
+                # Remote-specific high-signal job boards
+                target_boards = [
+                    ("WeWorkRemotely", ds.search_weworkremotely),
+                    ("Remotive", ds.search_remotive),
+                    ("LinkedIn", ds.search_linkedin),
+                ]
+            elif is_india_search:
+                # India-specific job boards
+                target_boards = [
+                    ("Naukri", ds.search_naukri),
+                    ("Instahyre", ds.search_instahyre),
+                    ("LinkedIn", ds.search_linkedin),
+                    ("FoundIt", ds.search_foundit),
+                    ("TimesJobs", ds.search_timesjobs),
+                    ("Indeed", ds.search_indeed),
+                ]
+            elif is_germany_search:
+                # Germany-specific job boards
+                target_boards = [
+                    ("Arbeitnow", ds.search_arbeitnow),
+                    ("LinkedIn", ds.search_linkedin),
+                    ("Indeed", ds.search_indeed),
+                ]
+            elif is_netherlands_search:
+                # Netherlands-specific job boards
+                target_boards = [
+                    ("IamExpat", ds.search_iamexpat),
+                    ("TogetherAbroad", ds.search_togetherabroad),
+                    ("LinkedIn", ds.search_linkedin),
+                    ("Indeed", ds.search_indeed),
+                ]
+            else:
+                # Default / Global / Europe boards
+                target_boards = [
+                    ("LinkedIn", ds.search_linkedin),
+                    ("Indeed", ds.search_indeed),
+                    ("Glassdoor", ds.search_glassdoor),
+                ]
+
+            print(f"=== Starting On-Demand Search ===")
+            print(f"Query: {search_query}")
+            print(f"Location: {req.location}")
+            print(f"Effective location: {effective_location}")
+            print(f"Locations filter: {req.locations}")
+            print(f"Threshold: {req.threshold}")
+            print(f"Profile: {profile['name']} | {profile['years_experience']} yrs exp | {len(profile['core_skills'])} skills")
+            print(f"Job boards targeted: {[name for name, _ in target_boards]}")
+
+            # Bug 5 fix: fetch more jobs from scrapers to ensure enough pass filters
+            # Use at least 25 per board regardless of max_results display limit
+            fetch_per_board = max(max_results * 2, 25)
+
+            # 1. Search targeted job boards in parallel to prevent a slow scraper (like LinkedIn) from blocking others
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            scraper_timeout = 12.0
+
+            with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
+                future_to_board = {
+                    executor.submit(fn, search_query, effective_location, fetch_per_board): name
+                    for name, fn in target_boards
+                }
+
+                for future in as_completed(future_to_board):
+                    name = future_to_board[future]
+                    try:
+                        # Collect results concurrently (caps wait time at 12s per board)
+                        jobs = future.result(timeout=scraper_timeout)
+                        print(f"  [scraper] Board '{name}' completed, returned {len(jobs) if jobs else 0} raw results")
+                        if jobs:
+                            _collect(jobs, name)
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        print(f"Scraper {name} failed or timed out: {e}")
+
+            # 2. Search remote company ATS (skip heavy Playwright-based scrapers to ensure sub-5s response times)
+            max_companies = get_max_companies(authorization)
+            non_pw_sources = [s for s in ds.REMOTE_JOB_SOURCES if not s.get("playwright")]
+            for src in non_pw_sources[:max_companies]:
+                if _time.time() > _deadline:
+                    break
                 try:
-                    # Collect results concurrently (caps wait time at 12s per board)
-                    jobs = future.result(timeout=scraper_timeout)
-                    print(f"  [scraper] Board '{name}' completed, returned {len(jobs) if jobs else 0} raw results")
-                    if jobs:
-                        _collect(jobs, name)
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    print(f"Scraper {name} failed or timed out: {e}")
+                    _collect(ds.fetch_jobs_from_source(src), src.get("name", ""))
+                except Exception:
+                    continue
 
-        # 2. Search remote company ATS (skip heavy Playwright-based scrapers to ensure sub-5s response times)
-        max_companies = get_max_companies(authorization)
-        non_pw_sources = [s for s in ds.REMOTE_JOB_SOURCES if not s.get("playwright")]
-        for src in non_pw_sources[:max_companies]:
-            if _time.time() > _deadline:
-                break
-            try:
-                _collect(ds.fetch_jobs_from_source(src), src.get("name", ""))
-            except Exception:
-                continue
+            all_jobs.sort(key=lambda j: j.score, reverse=True)
 
-        all_jobs.sort(key=lambda j: j.score, reverse=True)
+            increment_search_count(authorization)
 
-        increment_search_count(authorization)
+            if authorization:
+                try:
+                    sb = get_user_client(authorization)
+                    user = sb.auth.get_user().user
+                    sb.table("searches").insert({
+                        "user_id": user.id,
+                        "query": search_query,
+                        "location": req.location,
+                        "results_count": len(all_jobs),
+                    }).execute()
+                except Exception:
+                    pass
 
-        if authorization:
-            try:
-                sb = get_user_client(authorization)
-                user = sb.auth.get_user().user
-                sb.table("searches").insert({
-                    "user_id": user.id,
-                    "query": search_query,
-                    "location": req.location,
-                    "results_count": len(all_jobs),
-                }).execute()
-            except Exception:
-                pass
-
-        return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=search_query)
-    finally:
-        with _profile_lock:
+            return SearchResponse(jobs=all_jobs[:max_results], total=len(all_jobs), query=search_query)
+        finally:
             ds.PROFILE["core_skills"] = orig_skills
             ds.PROFILE["years_experience"] = orig_years
             ds.PROFILE["current_role"] = orig_role
