@@ -24,7 +24,7 @@ def is_within_date_filter(posted_at, date_filter: str) -> bool:
     if not date_filter or date_filter == "any":
         return True
     if not posted_at:
-        return False
+        return True  # No date info available — allow through (benefit of the doubt)
     from datetime import datetime, date
     now = datetime.now()
     today = date.today()

@@ -29,8 +29,8 @@ def is_within_date_filter(posted_at, date_filter: str) -> bool:
         return True
         
     if not posted_at:
-        # Strict filtering skips jobs without valid dates
-        return False
+        # No date info available — allow through (benefit of the doubt)
+        return True
         
     from datetime import datetime, date
     now = datetime.now()
