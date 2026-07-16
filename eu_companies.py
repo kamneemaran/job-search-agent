@@ -809,17 +809,15 @@ EU_JOB_SOURCES = [
     {"name": "Antal Poland", "url": "https://en.antal.pl/candidates", "region": "PL", "type": "company", "playwright": True},
 
     # Netherlands staffing
-    {"name": "Tempo-Team Netherlands", "url": "https://www.tempo-team.nl/vacatures/ict", "region": "NL", "type": "company", "playwright": True},
-    {"name": "OTTO Work Force Netherlands", "url": "https://www.ottoworkforce.eu/vacatures", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Tempo-Team Netherlands", "url": "https://www.tempo-team.nl/vacatures/ict?vakgebied=IT&zoekterm=", "region": "NL", "type": "company", "playwright": True},
 
     # Germany staffing
-    {"name": "DEKRA Arbeit Germany", "url": "https://www.dekra-arbeit.de/stellenangebote/", "region": "DE", "type": "company", "playwright": True},
-    {"name": "Persona Service Germany", "url": "https://www.persona.de/jobangebote.html", "region": "DE", "type": "company", "playwright": True},
-    {"name": "FERCHAU Germany", "url": "https://www.ferchau.com/de/de/jobs", "region": "DE", "type": "company", "playwright": True},
+    {"name": "DEKRA Arbeit Germany", "url": "https://www.dekra-arbeit.de/stellenmarkt?search=&page=1&source=/stellenmarkt", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Persona Service Germany", "url": "https://www.persona.de/jobs?category=S3+Professional&favorites_view=false&page=1&page_size=25&search_radius=25&sort_by=newest", "region": "DE", "type": "company", "playwright": True},
+    {"name": "FERCHAU Germany", "url": "https://touch.ferchau.com/de/de?rangeAndFaculty%5B0%5D=12004&sortingType=actuality&sortingDirection=DESC", "region": "DE", "type": "company", "playwright": True},
 
     # Poland staffing
-    {"name": "Gi Group Poland", "url": "https://www.gigroup.com.pl/oferty-pracy/", "region": "PL", "type": "company", "playwright": True},
-    {"name": "OTTO Work Force Polska", "url": "https://www.ottoworkforce.pl/oferty-pracy", "region": "PL", "type": "company", "playwright": True},
+    {"name": "Gi Group Poland", "url": "https://pl.gigroup.com/oferty-pracy/informatyka-si/", "region": "PL", "type": "company", "playwright": True},
 
     # Luxembourg staffing
     {"name": "Axia Interim Luxembourg", "url": "https://www.axia-interim.lu/job-offers", "region": "LU", "type": "company", "playwright": True},
