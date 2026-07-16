@@ -29,6 +29,8 @@ GLOBAL_JOB_SOURCES = [
     {"name": "xad-technologies", "url": "https://www.careers-page.com/xad-technologies#openings", "region": "Global", "type": "company", "playwright": True},
     {"name": "Veriff", "url": "https://www.veriff.com/careers/open-positions", "region": "Global", "type": "company", "playwright": True},
     {"name": "Multiverse Computing", "url": "https://multiversecomputing.teamtailor.com/jobs", "region": "Global", "type": "company", "ats": "teamtailor"},
+    {"name": "Motorola Solutions", "url": "https://motorolasolutions.wd5.myworkdayjobs.com/Careers?jobFamilyGroup=c3fc17b768e842e39b7192f0bf4cb0f1&jobFamilyGroup=2161bef685534428b91fad96fc9069b4", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Luxoft", "url": "https://career.luxoft.com/jobs?keyword=&hot=yes", "region": "Global", "type": "company", "playwright": True},
 
     # US tech companies with EU engineering hubs
     {"name": "Google", "url": "https://www.google.com/about/careers/applications/jobs/results/?q=(%22Software%20Engineer%22%20OR%20%22Software%20Developer%22%20OR%20%22Full%20Stack%20Engineer%22)%20AND%20(%22Distributed%20Systems%22%20OR%20%22Microservices%22%20OR%20%22API%20Design%22%20OR%20%22Cloud%20Architecture%22%20OR%20%22Frontend%22%20OR%20%22Backend%22%20OR%20%22DevOps%22%20OR%20%22CI%2FCD%22%20OR%20%22Scalability%22%20OR%20%22System%20Design%22)&employment_type=FULL_TIME&e=72477625&company=DeepMind&company=YouTube&company=Google&location=United%20States&location=India&location=Poland&location=Singapore&target_level=ADVANCED&target_level=MID", "region": "Global", "type": "company", "playwright": True},
