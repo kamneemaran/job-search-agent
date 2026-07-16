@@ -14,7 +14,7 @@ export default function SearchPage() {
   const [requireVisa, setRequireVisa] = useState(false);
   const [jobType, setJobType] = useState("");
   const [workMode, setWorkMode] = useState("");
-  const [skills, setSkills] = useState("");
+
   const [excludeCompanies, setExcludeCompanies] = useState("");
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("Remote");
@@ -79,7 +79,7 @@ export default function SearchPage() {
         job_type: jobType,
         work_mode: workMode,
         locations: locList,
-        skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+
         exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
         sources: selectedSources,
         posted_date_filter: postedDateFilter,
@@ -296,16 +296,6 @@ export default function SearchPage() {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Remote, India, Berlin"
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Skills filter (comma-separated)</label>
-                <input
-                  type="text"
-                  value={skills}
-                  onChange={(e) => setSkills(e.target.value)}
-                  placeholder="e.g. rust, kubernetes"
                   className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
