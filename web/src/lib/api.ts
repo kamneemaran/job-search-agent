@@ -107,7 +107,7 @@ export async function searchJobs(params: {
     method: "POST",
     body: JSON.stringify({
       query: params.query,
-      location: params.location || "Remote",
+      location: params.location !== undefined ? params.location : "Remote",
       threshold: params.threshold || 65,
       max_results: params.max_results || 10,
       require_visa: params.require_visa ?? false,
@@ -134,7 +134,7 @@ export async function scoreJob(params: {
       title: params.title,
       description: params.description,
       company: params.company,
-      location: params.location || "Remote",
+      location: params.location !== undefined ? params.location : "Remote",
     }),
   });
 }

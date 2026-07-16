@@ -24,6 +24,47 @@ from supabase import create_client
 class ScanCancelledException(Exception):
     pass
 
+def is_within_date_filter(posted_at, date_filter: str) -> bool:
+    if not date_filter or date_filter == "any":
+        return True
+        
+    if not posted_at:
+        # Strict filtering skips jobs without valid dates
+        return False
+        
+    from datetime import datetime, date
+    now = datetime.now()
+    today = date.today()
+    
+    days_cutoff = 365 * 10
+    if date_filter == "1d":
+        days_cutoff = 1
+    elif date_filter == "1w":
+        days_cutoff = 7
+    elif date_filter == "1m":
+        days_cutoff = 30
+    elif date_filter == "3m":
+        days_cutoff = 90
+        
+    if isinstance(posted_at, str):
+        try:
+            if "T" in posted_at:
+                posted_dt = datetime.fromisoformat(posted_at.replace("Z", "+00:00"))
+                return (now - posted_dt.replace(tzinfo=None)).days <= days_cutoff
+            else:
+                posted_date = date.fromisoformat(posted_at)
+                return (today - posted_date).days <= days_cutoff
+        except Exception:
+            return False
+            
+    if isinstance(posted_at, datetime):
+        return (now - posted_at.replace(tzinfo=None)).days <= days_cutoff
+        
+    if isinstance(posted_at, date):
+        return (today - posted_at).days <= days_cutoff
+        
+    return True
+
 logger = logging.getLogger("digest_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -68,190 +109,226 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
     """Run job search using user's profile and return scored results."""
     import daily_scan as ds
 
+    # Globally swap ds.PROFILE with the target user's custom settings 
+    # BEFORE compiling any sources or executing board scrapers,
+    # so that all queries and filters are generated specifically for this user!
+    with _profile_lock:
+        orig_skills = ds.PROFILE.get("core_skills")
+        orig_years = ds.PROFILE.get("years_experience")
+        orig_role = ds.PROFILE.get("current_role")
+        
+        ds.PROFILE["core_skills"] = profile["core_skills"]
+        ds.PROFILE["years_experience"] = profile["years_experience"]
+        ds.PROFILE["current_role"] = profile.get("current_role", "")
+        
+        try:
+            ds._rebuild_precompiled_patterns()
+        except Exception:
+            pass
+
     try:
-        ds._rebuild_precompiled_patterns()
-    except Exception:
-        pass
-
-    batches_list = profile.get("batches") or ["all"]
-    if isinstance(batches_list, str):
-        try:
-            import json
-            batches_list = json.loads(batches_list)
-        except Exception:
-            batches_list = ["all"]
-    if not batches_list:
-        batches_list = ["all"]
-
-    all_sources = []
-    if "all" in batches_list:
-        all_sources = (
-            ds.JOB_SOURCES
-            + ds.EU_JOB_SOURCES
-            + ds.GLOBAL_JOB_SOURCES
-            + ds.APAC_JOB_SOURCES
-            + ds.US_CANADA_JOB_SOURCES
-            + ds.MIDDLE_EAST_JOB_SOURCES
-            + ds.REMOTE_JOB_SOURCES
-        )
-    else:
-        if "india" in batches_list:
-            all_sources += ds.JOB_SOURCES
-        if "europe_companies" in batches_list:
-            all_sources += ds.EU_JOB_SOURCES
-        if "middle_east" in batches_list:
-            all_sources += ds.MIDDLE_EAST_JOB_SOURCES
-        if "apac" in batches_list:
-            all_sources += ds.APAC_JOB_SOURCES
-        if "us_canada" in batches_list:
-            all_sources += ds.US_CANADA_JOB_SOURCES
-        if "remote" in batches_list:
-            all_sources += ds.REMOTE_JOB_SOURCES
-
-    results = []
-    seen = set()
-
-    for idx, source in enumerate(all_sources, 1):
-        if sb and user_id and scan_id and idx % 2 == 0:  # Check database every 2 sources
+        batches_list = profile.get("batches") or ["all"]
+        if isinstance(batches_list, str):
             try:
-                pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
-                if pref_result and pref_result.data:
-                    curr_history = pref_result.data.get("sent_history") or []
-                    has_running = any(isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x for x in curr_history)
-                    if not has_running:
-                        logger.info(f"Target scan_id {scan_id} was cancelled by user. Terminating search.")
-                        raise ScanCancelledException("Scan was cancelled by user")
-            except ScanCancelledException:
-                raise
-            except Exception as e:
-                logger.warning(f"Error checking cancel status in runner loop: {e}")
+                import json
+                batches_list = json.loads(batches_list)
+            except Exception:
+                batches_list = ["all"]
+        if not batches_list:
+            batches_list = ["all"]
 
-        try:
-            jobs = ds.fetch_jobs_from_source(source)
-        except Exception:
-            continue
+        all_sources = []
+        if "all" in batches_list:
+            all_sources = (
+                ds.JOB_SOURCES
+                + ds.EU_JOB_SOURCES
+                + ds.GLOBAL_JOB_SOURCES
+                + ds.APAC_JOB_SOURCES
+                + ds.US_CANADA_JOB_SOURCES
+                + ds.MIDDLE_EAST_JOB_SOURCES
+                + ds.REMOTE_JOB_SOURCES
+            )
+        else:
+            if "india" in batches_list:
+                all_sources += ds.JOB_SOURCES
+            if "europe_companies" in batches_list:
+                all_sources += ds.EU_JOB_SOURCES
+            if "middle_east" in batches_list:
+                all_sources += ds.MIDDLE_EAST_JOB_SOURCES
+            if "apac" in batches_list:
+                all_sources += ds.APAC_JOB_SOURCES
+            if "us_canada" in batches_list:
+                all_sources += ds.US_CANADA_JOB_SOURCES
+            if "remote" in batches_list:
+                all_sources += ds.REMOTE_JOB_SOURCES
 
-        for job in jobs:
-            key = (job.get("title", "").lower(), job.get("company", "").lower())
-            if key in seen:
-                continue
-            seen.add(key)
+        results = []
+        seen = set()
 
-            with _profile_lock:
-                orig_skills = ds.PROFILE.get("core_skills")
-                orig_years = ds.PROFILE.get("years_experience")
+        for idx, source in enumerate(all_sources, 1):
+            if sb and user_id and scan_id and idx % 2 == 0:  # Check database every 2 sources
                 try:
-                    ds.PROFILE["core_skills"] = profile["core_skills"]
-                    ds.PROFILE["years_experience"] = profile["years_experience"]
-                    score, note = ds.score_job(
+                    pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+                    if pref_result and pref_result.data:
+                        curr_history = pref_result.data.get("sent_history") or []
+                        has_running = any(isinstance(x, str) and x.startswith("RUNNING:") and f"scan_id:{scan_id}" in x for x in curr_history)
+                        if not has_running:
+                            logger.info(f"Target scan_id {scan_id} was cancelled by user. Terminating search.")
+                            raise ScanCancelledException("Scan was cancelled by user")
+                except ScanCancelledException:
+                    raise
+                except Exception as e:
+                    logger.warning(f"Error checking cancel status in runner loop: {e}")
+
+            try:
+                jobs = ds.fetch_jobs_from_source(source)
+            except Exception:
+                continue
+
+            for job in jobs:
+                key = (job.get("title", "").lower(), job.get("company", "").lower())
+                if key in seen:
+                    continue
+                    
+                # Apply posted date filter
+                date_filter = profile.get("posted_date_filter", "any")
+                if not is_within_date_filter(job.get("posted_at"), date_filter):
+                    continue
+                    
+                seen.add(key)
+
+                with _profile_lock:
+                    orig_skills = ds.PROFILE.get("core_skills")
+                    orig_years = ds.PROFILE.get("years_experience")
+                    try:
+                        ds.PROFILE["core_skills"] = profile["core_skills"]
+                        ds.PROFILE["years_experience"] = profile["years_experience"]
+                        score, note = ds.score_job(
+                            job.get("title", ""),
+                            job.get("description", ""),
+                            job.get("company", ""),
+                            job.get("location", ""),
+                        )
+                    finally:
+                        ds.PROFILE["core_skills"] = orig_skills
+                        ds.PROFILE["years_experience"] = orig_years
+
+                if score >= SCORE_THRESHOLD:
+                    salary_info = ds.get_salary_info(
+                        job.get("company", ""),
                         job.get("title", ""),
                         job.get("description", ""),
-                        job.get("company", ""),
-                        job.get("location", ""),
                     )
-                finally:
-                    ds.PROFILE["core_skills"] = orig_skills
-                    ds.PROFILE["years_experience"] = orig_years
+                    salary_str = ds._format_salary(salary_info) if salary_info else ""
 
-            if score >= SCORE_THRESHOLD:
-                salary_info = ds.get_salary_info(
-                    job.get("company", ""),
-                    job.get("title", ""),
-                    job.get("description", ""),
-                )
-                salary_str = ds._format_salary(salary_info) if salary_info else ""
+                    results.append({
+                        "title": job.get("title", ""),
+                        "company": job.get("company", ""),
+                        "score": score,
+                        "location": job.get("location", ""),
+                        "salary": salary_str,
+                        "url": job.get("url", ""),
+                    })
 
-                results.append({
-                    "title": job.get("title", ""),
-                    "company": job.get("company", ""),
-                    "score": score,
-                    "location": job.get("location", ""),
-                    "salary": salary_str,
-                    "url": job.get("url", ""),
-                })
-
-    # 2. Run Europe Job Boards directly if "europe_boards" is requested!
-    if "europe_boards" in batches_list:
-        logger.info("[DIGEST-BG-WORKER] Triggering comprehensive Europe Job Boards scrapers across Portugal, Spain, Germany, Netherlands, Luxembourg...")
-        
-        # Build queries based on core skills
-        queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
-        if not queries:
-            queries = ["Python"]
+        # 2. Run Europe Job Boards directly if "europe_boards" is requested!
+        if "europe_boards" in batches_list:
+            logger.info("[DIGEST-BG-WORKER] Triggering comprehensive Europe Job Boards scrapers across Portugal, Spain, Germany, Netherlands, Luxembourg...")
             
-        board_mapping = [
-            ("NetEmpregos", ds.search_netempregos, ["Portugal"]),
-            ("SAPOEmprego", ds.search_sapoemprego, ["Portugal"]),
-            ("Infoempleo", ds.search_infoempleo, ["Spain"]),
-            ("Bundesagentur", ds.search_bundesagentur, ["Germany"]),
-            ("IamExpat", ds.search_iamexpat, ["Netherlands"]),
-            ("WorkInLux", ds.search_workinlux, ["Luxembourg"]),
-            ("IndeedNL", ds.search_indeed_nl, ["Netherlands"]),
-            ("WelcomeToNL", ds.search_welcome_to_nl, ["Netherlands"]),
-            ("TogetherAbroad", ds.search_togetherabroad, ["Netherlands"]),
-            ("StepStone", ds.search_stepstone, ["Germany"]),
-            ("Adzuna", ds.search_adzuna, ["Germany"]),
-            ("Freelancermap", ds.search_freelancermap, ["Germany"]),
-            ("Intermediair", ds.search_intermediair, ["Netherlands"]),
-            ("NationaleVacaturebank", ds.search_nationalevacaturebank, ["Netherlands"]),
-            ("Arbeitnow", ds.search_arbeitnow, ["Remote"])
-        ]
-        
-        for board_name, board_fn, locations in board_mapping:
-            logger.info(f"[DIGEST-BG-WORKER] Scraping Europe Board: '{board_name}'...")
-            for query in queries:
-                for loc in locations:
-                    try:
-                        logger.info(f"[DIGEST-BG-WORKER] Calling {board_name} for query='{query}' @ location='{loc}'...")
-                        board_jobs = board_fn(query, location=loc)
-                        logger.info(f"[DIGEST-BG-WORKER] {board_name} returned {len(board_jobs) if board_jobs else 0} jobs.")
-                        if not board_jobs:
-                            continue
-                            
-                        for job in board_jobs:
-                            key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
-                            if key in seen:
+            # Build queries based on core skills
+            queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
+            if not queries:
+                queries = ["Python"]
+                
+            board_mapping = [
+                ("NetEmpregos", ds.search_netempregos, ["Portugal"]),
+                ("SAPOEmprego", ds.search_sapoemprego, ["Portugal"]),
+                ("Infoempleo", ds.search_infoempleo, ["Spain"]),
+                ("Bundesagentur", ds.search_bundesagentur, ["Germany"]),
+                ("IamExpat", ds.search_iamexpat, ["Netherlands"]),
+                ("WorkInLux", ds.search_workinlux, ["Luxembourg"]),
+                ("IndeedNL", ds.search_indeed_nl, ["Netherlands"]),
+                ("WelcomeToNL", ds.search_welcome_to_nl, ["Netherlands"]),
+                ("TogetherAbroad", ds.search_togetherabroad, ["Netherlands"]),
+                ("StepStone", ds.search_stepstone, ["Germany"]),
+                ("Adzuna", ds.search_adzuna, ["Germany"]),
+                ("Freelancermap", ds.search_freelancermap, ["Germany"]),
+                ("Intermediair", ds.search_intermediair, ["Netherlands"]),
+                ("NationaleVacaturebank", ds.search_nationalevacaturebank, ["Netherlands"]),
+                ("Arbeitnow", ds.search_arbeitnow, ["Remote"])
+            ]
+            
+            for board_name, board_fn, locations in board_mapping:
+                logger.info(f"[DIGEST-BG-WORKER] Scraping Europe Board: '{board_name}'...")
+                for query in queries:
+                    for loc in locations:
+                        try:
+                            logger.info(f"[DIGEST-BG-WORKER] Calling {board_name} for query='{query}' @ location='{loc}'...")
+                            board_jobs = board_fn(query, location=loc)
+                            logger.info(f"[DIGEST-BG-WORKER] {board_name} returned {len(board_jobs) if board_jobs else 0} jobs.")
+                            if not board_jobs:
                                 continue
-                            seen.add(key)
-                            
-                            # Score job
-                            with _profile_lock:
-                                orig_skills = ds.PROFILE.get("core_skills")
-                                orig_years = ds.PROFILE.get("years_experience")
-                                try:
-                                    ds.PROFILE["core_skills"] = profile["core_skills"]
-                                    ds.PROFILE["years_experience"] = profile["years_experience"]
-                                    score, note = ds.score_job(
+                                
+                            for job in board_jobs:
+                                key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
+                                if key in seen:
+                                    continue
+                                    
+                                # Apply posted date filter
+                                date_filter = profile.get("posted_date_filter", "any")
+                                if not is_within_date_filter(job.get("posted_at"), date_filter):
+                                    continue
+                                    
+                                seen.add(key)
+                                
+                                # Score job
+                                with _profile_lock:
+                                    orig_skills = ds.PROFILE.get("core_skills")
+                                    orig_years = ds.PROFILE.get("years_experience")
+                                    try:
+                                        ds.PROFILE["core_skills"] = profile["core_skills"]
+                                        ds.PROFILE["years_experience"] = profile["years_experience"]
+                                        score, note = ds.score_job(
+                                            job.get("title", ""),
+                                            job.get("description", ""),
+                                            job.get("company", ""),
+                                            job.get("location", ""),
+                                        )
+                                    finally:
+                                        ds.PROFILE["core_skills"] = orig_skills
+                                        ds.PROFILE["years_experience"] = orig_years
+                                        
+                                if score >= SCORE_THRESHOLD:
+                                    logger.info(f"[DIGEST-BG-WORKER] Match verified on Board {board_name}! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
+                                    salary_info = ds.get_salary_info(
+                                        job.get("company", ""),
                                         job.get("title", ""),
                                         job.get("description", ""),
-                                        job.get("company", ""),
-                                        job.get("location", ""),
                                     )
-                                finally:
-                                    ds.PROFILE["core_skills"] = orig_skills
-                                    ds.PROFILE["years_experience"] = orig_years
-                                    
-                            if score >= SCORE_THRESHOLD:
-                                logger.info(f"[DIGEST-BG-WORKER] Match verified on Board {board_name}! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
-                                salary_info = ds.get_salary_info(
-                                    job.get("company", ""),
-                                    job.get("title", ""),
-                                    job.get("description", ""),
-                                )
-                                salary_str = ds._format_salary(salary_info) if salary_info else ""
-                                results.append({
-                                    "title": job.get("title", ""),
-                                    "company": job.get("company", ""),
-                                    "score": score,
-                                    "location": job.get("location", ""),
-                                    "salary": salary_str,
-                                    "url": job.get("url", ""),
-                                })
-                    except Exception as be:
-                        logger.error(f"[DIGEST-BG-WORKER] Board {board_name} failed for query='{query}': {be}")
+                                    salary_str = ds._format_salary(salary_info) if salary_info else ""
+                                    results.append({
+                                        "title": job.get("title", ""),
+                                        "company": job.get("company", ""),
+                                        "score": score,
+                                        "location": job.get("location", ""),
+                                        "salary": salary_str,
+                                        "url": job.get("url", ""),
+                                    })
+                        except Exception as be:
+                            logger.error(f"[DIGEST-BG-WORKER] Board {board_name} failed for query='{query}': {be}")
 
-    results.sort(key=lambda x: x["score"], reverse=True)
-    return results
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results
+
+    finally:
+        # 100% Guaranteed profile restoration to prevent leakage or cross-user collisions
+        with _profile_lock:
+            ds.PROFILE["core_skills"] = orig_skills
+            ds.PROFILE["years_experience"] = orig_years
+            ds.PROFILE["current_role"] = orig_role
+            try:
+                ds._rebuild_precompiled_patterns()
+            except Exception:
+                pass
 
 
 def build_email_html(jobs: list[dict]) -> str:
@@ -496,7 +573,8 @@ def run_one_user(user_id: str, scan_id: str = None):
         return
 
     batches_list = ["all"]
-    # Look for the target RUNNING token in sent_history to extract batches
+    posted_date_filter = "any"
+    # Look for the target RUNNING token in sent_history to extract batches and date filter
     curr_history = pref.get("sent_history") or []
     target_token = None
     for x in curr_history:
@@ -509,20 +587,23 @@ def run_one_user(user_id: str, scan_id: str = None):
                 break
 
     if target_token:
-        # Extract batches from token e.g. "batches:india,europe"
+        # Extract batches and date filter from token
         parts = target_token.split("|")
         for part in parts:
             if part.startswith("batches:"):
                 batches_list = part.replace("batches:", "").split(",")
-                break
+            elif part.startswith("posted_date_filter:"):
+                posted_date_filter = part.replace("posted_date_filter:", "").strip()
     else:
         batches_list = pref.get("batches") or ["all"]
+        posted_date_filter = pref.get("posted_date_filter") or "any"
 
     profile = {
         "core_skills": core_skills,
         "years_experience": row.get("years_experience", 0),
         "current_role": row.get("current_role", ""),
-        "batches": batches_list
+        "batches": batches_list,
+        "posted_date_filter": posted_date_filter
     }
 
     # Check if this scan has already been cancelled by the user before execution starts
@@ -541,7 +622,7 @@ def run_one_user(user_id: str, scan_id: str = None):
     # Write RUNNING:Scraping to sent_history in database
     github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
     batches_str = ",".join(batches_list)
-    running_token = f"RUNNING:Scraping in GitHub Actions...|batches:{batches_str}|scan_id:{scan_id or 'unknown'}|run_id:{github_run_id}|{int(datetime.now().timestamp())}"
+    running_token = f"RUNNING:Scraping in GitHub Actions...|batches:{batches_str}|posted_date_filter:{posted_date_filter}|scan_id:{scan_id or 'unknown'}|run_id:{github_run_id}|{int(datetime.now().timestamp())}"
     
     try:
         new_history = []
