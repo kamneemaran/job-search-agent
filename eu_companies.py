@@ -823,10 +823,10 @@ EU_JOB_SOURCES = [
     {"name": "Axia Interim Luxembourg", "url": "https://www.axia-interim.lu/job-offers", "region": "LU", "type": "company", "playwright": True},
 
     # Switzerland staffing
-    {"name": "Adecco Switzerland", "url": "https://www.adecco.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
-    {"name": "Manpower Switzerland", "url": "https://www.manpower.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
-    {"name": "Randstad Switzerland", "url": "https://www.randstad.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
-    {"name": "Universal-Job Switzerland", "url": "https://www.universaljob.ch/jobs", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Adecco Switzerland", "url": "https://www.adecco.com/de-ch/jobsuche?CategoryFilter=ADCCHCAT1108", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Manpower Switzerland", "url": "https://www.manpower.ch/en/search?industries=Technical+and+Engineering&page=1&ids={industries:[bc5ca2db689649b4b8c18381b00d2d80]}&sf=industries", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Randstad Switzerland", "url": "https://www.randstad.ch/en/jobs/s-it/", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Universal-Job Switzerland", "url": "https://universaljob.ch/de/jobs/VA-GNV-XZP?page=1", "region": "CH", "type": "company", "playwright": True},
 
     # EU scaleups & banks/telecom (added Jun 2026)
     {"name": "BNP Paribas", "url": "https://group.bnpparibas/en/careers/all-job-offers?page=2&domain=168%7C6&country=8%7C10%7C810%7C43%7C44%7C45%7C46%7C47%7C48%7C49%7C50%7C51%7C52%7C53%7C54%7C55%7C56%7C57%7C58%7C59%7C60%7C61%7C62%7C63%7C64%7C65%7C66%7C67%7C68%7C858%7C859%7C883%7C1402%7C908%7C934%7C1475%7C1995%7C210%7C211%7C212%7C213%7C214%7C215%7C217%7C218%7C219%7C220%7C221%7C222%7C224%7C225%7C226%7C227%7C228", "region": "EU", "type": "company", "playwright": True},
