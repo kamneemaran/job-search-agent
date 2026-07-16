@@ -220,6 +220,7 @@ EU_JOB_SOURCES = [
     {"name": "Entity X GmbH", "url": "https://entityx.jobs.personio.de/", "region": "EU", "type": "company", "ats": "personio"},
     {"name": "Eotlabs", "url": "https://www.eotlabs.io/about-us", "region": "EU", "type": "company", "playwright": True},
     {"name": "ePages GmbH", "url": "https://epages.com/de/karriere", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Allegro", "url": "https://jobs.allegro.eu/offer/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Epam", "url": "https://careers.epam.com/en/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "EPAM Systems GmbH", "url": "https://careers.epam.com/en/jobs", "region": "EU", "type": "company", "playwright": True},
     {"name": "erasys GmbH", "url": "https://www.erasys.de/jobs", "region": "EU", "type": "company", "playwright": True},
