@@ -959,6 +959,11 @@ def _derive_title_keywords(current_role, years_experience):
     # Normalize hyphens to spaces (e.g., "full-stack" → "full stack")
     role_lower = role_lower.replace("-", " ")
 
+    # Normalize special characters: em-dashes, en-dashes, ampersands, pipes, slashes
+    # e.g., "Software Engineer – Backend & Distributed Systems" → "software engineer backend distributed systems"
+    role_lower = re.sub(r'[–—&|/\\,;:()]', ' ', role_lower)
+    role_lower = re.sub(r'\s+', ' ', role_lower).strip()
+
     # Strip seniority prefix to get base role (e.g., "software engineer" from "Senior Software Engineer")
     base_role = role_lower
     for prefix in _SENIORITY_PREFIXES:
@@ -967,6 +972,36 @@ def _derive_title_keywords(current_role, years_experience):
             break
 
     keywords = [base_role]  # always match base role
+
+    # Extract meaningful sub-role variants from compound roles
+    # e.g., "software engineer backend distributed systems" →
+    #   also generate "backend engineer", "backend developer",
+    #   "software engineer", "software developer"
+    _role_words = {"engineer", "developer", "consultant", "architect", "lead"}
+    base_parts = base_role.split()
+    if len(base_parts) > 2:
+        # Find the role noun (engineer/developer/etc.)
+        role_noun = None
+        for w in base_parts:
+            if w in _role_words:
+                role_noun = w
+                break
+        if role_noun:
+            # Add each domain word + role_noun as a variant
+            for w in base_parts:
+                if w != role_noun and len(w) > 2:
+                    variant = f"{w} {role_noun}"
+                    if variant not in keywords:
+                        keywords.append(variant)
+                    # Also add engineer ↔ developer equivalents
+                    if role_noun == "engineer":
+                        alt = f"{w} developer"
+                    elif role_noun == "developer":
+                        alt = f"{w} engineer"
+                    else:
+                        alt = None
+                    if alt and alt not in keywords:
+                        keywords.append(alt)
 
     # Add "developer" ↔ "engineer" equivalents for base role
     if "engineer" in base_role:
