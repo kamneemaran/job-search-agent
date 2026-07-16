@@ -107,6 +107,19 @@ def _with_stealth(page):
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
         Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
         Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        // Bypass Cloudflare Turnstile
+        window.turnstile = {
+            render: (container, params) => {
+                if (params && params.callback) params.callback('bypassed');
+                return 'bypassed';
+            },
+            reset: () => {},
+            getResponse: () => 'bypassed',
+            remove: () => {},
+            implicitRender: () => 'bypassed',
+            ready: (fn) => fn && fn()
+        };
+        Object.defineProperty(window, 'cf_challenge_response', { get: () => 'bypassed' });
         """)
     except Exception:
         pass
@@ -2239,11 +2252,15 @@ def _scrape_company_career_page(source):
             pass
         return result
 
-    context = None
-    try:
-        browser = _get_browser()
-        context = _create_context(browser, source.get("url"))
-        page = context.new_page()
+    for attempt in range(2):
+        if attempt > 0:
+            print(f"  [pw] Retry attempt {attempt+1} for {source['name']}")
+        context = None
+        success = False
+        try:
+            browser = _get_browser()
+            context = _create_context(browser, source.get("url"))
+            page = context.new_page()
         page.set_default_timeout(source.get("timeout", 20000))
         _with_stealth(page)
         pw_timeout = source.get("timeout", 20000)
@@ -2394,6 +2411,7 @@ def _scrape_company_career_page(source):
                     new_count += 1
             if new_count == 0:
                 break
+        success = True
     except Exception as e:
         pw_failed = True
         pw_error = str(e)
@@ -2402,6 +2420,7 @@ def _scrape_company_career_page(source):
             if hasattr(_local_playwright, "browser"):
                 _local_playwright.browser = None
                 _local_playwright.page_count = 0
+            continue  # retry with fresh browser
     finally:
         if context:
             try:
@@ -2409,6 +2428,8 @@ def _scrape_company_career_page(source):
             except Exception:
                 pass
         _check_reclaim_playwright()
+    if success:
+        break
 
     if pw_failed or not jobs:
         # Skip HTTP fallback if Playwright failed due to Cloudflare, download trigger, or connection reset
