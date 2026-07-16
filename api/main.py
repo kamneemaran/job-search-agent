@@ -591,6 +591,19 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 "FoundIt": ds.search_foundit,
                 "TimesJobs": ds.search_timesjobs,
                 "Glassdoor": ds.search_glassdoor,
+                "VisaSponsor": ds.search_visasponsor,
+                "VisaSponsor.Jobs": ds.search_visasponsor,
+                "EURES": ds.search_eures,
+                "StepStone": ds.search_stepstone,
+                "InfoJobs": ds.search_infojobs,
+                "Bundesagentur": ds.search_bundesagentur,
+                "WelcomeToNL": ds.search_welcome_to_nl,
+                "WorkInFinland": ds.search_workinfinland,
+                "WorkInLux": ds.search_workinlux,
+                "SAPOEmprego": ds.search_sapoemprego,
+                "NetEmpregos": ds.search_netempregos,
+                "Infoempleo": ds.search_infoempleo,
+                "IndeedNL": ds.search_indeed_nl,
             }
 
             if req.sources:

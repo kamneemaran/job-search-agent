@@ -157,7 +157,7 @@ export default function SearchPage() {
               <span>🎯</span> Select Job Boards to Scan (Max 4 — Defaults to auto-targeted boards based on location)
             </label>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {["LinkedIn", "Indeed", "Naukri", "Instahyre", "WeWorkRemotely", "Remotive", "Arbeitnow", "IamExpat", "TogetherAbroad", "FoundIt", "TimesJobs"].map((source) => {
+              {["LinkedIn", "Indeed", "Naukri", "Instahyre", "WeWorkRemotely", "Remotive", "Arbeitnow", "IamExpat", "TogetherAbroad", "FoundIt", "TimesJobs", "VisaSponsor", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux"].map((source) => {
                 const isChecked = selectedSources.includes(source);
                 const isDisabled = !isChecked && selectedSources.length >= 4;
                 return (
