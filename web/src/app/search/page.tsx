@@ -45,6 +45,20 @@ export default function SearchPage() {
       .catch(() => setHasResume(false));
   }, []);
 
+  const CATEGORY_MAP: Record<string, string[]> = {
+    "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn"],
+    "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed"],
+    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux"],
+    "Global": ["LinkedIn", "Indeed", "Glassdoor", "VisaSponsor"]
+  };
+
+  const handleSelectCategory = (catName: string) => {
+    const boards = CATEGORY_MAP[catName] || [];
+    // Select first 5 boards from this category
+    const toSelect = boards.slice(0, 5);
+    setSelectedSources(toSelect);
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() && !hasResume) return;
@@ -152,42 +166,80 @@ export default function SearchPage() {
             />
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 space-y-3">
-            <label className="text-sm font-semibold text-gray-300 flex items-center gap-1.5">
-              <span>🎯</span> Select Job Boards to Scan (Max 4 — Defaults to auto-targeted boards based on location)
-            </label>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {["LinkedIn", "Indeed", "Naukri", "Instahyre", "WeWorkRemotely", "Remotive", "Arbeitnow", "IamExpat", "TogetherAbroad", "FoundIt", "TimesJobs", "VisaSponsor", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux"].map((source) => {
-                const isChecked = selectedSources.includes(source);
-                const isDisabled = !isChecked && selectedSources.length >= 4;
-                return (
-                  <label
-                    key={source}
-                    className={`inline-flex items-center gap-2 text-sm cursor-pointer ${
-                      isDisabled ? "opacity-35 cursor-not-allowed" : "hover:text-white"
-                    }`}
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <label className="text-sm font-semibold text-gray-300 flex items-center gap-1.5">
+                <span>🎯</span> Select Job Boards to Scan (Max 5 — Defaults to auto-targeted based on location)
+              </label>
+              <div className="flex flex-wrap items-center gap-1.5 bg-gray-950/40 p-1 rounded-lg border border-gray-800/80">
+                {Object.keys(CATEGORY_MAP).map((catName) => (
+                  <button
+                    key={catName}
+                    type="button"
+                    onClick={() => handleSelectCategory(catName)}
+                    className="rounded px-2.5 py-1 text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-600 border border-indigo-800/40 hover:border-indigo-500 text-indigo-300 hover:text-white transition-all cursor-pointer"
                   >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      disabled={isDisabled}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          if (selectedSources.length < 4) {
-                            setSelectedSources([...selectedSources, source]);
-                          }
-                        } else {
-                          setSelectedSources(selectedSources.filter((s) => s !== source));
-                        }
-                      }}
-                      className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
-                    />
-                    <span className={isChecked ? "text-indigo-400 font-semibold" : "text-gray-300"}>
-                      {source}
-                    </span>
-                  </label>
-                );
-              })}
+                    ⚡ {catName}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setSelectedSources([])}
+                  className="rounded px-2.5 py-1 text-xs font-semibold bg-gray-850 hover:bg-gray-700 text-gray-400 hover:text-white transition-all cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 pt-2">
+              {Object.entries(CATEGORY_MAP).map(([catName, boards]) => (
+                <div key={catName} className="rounded-lg border border-gray-800 bg-gray-950/20 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
+                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{catName} Group</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCategory(catName)}
+                      className="text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 hover:underline cursor-pointer"
+                    >
+                      Select all
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2.5">
+                    {boards.map((source) => {
+                      const isChecked = selectedSources.includes(source);
+                      const isDisabled = !isChecked && selectedSources.length >= 5;
+                      return (
+                        <label
+                          key={source}
+                          className={`inline-flex items-center gap-1.5 text-xs cursor-pointer ${
+                            isDisabled ? "opacity-35 cursor-not-allowed" : "hover:text-white"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={isDisabled}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                if (selectedSources.length < 5) {
+                                  setSelectedSources([...selectedSources, source]);
+                                }
+                              } else {
+                                setSelectedSources(selectedSources.filter((s) => s !== source));
+                              }
+                            }}
+                            className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                          />
+                          <span className={isChecked ? "text-indigo-400 font-semibold" : "text-gray-300"}>
+                            {source}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
