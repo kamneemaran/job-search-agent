@@ -819,12 +819,9 @@ EU_JOB_SOURCES = [
     # Poland staffing
     {"name": "Gi Group Poland", "url": "https://pl.gigroup.com/oferty-pracy/informatyka-si/", "region": "PL", "type": "company", "playwright": True},
 
-    # Luxembourg staffing
-    {"name": "Axia Interim Luxembourg", "url": "https://www.axia-interim.lu/job-offers", "region": "LU", "type": "company", "playwright": True},
-
     # Switzerland staffing
     {"name": "Adecco Switzerland", "url": "https://www.adecco.com/de-ch/jobsuche?CategoryFilter=ADCCHCAT1108", "region": "CH", "type": "company", "playwright": True},
-    {"name": "Manpower Switzerland", "url": "https://www.manpower.ch/en/search?industries=Technical+and+Engineering&page=1&ids={industries:[bc5ca2db689649b4b8c18381b00d2d80]}&sf=industries", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Manpower Switzerland", "url": "https://www.manpower.ch/en/search?industries=Technical+and+Engineering&page=1", "region": "CH", "type": "company", "playwright": True},
     {"name": "Randstad Switzerland", "url": "https://www.randstad.ch/en/jobs/s-it/", "region": "CH", "type": "company", "playwright": True},
     {"name": "Universal-Job Switzerland", "url": "https://universaljob.ch/de/jobs/VA-GNV-XZP?page=1", "region": "CH", "type": "company", "playwright": True},
 
