@@ -46,34 +46,151 @@ def job_key(title, company):
     return f"{company.lower()}|{title.lower()}"
 
 def _parse_display_name(sender):
-    """Extract the display name from a From header, e.g. 'Deloitte Netherlands <x@y.com>' -> 'deloitte netherlands'."""
+    """Extract the display name from a From header."""
     m = re.match(r'^"?([^"<]*?)"?\s*<', sender)
     if m:
         return m.group(1).strip().lower()
     return sender.split("@")[0].replace(".", " ").strip().lower() if "@" in sender else sender.lower()
 
-def _extract_from_subject(subject, tracker_companies):
-    """Try to find company in subject line — e.g. 'at Deloitte', 'Deloitte -', 'Deloitte Netherlands'."""
-    s_lower = subject.lower()
-    # "at CompanyName" pattern
-    m = re.search(r'\bat\s+([a-zA-Z0-9\s&]+?)(?:\s*[–—-]|\s*$|\(|\))', s_lower)
+def _split_subject(subject):
+    """Clean and normalize subject line."""
+    s = subject.replace("=?UTF-8?Q?", "").replace("?=", "")
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+_ROLE_KEYWORDS = [
+    "engineer", "developer", "architect", "manager", "consultant",
+    "specialist", "analyst", "designer", "director", "lead",
+    "staff", "principal", "senior", "intern", "sde", "backend",
+    "frontend", "full stack", "data", "software", "platform",
+    "infrastructure", "sap", "ewm", "mm", "devops", "sre",
+    "product", "program", "project", "technical", "solution",
+]
+
+def extract_role(subject, body):
+    """Extract job title/role from email subject or body.
+    
+    Priority:
+      1. Subject patterns: 'Application for Role', 'Your application for Role'
+      2. Subject patterns: 'Role at Company', 'Role - Company'
+      3. Company-reply patterns: 'Re: Role at Company'
+      4. Known role keywords in subject
+    """
+    s = _split_subject(subject)
+    s_lower = s.lower()
+    body_lower = body.lower()
+
+    # Skip auto-reply subjects
+    if s_lower.startswith("re:") or s_lower.startswith("fw:") or s_lower.startswith("fwd:"):
+        s_lower = re.sub(r'^(re|fw|fwd)\s*:\s*', '', s_lower).strip()
+        # Also try to extract role from forwarded subject
+        if "application for" in s_lower:
+            m = re.search(r'application for\s+([^,;]+)', s_lower)
+            if m: return m.group(1).strip().title()
+
+    # "Application for [Role] at [Company]"
+    m = re.search(r'(?:your\s+)?application\s+(?:for|regarding|re)\s+(.+?)(?:\s+at\s+|\s*[–—\-|]\s*|$)', s_lower)
     if m:
-        candidate = m.group(1).strip()
-        if len(candidate) > 2:
-            return candidate.title()
-    # "CompanyName -" or "CompanyName |" pattern  
-    m = re.search(r'^([a-zA-Z0-9\s&]+?)\s*[–—\-|]', s_lower)
+        role = m.group(1).strip().rstrip(".,;")
+        if len(role) > 3:
+            return role.title()
+
+    # "Your application to [Company] for [Role]"
+    m = re.search(r'your\s+application\s+to\s+\S+\s+for\s+(.+)', s_lower)
     if m:
-        candidate = m.group(1).strip()
-        if len(candidate) > 2:
+        role = m.group(1).strip().rstrip(".,;")
+        if len(role) > 3:
+            return role.title()
+
+    # "Thank you for applying to [Role] at [Company]"
+    m = re.search(r'thank\s+you\s+for\s+(?:your\s+)?applying\s+(?:to|for)\s+(.+?)(?:\s+at\s+|\s*[–—\-|]\s*|$)', s_lower)
+    if m:
+        role = m.group(1).strip().rstrip(".,;")
+        if role.startswith("the ") and any(kw in role for kw in _ROLE_KEYWORDS):
+            role = re.sub(r'^the\s+', '', role)
+        if len(role) > 3:
+            return role.title()
+
+    # "Your application for [Role] has been received" / "Thanks for applying for the [Role] role"
+    m = re.search(r'(?:thank|thanks)\s+(?:you\s+)?for\s+(?:applying\s+(?:for|to)\s+)?(?:the\s+)?(.+?)(?:\s+role\s+|\s+position\s+|\s+at\s+|\s*[–—\-|]\s*|\s+has\s+|\s+is\s+|\s+and\s+will\s+|$)', s_lower)
+    if m:
+        role = m.group(1).strip().rstrip(".,;")
+        if any(kw in role for kw in _ROLE_KEYWORDS) and len(role) > 3:
+            return role.title()
+
+    # "Your application for [Role] has been received"
+    m = re.search(r'(?:your\s+)?application\s+for\s+(.+?)\s+(?:has\s+been|is\s+received|at\s+)', s_lower)
+    if m:
+        role = m.group(1).strip().rstrip(".,;")
+        if len(role) > 3:
+            return role.title()
+
+    # "[Role] at [Company]" or "[Role] - [Company]" in subject
+    m = re.search(r'(.+?)\s+(?:at|with|bei|–|—|-|\|)\s+.+', s_lower)
+    if m:
+        candidate = m.group(1).strip().rstrip(".,;")
+        if any(kw in candidate for kw in _ROLE_KEYWORDS) and len(candidate) > 5:
             return candidate.title()
+
+    # "Application received - [Role]" or "[Role] - Application Received"
+    m = re.search(r'application\s+(?:received|submitted|confirmation)\s*[-–—|]\s*(.+)|(.+)\s*[-–—|]\s*application\s+(?:received|submitted|confirmation)', s_lower)
+    if m:
+        role = m.group(1) or m.group(2)
+        if role and len(role.strip()) > 3:
+            return role.strip().title()
+
+    # Skip subjects that are just a company name (e.g. "Twilio!", "Databricks", "Agoda", "Servicenow!")
+    s_no_punct = re.sub(r'[!.\s]', '', s_lower)
+    if len(s_no_punct) < 20 and not any(kw in s_lower for kw in _ROLE_KEYWORDS):
+        return None
+
+    # Fallback: pick the longest phrase containing a role keyword
+    parts = re.split(r'\s*[–—\-|]\s*', s_lower)
+    best = None
+    for part in parts:
+        if any(kw in part for kw in _ROLE_KEYWORDS) and len(part) > 5:
+            if not best or len(part) > len(best):
+                best = part
+    if best:
+        return best.strip().title()
+
+    # Last resort: check body for "applying for [Role]"
+    m = re.search(r'(?:applying\s+for|applied\s+for|application\s+for)\s+(.+?)(?:\s+at\s+|\s*[–—\-|]\s*|\s*\.\s*|$)', body_lower[:500])
+    if m:
+        role = m.group(1).strip().rstrip(".,;")
+        if len(role) > 3:
+            return role.title()
+
     return None
+
+
+def _clean_role(role):
+    """Clean up a raw extracted role string."""
+    if not role:
+        return None
+    # Strip common suffixes
+    role = re.sub(r'\s+(role|position|opening)!?\s*$', '', role, flags=re.IGNORECASE)
+    role = re.sub(r'^the\s+', '', role, flags=re.IGNORECASE)
+    # Trim trailing junk after a natural stopping point
+    role = re.sub(r'(Soon And Will Get In Touch.*|Our Recruiting Team.*|We Thank You.*|Thank You For.*|A New Job, So.*)$', '', role, flags=re.IGNORECASE)
+    # Strip "Thanks For Applying For The" prefix
+    role = re.sub(r'^thanks?\s+(you\s+)?for\s+(your\s+)?applying\s+(for|to)\s+(the\s+)?', '', role, flags=re.IGNORECASE)
+    role = role.strip()
+    # Reject if it's just a company name or too short
+    if len(role) < 5:
+        return None
+    if role.endswith("!") and len(role) < 20:
+        return None
+    return role
+
 
 def _clean_display(raw):
     """Remove common qualifiers from a sender display name."""
     name = raw.lower()
     for q in ["recruiting", "recruitment", "talent acquisition", "talent",
-              "noreply", "careers", "notification", "hiring", "nl"]:
+              "noreply", "no-reply", "do-not-reply", "donotreply",
+              "careers", "notification", "hiring", "nl", "jobs",
+              "career", "team", "hr"]:
         name = name.replace(q, "").strip()
     return name.strip(" ,-–—|")
 
@@ -81,16 +198,27 @@ def extract_company(subject, sender, full_text, tracker_companies):
     """Find which company appears in the email text.
     
     Priority:
-      1. Sender display name (e.g. 'Deloitte Netherlands <x@y.com>' -> 'Deloitte')
-      2. Subject line (e.g. 'at Deloitte', 'Deloitte -')
-      3. KNOWN_COMPANIES (min 4 chars)
-      4. Tracker companies
-      5. Domain extraction (@company.com -> Company)
+      1. Subject line patterns: 'at Company', 'with Company', 'bei Company'
+      2. Known companies in subject (word-boundary)
+      3. Domain from sender email (@company.com -> Company)
+      4. Sender display name (when it clearly contains a company, not a person)
+      5. Known companies in body (first 300 chars)
+      6. Tracker companies
     """
     full_lower = full_text.lower()
+    s_lower = subject.lower()
 
-    # 1. Sender display name
-    # Parse: "Display Name <email>" or "<email>" or just "email"
+    # 1. Subject patterns: "at Company", "with Company", "bei Company"
+    m = re.search(r'\b(?:at|with|bei)\s+([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)', subject)
+    if m:
+        return m.group(1).strip()
+
+    # 2. Known companies in subject (word-boundary)
+    for c in KNOWN_COMPANIES:
+        if len(c) >= 2 and re.search(rf'\b{re.escape(c)}\b', s_lower):
+            return c.title() if c.islower() else c
+
+    # 3. Sender display name (more reliable than domain for ATS-sent emails)
     sm = re.match(r'^"?([^"<]*?)"?\s*<[^>]+@[^>]+>', sender)
     if sm:
         display = _clean_display(sm.group(1))
@@ -98,63 +226,53 @@ def extract_company(subject, sender, full_text, tracker_companies):
         display = _clean_display(sender.split("@")[0].replace(".", " "))
     else:
         display = _clean_display(sender)
-    
+
     if display:
         display_words = display.split()
-        # Check known companies first (word-boundary match in display name)
         for c in KNOWN_COMPANIES:
             if len(c) >= 4:
                 if c in display:
                     return c.title() if c.islower() else c
             elif len(c) >= 2:
-                # 2-3 char names: exact word match to avoid substring false positives
                 if re.search(rf'\b{re.escape(c)}\b', display):
                     return c.title() if c.islower() else c
-        # Filter out common person first names and generic roles
         _common_names = {"kalimi", "mohini", "agnes", "monika", "csorba",
                          "pradeep", "kamnee", "maran", "john", "jane",
-                         "michael", "david", "sarah", "lisa", "thomas"}
+                         "michael", "david", "sarah", "lisa", "thomas",
+                         "georgiana", "alina", "luncanu", "denz",
+                         "welcome", "noreply", "no-reply", "donotreply",
+                         "best", "faculty", "market", "tesolin",
+                         "life", "godutch"}
         significant = [w for w in display_words if len(w) >= 4
                        and w not in _common_names
-                       and w not in ("human", "resources", "department",
-                                     "information", "technology")]
+                       and w not in ("human", "resources", "department", "nl",
+                                     "information", "technology", "recruiting",
+                                     "recruitment")]
         if significant:
             return max(significant, key=len).title()
-        # All display words are known names — fall through to subject/domain
-        if not all(w in _common_names or len(w) < 4 for w in display_words):
-            # Some non-name word exists (like "ey"), use the longest
-            longest = max(display_words, key=len)
-            if len(longest) >= 2:
-                return longest.title()
 
-    # 2. Subject line — check known companies (word-boundary)
-    s_lower = subject.lower()
-    for c in KNOWN_COMPANIES:
-        if len(c) >= 2 and re.search(rf'\b{re.escape(c)}\b', s_lower):
-            return c.title() if c.islower() else c
-    # "Thank you for applying to EY" -> skip "thank you for applying" etc
-    # Match: "at Deloitte", "with Deloitte", "bei Austro Control"
-    m = re.search(r'\b(?:at|with|bei)\s+([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)', subject)
+    # 4. Domain extraction (@company.com -> Company) — skip ATS/email-service domains
+    _ats_domains = {"smartrecruiters", "ashbyhq", "greenhouse", "lever", "bamboohr",
+                    "workable", "icims", "jobvite", "recruitee", "comeet",
+                    "personio", "breezy", "teamtailor", "pinpoint", "myworkday",
+                    "workday"}
+    m = re.search(r'@([a-zA-Z0-9-]+)\.(com|io|ai|co|de|nl|uk)', full_text[:500])
     if m:
-        return m.group(1).strip()
+        domain = m.group(1).lower()
+        if domain not in ("gmail", "outlook", "yahoo", "hotmail", "icloud", "protonmail", "mail") and domain not in _ats_domains:
+            return domain.title() if domain.islower() else domain
 
-    # 3. KNOWN_COMPANIES in subject+sender (first 300 chars to avoid footer false matches)
+    # 5. Known companies in body (first 300 chars)
     for c in KNOWN_COMPANIES:
         if len(c) >= 4 and re.search(rf'\b{re.escape(c)}\b', full_lower[:300]):
             return c.title() if c.islower() else c
 
-    # 4. Tracker companies
+    # 6. Tracker companies
     for c in tracker_companies:
         cl = c.lower()
         if cl in full_lower and len(cl) > 2:
             return c
 
-    # 5. Domain extraction (@company.com -> Company)
-    m = re.search(r'@([a-zA-Z0-9-]+)\.(com|io|ai|co|de|nl|uk)', full_text[:500])
-    if m:
-        domain = m.group(1).lower()
-        if domain not in ("gmail", "outlook", "yahoo", "hotmail", "icloud", "protonmail"):
-            return domain.title() if domain.islower() else domain
     return None
 
 def main():
@@ -248,8 +366,9 @@ def main():
             continue
 
         company = extract_company(subject, sender, full, tracker_companies)
+        role = _clean_role(extract_role(subject, body))
         if company:
-            updated_companies[company] = status
+            updated_companies[company] = {"status": status, "role": role}
 
     if not updated_companies:
         print("  No companies detected in emails.", flush=True)
@@ -263,15 +382,15 @@ def main():
     for entry_key, entry in list(tracker["jobs"].items()):
         c = entry.get("company", "")
         cl = c.lower()
-        # Find matching status from updated_companies
-        new_status = None
-        for uc, us in updated_companies.items():
+        new_info = None
+        for uc, ui in updated_companies.items():
             if uc.lower() == cl:
-                new_status = us
+                new_info = ui
                 break
-        if not new_status:
+        if not new_info:
             continue
 
+        new_status = new_info["status"]
         old_status = entry.get("status", "new")
         if new_status == "applied" and old_status in ("applied", "rejected", "offer"):
             continue
@@ -289,21 +408,25 @@ def main():
         elif new_status == "offer":
             entry["date_offer"] = now
         entry["notes"] = f"Email scan: {new_status}"
+        if new_info["role"] and (entry.get("title", "") == "Unknown Role" or not entry.get("title")):
+            entry["title"] = new_info["role"]
         updated_count += 1
 
     print(f"  Updated {updated_count} tracker entries", flush=True)
 
     # Add placeholder entries for companies not in tracker so they appear in sheet
     added = 0
-    for c, status in updated_companies.items():
+    for c, info in updated_companies.items():
         if c.lower() in tracker_company_set:
             continue
-        key = job_key("Unknown Role", c)
+        role = info["role"] or "Unknown Role"
+        key = job_key(role, c)
         if key in tracker["jobs"]:
             continue
         now = datetime.now().isoformat()
+        status = info["status"]
         tracker["jobs"][key] = {
-            "title": "Unknown Role",
+            "title": role,
             "company": c,
             "url": "",
             "score": "",
@@ -327,9 +450,9 @@ def main():
         tracker_companies = sorted(set(e.get("company", "") for e in tracker["jobs"].values()))
         tracker_company_set = set(c.lower() for c in tracker_companies)
 
-    for c in updated_companies:
+    for c, info in updated_companies.items():
         if c.lower() not in tracker_company_set:
-            print(f"  [!] '{c}' ({updated_companies[c]}) — not in tracker", flush=True)
+            print(f"  [!] '{c}' ({info['status']}) — not in tracker", flush=True)
 
     save_json(TRACKER_FILE, tracker)
     state["last_scan"] = datetime.now().isoformat()
