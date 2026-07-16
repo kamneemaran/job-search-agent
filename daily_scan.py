@@ -2031,6 +2031,30 @@ def _parse_date(date_str):
     except Exception:
         return None
 
+
+def _parse_relative_date(text):
+    """Convert relative date strings like '3 days ago', 'Just posted' to ISO date string."""
+    if not text:
+        return None
+    text = text.strip().lower()
+    from datetime import timedelta
+    today = datetime.now()
+    if "just" in text or "today" in text or "now" in text:
+        return today.strftime("%Y-%m-%d")
+    m = re.search(r'(\d+)\s*hour', text)
+    if m:
+        return today.strftime("%Y-%m-%d")
+    m = re.search(r'(\d+)\s*day', text)
+    if m:
+        return (today - timedelta(days=int(m.group(1)))).strftime("%Y-%m-%d")
+    m = re.search(r'(\d+)\s*week', text)
+    if m:
+        return (today - timedelta(weeks=int(m.group(1)))).strftime("%Y-%m-%d")
+    m = re.search(r'(\d+)\s*month', text)
+    if m:
+        return (today - timedelta(days=int(m.group(1)) * 30)).strftime("%Y-%m-%d")
+    return None
+
 def _is_within_months(date_val, months=6):
     """Check if date is within N months from now."""
     if date_val is None:
@@ -3107,6 +3131,10 @@ def search_indeed(query, location="India", max_results=500):
             links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
             if not links:
                 links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
+            # Extract relative date strings like "Posted 3 days ago", "Just posted"
+            date_texts = re.findall(r'class="[^"]*date[^"]*"[^>]*>([^<]+)', html)
+            if not date_texts:
+                date_texts = re.findall(r'data-testid="myJobsStateDate"[^>]*>([^<]+)', html)
 
             if not titles:
                 break  # No more results
@@ -3116,12 +3144,14 @@ def search_indeed(query, location="India", max_results=500):
                 if len(jobs) >= max_results:
                     break
                 job_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+                posted_at = _parse_relative_date(date_texts[i]) if i < len(date_texts) else None
                 jobs.append({
                     "title": titles[i].strip(),
                     "company": companies[i].strip() if i < len(companies) else "Unknown",
                     "location": locations[i].strip() if i < len(locations) else location,
                     "url": job_url,
                     "description": f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}",
+                    "posted_at": posted_at,
                 })
 
             if len(jobs) >= max_results:
@@ -6503,11 +6533,19 @@ def search_iamexpat(query, location="Netherlands", max_results=500):
                         if city in txt:
                             loc = city
                             break
+                # Extract date from info elements (e.g. "2 days ago", "1 week ago")
+                posted_at = None
+                for el in info_els:
+                    txt = el.get_text().strip()
+                    if re.search(r'\d+\s*(day|week|hour|month)s?\s*ago|just|today', txt, re.IGNORECASE):
+                        posted_at = _parse_relative_date(txt)
+                        break
                 dedup_key = url_full or title
                 if title and dedup_key not in seen:
                     seen.add(dedup_key)
                     jobs.append({"title": title, "company": "", "location": loc,
-                                 "url": url_full, "description": title})
+                                 "url": url_full, "description": title,
+                                 "posted_at": posted_at})
                     page_jobs += 1
             if page_jobs == 0 or len(jobs) >= max_results:
                 break
