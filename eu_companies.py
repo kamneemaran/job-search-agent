@@ -808,6 +808,28 @@ EU_JOB_SOURCES = [
     {"name": "DIS AG Germany", "url": "https://www.dis-ag.de/", "region": "DE", "type": "company", "playwright": True},
     {"name": "Antal Poland", "url": "https://en.antal.pl/candidates", "region": "PL", "type": "company", "playwright": True},
 
+    # Netherlands staffing
+    {"name": "Tempo-Team Netherlands", "url": "https://www.tempo-team.nl/vacatures/ict", "region": "NL", "type": "company", "playwright": True},
+    {"name": "OTTO Work Force Netherlands", "url": "https://www.ottoworkforce.eu/vacatures", "region": "NL", "type": "company", "playwright": True},
+
+    # Germany staffing
+    {"name": "DEKRA Arbeit Germany", "url": "https://www.dekra-arbeit.de/stellenangebote/", "region": "DE", "type": "company", "playwright": True},
+    {"name": "Persona Service Germany", "url": "https://www.persona.de/jobangebote.html", "region": "DE", "type": "company", "playwright": True},
+    {"name": "FERCHAU Germany", "url": "https://www.ferchau.com/de/de/jobs", "region": "DE", "type": "company", "playwright": True},
+
+    # Poland staffing
+    {"name": "Gi Group Poland", "url": "https://www.gigroup.com.pl/oferty-pracy/", "region": "PL", "type": "company", "playwright": True},
+    {"name": "OTTO Work Force Polska", "url": "https://www.ottoworkforce.pl/oferty-pracy", "region": "PL", "type": "company", "playwright": True},
+
+    # Luxembourg staffing
+    {"name": "Axia Interim Luxembourg", "url": "https://www.axia-interim.lu/job-offers", "region": "LU", "type": "company", "playwright": True},
+
+    # Switzerland staffing
+    {"name": "Adecco Switzerland", "url": "https://www.adecco.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Manpower Switzerland", "url": "https://www.manpower.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Randstad Switzerland", "url": "https://www.randstad.ch/en/jobs", "region": "CH", "type": "company", "playwright": True},
+    {"name": "Universal-Job Switzerland", "url": "https://www.universaljob.ch/jobs", "region": "CH", "type": "company", "playwright": True},
+
     # EU scaleups & banks/telecom (added Jun 2026)
     {"name": "BNP Paribas", "url": "https://group.bnpparibas/en/careers/all-job-offers?page=2&domain=168%7C6&country=8%7C10%7C810%7C43%7C44%7C45%7C46%7C47%7C48%7C49%7C50%7C51%7C52%7C53%7C54%7C55%7C56%7C57%7C58%7C59%7C60%7C61%7C62%7C63%7C64%7C65%7C66%7C67%7C68%7C858%7C859%7C883%7C1402%7C908%7C934%7C1475%7C1995%7C210%7C211%7C212%7C213%7C214%7C215%7C217%7C218%7C219%7C220%7C221%7C222%7C224%7C225%7C226%7C227%7C228", "region": "EU", "type": "company", "playwright": True},
     {"name": "Societe Generale", "url": "https://careers.societegenerale.com/en/search?refinementList[jobFunction][0]=BJ725", "region": "EU", "type": "company", "playwright": True},
