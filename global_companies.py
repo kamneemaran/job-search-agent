@@ -29,6 +29,7 @@ GLOBAL_JOB_SOURCES = [
     {"name": "xad-technologies", "url": "https://www.careers-page.com/xad-technologies#openings", "region": "Global", "type": "company", "playwright": True},
     {"name": "Veriff", "url": "https://www.veriff.com/careers/open-positions", "region": "Global", "type": "company", "playwright": True},
     {"name": "Multiverse Computing", "url": "https://multiversecomputing.teamtailor.com/jobs", "region": "Global", "type": "company", "ats": "teamtailor"},
+    {"name": "Capgemini", "url": "https://www.capgemini.com/careers/join-capgemini/job-search/?page=1&size=11&professional_communities=Architecture%2CBusiness+Analysis%2CCloud+Infrastructure+Management%2CCybersecurity%2CData+%26+AI%2CProducts+%26+Systems+Engineering%2CQuality+Engineering+%26+Testing%2CSaaS+Solutions%2CSoftware+Engineering", "region": "Global", "type": "company", "playwright": True},
     {"name": "Motorola Solutions", "url": "https://motorolasolutions.wd5.myworkdayjobs.com/Careers?jobFamilyGroup=c3fc17b768e842e39b7192f0bf4cb0f1&jobFamilyGroup=2161bef685534428b91fad96fc9069b4", "region": "Global", "type": "company", "playwright": True},
     {"name": "Luxoft", "url": "https://career.luxoft.com/jobs?keyword=&hot=yes", "region": "Global", "type": "company", "playwright": True},
 
