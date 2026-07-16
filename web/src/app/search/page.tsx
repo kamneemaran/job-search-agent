@@ -17,6 +17,7 @@ export default function SearchPage() {
   const [skills, setSkills] = useState("");
   const [excludeCompanies, setExcludeCompanies] = useState("");
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("Remote");
   const [showFilters, setShowFilters] = useState(false);
   const [postedDateFilter, setPostedDateFilter] = useState("any");
   const [loading, setLoading] = useState(false);
@@ -166,80 +167,83 @@ export default function SearchPage() {
             />
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <label className="text-sm font-semibold text-gray-300 flex items-center gap-1.5">
-                <span>🎯</span> Select Job Boards to Scan (Max 5 — Defaults to auto-targeted based on location)
+                <span>🎯</span> Scan Channels (Max 5 — Defaults to auto-targeted boards)
               </label>
-              <div className="flex flex-wrap items-center gap-1.5 bg-gray-950/40 p-1 rounded-lg border border-gray-800/80">
+              <div className="flex flex-wrap items-center gap-1">
                 {Object.keys(CATEGORY_MAP).map((catName) => (
                   <button
                     key={catName}
                     type="button"
-                    onClick={() => handleSelectCategory(catName)}
-                    className="rounded px-2.5 py-1 text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-600 border border-indigo-800/40 hover:border-indigo-500 text-indigo-300 hover:text-white transition-all cursor-pointer"
+                    onClick={() => setActiveCategory(catName)}
+                    className={`rounded px-2.5 py-1 text-xs font-semibold border transition-all cursor-pointer ${
+                      activeCategory === catName
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                        : "bg-gray-850 hover:bg-gray-800 border-gray-800 text-gray-400 hover:text-white"
+                    }`}
                   >
-                    ⚡ {catName}
+                    {catName}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setSelectedSources([])}
-                  className="rounded px-2.5 py-1 text-xs font-semibold bg-gray-850 hover:bg-gray-700 text-gray-400 hover:text-white transition-all cursor-pointer"
-                >
-                  Clear
-                </button>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 pt-2">
-              {Object.entries(CATEGORY_MAP).map(([catName, boards]) => (
-                <div key={catName} className="rounded-lg border border-gray-800 bg-gray-950/20 p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
-                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{catName} Group</span>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCategory(catName)}
-                      className="text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 hover:underline cursor-pointer"
-                    >
-                      Select all
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2.5">
-                    {boards.map((source) => {
-                      const isChecked = selectedSources.includes(source);
-                      const isDisabled = !isChecked && selectedSources.length >= 5;
-                      return (
-                        <label
-                          key={source}
-                          className={`inline-flex items-center gap-1.5 text-xs cursor-pointer ${
-                            isDisabled ? "opacity-35 cursor-not-allowed" : "hover:text-white"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            disabled={isDisabled}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                if (selectedSources.length < 5) {
-                                  setSelectedSources([...selectedSources, source]);
-                                }
-                              } else {
-                                setSelectedSources(selectedSources.filter((s) => s !== source));
-                              }
-                            }}
-                            className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
-                          />
-                          <span className={isChecked ? "text-indigo-400 font-semibold" : "text-gray-300"}>
-                            {source}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
+            <div className="rounded-lg border border-gray-800 bg-gray-950/25 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-gray-850 pb-1.5">
+                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{activeCategory} Channels</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCategory(activeCategory)}
+                    className="text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 hover:underline cursor-pointer"
+                  >
+                    Select All in {activeCategory}
+                  </button>
+                  <span className="text-gray-700 text-xs">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSources([])}
+                    className="text-[11px] font-semibold text-gray-400 hover:text-gray-200 hover:underline cursor-pointer"
+                  >
+                    Clear All ({selectedSources.length})
+                  </button>
                 </div>
-              ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {CATEGORY_MAP[activeCategory].map((source) => {
+                  const isChecked = selectedSources.includes(source);
+                  const isDisabled = !isChecked && selectedSources.length >= 5;
+                  return (
+                    <label
+                      key={source}
+                      className={`inline-flex items-center gap-1.5 text-xs cursor-pointer ${
+                        isDisabled ? "opacity-35 cursor-not-allowed" : "hover:text-white"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            if (selectedSources.length < 5) {
+                              setSelectedSources([...selectedSources, source]);
+                            }
+                          } else {
+                            setSelectedSources(selectedSources.filter((s) => s !== source));
+                          }
+                        }}
+                        className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      />
+                      <span className={isChecked ? "text-indigo-400 font-semibold" : "text-gray-300"}>
+                        {source}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
