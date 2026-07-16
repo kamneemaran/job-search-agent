@@ -529,6 +529,53 @@ def main():
     else:
         print("  [!] No GSHEET_ID set — skipping sheet sync", flush=True)
 
+    # Sync to Supabase so results appear in web dashboard's Job Tracker tab
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if supabase_url and supabase_key:
+        try:
+            from supabase import create_client
+            sb = create_client(supabase_url, supabase_key)
+            # Look up the user by GMAIL_ADDRESS
+            user_res = sb.table("profiles").select("id").eq("email", GMAIL_USER).execute()
+            if user_res.data:
+                user_id = user_res.data[0]["id"]
+                synced = 0
+                for entry in tracker["jobs"].values():
+                    s = entry.get("status", "new")
+                    if s not in ("applied", "rejected", "offer"):
+                        continue
+                    # Check if already exists in Supabase
+                    existing = sb.table("jobs").select("id").eq("user_id", user_id)\
+                        .eq("title", entry.get("title", ""))\
+                        .eq("company", entry.get("company", "")).execute()
+                    if existing.data:
+                        # Update status
+                        sb.table("jobs").update({
+                            "status": s,
+                            "notes": entry.get("notes", ""),
+                            "updated_at": datetime.now().isoformat(),
+                        }).eq("id", existing.data[0]["id"]).execute()
+                    else:
+                        sb.table("jobs").insert({
+                            "user_id": user_id,
+                            "title": entry.get("title", ""),
+                            "company": entry.get("company", ""),
+                            "status": s,
+                            "notes": entry.get("notes", ""),
+                            "found_at": entry.get("date_found", datetime.now().isoformat()),
+                            "updated_at": datetime.now().isoformat(),
+                            "score": int(entry["score"]) if str(entry.get("score", "")).strip().isdigit() else 0,
+                        }).execute()
+                    synced += 1
+                print(f"  [supabase] Synced {synced} entries to tracker", flush=True)
+            else:
+                print(f"  [supabase] User '{GMAIL_USER}' not found", flush=True)
+        except Exception as e:
+            print(f"  [supabase] Error: {e}", flush=True)
+    else:
+        print("  [!] No SUPABASE_SERVICE_ROLE_KEY set — skipping Supabase sync", flush=True)
+
     print("=== Done ===", flush=True)
 
 if __name__ == "__main__":
