@@ -3011,6 +3011,7 @@ def search_linkedin(query, location="India", max_results=500):
             companies = re.findall(r'<h4[^>]*class="[^"]*base-search-card__subtitle[^"]*"[^>]*>\s*<a[^>]*>\s*([^<]+?)\s*</a>', html, re.DOTALL)
             locations = re.findall(r'<span[^>]*class="[^"]*job-search-card__location[^"]*"[^>]*>\s*([^<]+?)\s*</span>', html, re.DOTALL)
             links = re.findall(r'<a[^>]*class="[^"]*base-card__full-link[^"]*"[^>]*href="([^"]+)"', html)
+            posted_dates = re.findall(r'<time[^>]*datetime="([^"]+)"', html)
 
             # Fallback patterns
             if not titles:
@@ -3066,6 +3067,7 @@ def search_linkedin(query, location="India", max_results=500):
                     "location": locations[i].strip(),
                     "url": links[i] if i < len(links) else "",
                     "description": descs[i],
+                    "posted_at": posted_dates[i].strip() if i < len(posted_dates) else None,
                 })
 
             if len(jobs) >= max_results:
@@ -3423,6 +3425,7 @@ def search_instahyre(query, location="India", max_results=500):
                     "location": loc,
                     "url": job_url,
                     "description": f"Instahyre job: {title} at {company}. Skills: {keywords_raw}",
+                    "posted_at": obj.get("created_at") or obj.get("published_at") or None,
                 })
                 if len(jobs) >= max_results:
                     break
@@ -3507,11 +3510,19 @@ def search_weworkremotely(query, location="Remote", max_results=500):
             link_el = item.find("link")
             desc_el = item.find("description")
             region_el = item.find("region")
+            pubdate_el = item.find("pubDate")
             
             title = title_el.text if title_el is not None else ""
             link = link_el.text if link_el is not None else ""
             description = desc_el.text if desc_el is not None else ""
             region = region_el.text if region_el is not None else "Remote"
+            posted_at = None
+            if pubdate_el is not None and pubdate_el.text:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    posted_at = parsedate_to_datetime(pubdate_el.text).strftime("%Y-%m-%d")
+                except Exception:
+                    pass
             
             match = True
             for term in q_terms:
@@ -3533,6 +3544,7 @@ def search_weworkremotely(query, location="Remote", max_results=500):
                     "location": region,
                     "url": link,
                     "description": description,
+                    "posted_at": posted_at,
                 })
                 
                 if len(jobs) >= max_results:
@@ -5604,6 +5616,7 @@ def search_remotive(query, location="Remote", max_results=500):
                     "location": job.get("candidate_required_location", "Remote"),
                     "url": job.get("url", ""),
                     "description": f"Remotive: {job.get('title', '')} @ {job.get('company_name', '')}",
+                    "posted_at": job.get("publication_date") or None,
                 })
             if jobs: print(f"  [remotive] {len(jobs)} jobs for '{query}'")
     except Exception as e:
