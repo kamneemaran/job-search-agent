@@ -3387,12 +3387,14 @@ def search_naukri(query, location="India", max_results=500):
                 job_url = job.get("urlStr", "")
                 desc_snippet = job.get("jobDesc", "") or ""
                 keywords = job.get("keywords", "") or ""
+                posted_at = job.get("addDate")[:10] if job.get("addDate") else None
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": location_str,
                     "url": job_url,
                     "description": f"Naukri job: {title} at {company}. {desc_snippet}. Skills: {keywords}",
+                    "posted_at": posted_at,
                 })
             if len(jobs) >= max_results:
                 break
@@ -5987,12 +5989,21 @@ def search_arbeitnow(query, location="Remote", max_results=500):
                 # Client-side filter: at least one query term must appear in the title
                 if not any(term in title_lower for term in query_terms):
                     continue
+                created = posting.get("created_at")
+                posted_at = None
+                if created:
+                    try:
+                        from datetime import datetime
+                        posted_at = datetime.fromtimestamp(int(created)).strftime("%Y-%m-%d")
+                    except Exception:
+                        pass
                 jobs.append({
                     "title": title,
                     "company": posting.get("company_name", ""),
                     "location": posting.get("location", location),
                     "url": posting.get("url", ""),
                     "description": f"Arbeitnow: {title} @ {posting.get('company_name', '')}",
+                    "posted_at": posted_at,
                 })
                 if len(jobs) >= max_results:
                     break

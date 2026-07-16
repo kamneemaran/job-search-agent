@@ -604,6 +604,12 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 "NetEmpregos": ds.search_netempregos,
                 "Infoempleo": ds.search_infoempleo,
                 "IndeedNL": ds.search_indeed_nl,
+                "RemoteOK": ds.search_remoteok,
+                "Himalayas": ds.search_himalayas,
+                "NoDesk": ds.search_nodesk,
+                "WorkAtStartup": ds.search_workatstartup,
+                "ArcDev": ds.search_arcdev,
+                "WorkingNomads": ds.search_workingnomads,
             }
 
             if req.sources:
