@@ -7353,35 +7353,39 @@ def main():
             args.batch = ",".join(_mapped_batches)
             print(f"  [supabase] Mapped batches: {args.batch}")
 
-        # Write RUNNING token to sent_history
+        # Update existing RUNNING token (created by digest.py) with run_id and progress
+        # Don't create a new token — just update the one matching our scan_id
         _github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
         _batches_str = args.batch or "all"
         import time as _time_mod
-        # Use batch name in token so parallel batch jobs don't clobber each other
         _batch_label = args.batch or _batches_str
-        _running_token = f"RUNNING:Scraping {_batch_label} in GitHub Actions...|batches:{_batch_label}|posted_date_filter:{_supabase_posted_date_filter}|scan_id:{_supabase_scan_id or 'unknown'}|batch:{_batch_label}|run_id:{_github_run_id}|{int(_time_mod.time())}"
         try:
-            _curr_hist = (_pref_result.data.get("sent_history") or []) if (_pref_result and _pref_result.data) else []
+            # Re-fetch latest sent_history (may have changed since initial load)
+            _pref_refresh = _supabase_client.table("email_preferences").select("sent_history").eq("user_id", args.user_id).maybe_single().execute()
+            _curr_hist = (_pref_refresh.data.get("sent_history") or []) if (_pref_refresh and _pref_refresh.data) else []
             _new_hist = []
-            _replaced = False
+            _updated = False
             for _x in _curr_hist:
-                if isinstance(_x, str) and _x.startswith("RUNNING:"):
-                    # Only replace if same scan_id AND same batch
-                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _x and f"batch:{_batch_label}" in _x:
-                        _new_hist.append(_running_token)
-                        _replaced = True
-                    else:
-                        _new_hist.append(_x)
+                if isinstance(_x, str) and _x.startswith("RUNNING:") and _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _x:
+                    # Update the existing token with run_id and current batch progress
+                    # Preserve original batches list, just update status and run_id
+                    import re as _re_tok
+                    _updated_token = _re_tok.sub(r'run_id:[^|]*', f'run_id:{_github_run_id}', _x)
+                    # Update status text
+                    _updated_token = _re_tok.sub(r'^RUNNING:[^|]*', f'RUNNING:Scraping {_batch_label}...', _updated_token)
+                    _new_hist.append(_updated_token)
+                    _updated = True
                 else:
                     _new_hist.append(_x)
-            if not _replaced:
-                _new_hist.append(_running_token)
-            _supabase_client.table("email_preferences").update({
-                "sent_history": _new_hist,
-            }).eq("user_id", args.user_id).execute()
-            print(f"  [supabase] Registered RUNNING token (run_id={_github_run_id})")
+            if _updated:
+                _supabase_client.table("email_preferences").update({
+                    "sent_history": _new_hist,
+                }).eq("user_id", args.user_id).execute()
+                print(f"  [supabase] Updated RUNNING token with run_id={_github_run_id}, batch={_batch_label}")
+            else:
+                print(f"  [supabase] No RUNNING token found for scan_id={_supabase_scan_id}, skipping update")
         except Exception as _e:
-            print(f"  [supabase] Warning: Failed to set running token: {_e}")
+            print(f"  [supabase] Warning: Failed to update running token: {_e}")
 
         print(f"  [supabase] Profile loaded: {PROFILE['name']} | {PROFILE['years_experience']}yr | {len(_core_skills)} skills")
         print(f"  [supabase] Email: {_to_email} | Batches: {args.batch or 'all'}")
@@ -8276,20 +8280,14 @@ def main():
             _pref_r = _supabase_client.table("email_preferences").select("sent_history").eq("user_id", args.user_id).maybe_single().execute()
             _curr_h = (_pref_r.data.get("sent_history") or []) if (_pref_r and _pref_r.data) else []
 
-            # Remove RUNNING token for this scan_id + batch, add COMPLETED
+            # Don't remove the RUNNING token here — parallel batch jobs share it.
+            # The scans UI endpoint cleans up finished runs by checking GitHub API.
+            # Just append a COMPLETED entry for this batch.
             _batch_label2 = args.batch or "all"
-            _clean_h = []
-            for _x in _curr_h:
-                if isinstance(_x, str) and _x.startswith("RUNNING:"):
-                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _x and f"batch:{_batch_label2}" in _x:
-                        continue
-                    elif not _supabase_scan_id:
-                        continue
-                _clean_h.append(_x)
-            _clean_h.append(f"COMPLETED_INSTANT:{int(_time_mod2.time())}|jobs:{len(all_matches)}|batch:{_batch_label2}")
+            _curr_h.append(f"COMPLETED_INSTANT:{int(_time_mod2.time())}|jobs:{len(all_matches)}|batch:{_batch_label2}")
 
             _supabase_client.table("email_preferences").update({
-                "sent_history": _clean_h,
+                "sent_history": _curr_h,
                 "last_sent_at": datetime.now().isoformat(),
             }).eq("user_id", args.user_id).execute()
             print(f"  [supabase] Updated sent_history: COMPLETED with {len(all_matches)} jobs")
