@@ -2127,7 +2127,16 @@ def _is_within_months(date_val, months=6):
     if date_val is None:
         return True  # no date = assume recent
     from datetime import timedelta
-    cutoff = datetime.now(date_val.tzinfo if date_val.tzinfo else None) - timedelta(days=months*30)
+    # Handle string dates
+    if isinstance(date_val, str):
+        try:
+            if "T" in date_val:
+                date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            else:
+                date_val = datetime.strptime(date_val, "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return True  # unparseable = assume recent
+    cutoff = datetime.now(date_val.tzinfo if hasattr(date_val, 'tzinfo') and date_val.tzinfo else None) - timedelta(days=months*30)
     return date_val >= cutoff
 
 
