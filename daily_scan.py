@@ -7255,6 +7255,35 @@ def main():
             print(f"Error: User {args.user_id} has no core_skills")
             sys.exit(1)
 
+        # Enrich skills from active resume's parsed_skills (resume parser extracts 40+ detailed keywords)
+        try:
+            _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename").eq("user_id", args.user_id).eq("is_active", True).maybe_single().execute()
+            if _resume_result and _resume_result.data:
+                _resume_skills = _resume_result.data.get("parsed_skills") or []
+                if isinstance(_resume_skills, str):
+                    try:
+                        _resume_skills = json.loads(_resume_skills)
+                    except Exception:
+                        _resume_skills = []
+                if _resume_skills and len(_resume_skills) > len(_core_skills):
+                    print(f"  [supabase] Enriching profile skills: {len(_core_skills)} profile skills -> {len(_resume_skills)} resume skills (from {_resume_result.data.get('filename', 'active resume')})")
+                    # Merge: resume skills + any profile skills not already covered
+                    _resume_set = set(s.lower() for s in _resume_skills)
+                    _merged = list(_resume_skills)
+                    for _s in _core_skills:
+                        if _s.lower() not in _resume_set:
+                            _merged.append(_s)
+                    _core_skills = _merged
+                elif _resume_skills:
+                    # Resume has fewer skills, but still merge unique ones in
+                    _profile_set = set(s.lower() for s in _core_skills)
+                    for _s in _resume_skills:
+                        if _s.lower() not in _profile_set:
+                            _core_skills.append(_s)
+                            _profile_set.add(_s.lower())
+        except Exception as _e:
+            print(f"  [supabase] Warning: Could not load resume skills: {_e}")
+
         # Load email from email_preferences
         _pref_result = _supabase_client.table("email_preferences").select("*").eq("user_id", args.user_id).maybe_single().execute()
         _to_email = ""
