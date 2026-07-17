@@ -417,14 +417,18 @@ export default function SettingsPage() {
                   ? "Queued"
                   : scan.status.replace("_", " ").charAt(0).toUpperCase() + scan.status.replace("_", " ").slice(1);
 
-                // Calculate countdown
+                // Calculate countdown / elapsed
                 const remainingSecs = Math.max(0, (scan.timestamp + scan.estimated_duration) - currentTime);
-                const formatCountdown = (secs: number) => {
-                  if (secs <= 0) return "Completing (verifying matches...)";
+                const elapsedSecs = Math.max(0, currentTime - scan.timestamp);
+                const fmtTime = (secs: number) => {
                   const h = Math.floor(secs / 3600);
                   const m = Math.floor((secs % 3600) / 60);
                   const s = secs % 60;
-                  return `Est. remaining: ${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`;
+                  return `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`;
+                };
+                const formatCountdown = (secs: number) => {
+                  if (secs <= 0) return `Running for: ${fmtTime(elapsedSecs)}`;
+                  return `Est. remaining: ${fmtTime(secs)}`;
                 };
 
                 return (
