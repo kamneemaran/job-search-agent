@@ -7257,20 +7257,38 @@ def main():
 
         # Enrich skills from active resume's parsed_skills (resume parser extracts 40+ detailed keywords)
         try:
-            _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename").eq("user_id", args.user_id).eq("is_active", True).order("created_at", desc=True).limit(5).execute()
+            _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename, parsed_name").eq("user_id", args.user_id).eq("is_active", True).order("created_at", desc=True).limit(5).execute()
             _best_resume_skills = []
             _best_resume_name = ""
+            _user_name = (_row.get("full_name") or _row.get("name") or "").lower().replace(" ", "")
             if _resume_result and _resume_result.data:
+                # First pass: find resume matching user's profile name
                 for _rrow in _resume_result.data:
-                    _rs = _rrow.get("parsed_skills") or []
-                    if isinstance(_rs, str):
-                        try:
-                            _rs = json.loads(_rs)
-                        except Exception:
-                            _rs = []
-                    if len(_rs) > len(_best_resume_skills):
-                        _best_resume_skills = _rs
-                        _best_resume_name = _rrow.get("filename", "active resume")
+                    _parsed_name = (_rrow.get("parsed_name") or "").lower().replace(" ", "")
+                    if _user_name and _parsed_name and _user_name in _parsed_name or _parsed_name in _user_name:
+                        _rs = _rrow.get("parsed_skills") or []
+                        if isinstance(_rs, str):
+                            try:
+                                _rs = json.loads(_rs)
+                            except Exception:
+                                _rs = []
+                        if _rs:
+                            _best_resume_skills = _rs
+                            _best_resume_name = _rrow.get("filename", "active resume")
+                            break
+                # Fallback: use most recent resume with skills (first in list, ordered by created_at desc)
+                if not _best_resume_skills:
+                    for _rrow in _resume_result.data:
+                        _rs = _rrow.get("parsed_skills") or []
+                        if isinstance(_rs, str):
+                            try:
+                                _rs = json.loads(_rs)
+                            except Exception:
+                                _rs = []
+                        if _rs:
+                            _best_resume_skills = _rs
+                            _best_resume_name = _rrow.get("filename", "active resume")
+                            break
             if _best_resume_skills and len(_best_resume_skills) > len(_core_skills):
                 print(f"  [supabase] Enriching profile skills: {len(_core_skills)} profile skills -> {len(_best_resume_skills)} resume skills (from {_best_resume_name})")
                 # Merge: resume skills + any profile skills not already covered
