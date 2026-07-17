@@ -7511,7 +7511,7 @@ def main():
         # Skip jobs posted more than 6 months ago
         posted = job.get("posted_at")
         if posted is not None and not _is_within_months(posted, 6):
-            print(f"  [skip] {job['title'][:40]}... posted {posted.strftime('%Y-%m-%d')} (>6mo)")
+            print(f"  [skip] {job['title'][:40]}... posted {posted if isinstance(posted, str) else posted.strftime('%Y-%m-%d')} (>6mo)")
             return False
         return True
 
