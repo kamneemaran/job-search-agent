@@ -5127,36 +5127,71 @@ def _card_rows(matches):
     </div>"""
     return rows
 
+def _posted_days_ago(m):
+    """Return number of days since posted_at, or -1 if unknown."""
+    posted = m.get("posted_at")
+    if not posted:
+        return -1
+    try:
+        if isinstance(posted, str):
+            if "T" in posted:
+                dt = datetime.fromisoformat(posted.replace("Z", "+00:00")).replace(tzinfo=None)
+            else:
+                dt = datetime.strptime(posted[:10], "%Y-%m-%d")
+        elif hasattr(posted, 'date'):
+            dt = posted.replace(tzinfo=None) if hasattr(posted, 'tzinfo') and posted.tzinfo else posted
+        else:
+            return -1
+        return (datetime.now() - dt).days
+    except Exception:
+        return -1
+
 def build_email_html(matches, failed_parse=None):
     if not matches:
         body = "<p>No new matches above threshold today.</p>"
     else:
-        high = [m for m in matches if m["score"] >= 75]
-        mid = [m for m in matches if 65 <= m["score"] < 75]
-        low = [m for m in matches if m["score"] < 65]
+        # Group by recency: Fresh (≤7d or unknown), Recent (8-30d), Older (30+d)
+        fresh = []
+        recent = []
+        older = []
+        for m in matches:
+            days = _posted_days_ago(m)
+            if days < 0 or days <= 7:
+                fresh.append(m)
+            elif days <= 30:
+                recent.append(m)
+            else:
+                older.append(m)
+
+        # Sort each group by score descending
+        fresh.sort(key=lambda x: x["score"], reverse=True)
+        recent.sort(key=lambda x: x["score"], reverse=True)
+        older.sort(key=lambda x: x["score"], reverse=True)
 
         sections = ""
 
-        if high:
+        if fresh:
             sections += f"""
     <div style="border:2px solid #a5d6a7;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#2e7d32;margin:0 0 12px;">Strong Matches ({len(high)})</h3>
-      {_card_rows(high)}
+      <h3 style="color:#2e7d32;margin:0 0 4px;">🟢 Fresh — Last 7 Days ({len(fresh)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">Apply quickly — these are new postings</p>
+      {_card_rows(fresh)}
     </div>"""
 
-        if mid:
+        if recent:
             sections += f"""
     <div style="border:2px solid #ffcc80;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#e65100;margin:0 0 12px;">Moderate Matches ({len(mid)})</h3>
-      {_card_rows(mid)}
+      <h3 style="color:#e65100;margin:0 0 4px;">🟡 Recent — 1 to 4 Weeks ({len(recent)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">Still active — most companies take 2-4 weeks to close</p>
+      {_card_rows(recent)}
     </div>"""
 
-        if low:
+        if older:
             sections += f"""
-    <div style="border:2px solid #ef9a9a;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#b71c1c;margin:0 0 12px;">Possible Matches ({len(low)})</h3>
-      <p style="font-size:13px;color:#666;">These may be relevant for you — do check and apply if needed.</p>
-      {_card_rows(low)}
+    <div style="border:2px solid #bdbdbd;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#616161;margin:0 0 4px;">⚪ Older — 30+ Days ({len(older)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">May be filled — check if still open before applying</p>
+      {_card_rows(older)}
     </div>"""
 
         body = f"""

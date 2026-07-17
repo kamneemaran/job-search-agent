@@ -314,28 +314,43 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                 pass
 
 
-def build_email_html(jobs: list[dict]) -> str:
-    """Build a dark-themed HTML email with job results table."""
+def _posted_days_ago(job):
+    """Return number of days since posted_at, or -1 if unknown."""
+    posted = job.get("posted_at")
+    if not posted:
+        return -1
+    try:
+        if isinstance(posted, str):
+            if "T" in posted:
+                dt = datetime.fromisoformat(posted.replace("Z", "+00:00")).replace(tzinfo=None)
+            else:
+                dt = datetime.strptime(posted[:10], "%Y-%m-%d")
+        elif hasattr(posted, 'date'):
+            dt = posted.replace(tzinfo=None) if hasattr(posted, 'tzinfo') and posted.tzinfo else posted
+        else:
+            return -1
+        return (datetime.now() - dt).days
+    except Exception:
+        return -1
+
+def _build_table_rows(jobs):
+    """Build HTML table rows for a list of jobs."""
     rows = ""
     for job in jobs:
-        link = f'<a href="{job["url"]}" style="color:#60a5fa;">Apply</a>' if job["url"] else "—"
+        link = f'<a href="{job["url"]}" style="color:#60a5fa;">Apply</a>' if job.get("url") else "—"
         rows += f"""<tr>
-            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job["title"]}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job["company"]}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;">{job["score"]}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job["location"]}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job["salary"] or "—"}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("title", "")}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("company", "")}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;">{job.get("score", 0)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("location", "")}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("salary", "") or "—"}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;">{link}</td>
         </tr>"""
+    return rows
 
-    return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background-color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:800px;margin:0 auto;padding:32px 16px;">
-    <h1 style="color:#f9fafb;font-size:24px;margin-bottom:8px;">Your Job Matches</h1>
-    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">{len(jobs)} new opportunities scoring above {SCORE_THRESHOLD}</p>
-    <table style="width:100%;border-collapse:collapse;background-color:#1f2937;border-radius:8px;overflow:hidden;">
+def _build_section_table(jobs):
+    """Build a complete HTML table for a section of jobs."""
+    return f"""<table style="width:100%;border-collapse:collapse;background-color:#1f2937;border-radius:8px;overflow:hidden;margin-bottom:8px;">
       <thead>
         <tr style="background-color:#374151;">
           <th style="padding:12px;text-align:left;color:#d1d5db;font-size:13px;">Title</th>
@@ -347,9 +362,63 @@ def build_email_html(jobs: list[dict]) -> str:
         </tr>
       </thead>
       <tbody style="color:#e5e7eb;font-size:13px;">
-        {rows}
+        {_build_table_rows(jobs)}
       </tbody>
-    </table>
+    </table>"""
+
+def build_email_html(jobs: list[dict]) -> str:
+    """Build a dark-themed HTML email with job results grouped by recency."""
+    # Group by recency
+    fresh = []
+    recent = []
+    older = []
+    for job in jobs:
+        days = _posted_days_ago(job)
+        if days < 0 or days <= 7:
+            fresh.append(job)
+        elif days <= 30:
+            recent.append(job)
+        else:
+            older.append(job)
+
+    # Sort each group by score descending
+    fresh.sort(key=lambda x: x.get("score", 0), reverse=True)
+    recent.sort(key=lambda x: x.get("score", 0), reverse=True)
+    older.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    sections = ""
+    if fresh:
+        sections += f"""
+    <div style="margin-bottom:24px;">
+      <h2 style="color:#34d399;font-size:18px;margin-bottom:4px;">🟢 Fresh — Last 7 Days ({len(fresh)})</h2>
+      <p style="color:#6b7280;font-size:13px;margin-top:0;margin-bottom:12px;">Apply quickly — these are new postings</p>
+      {_build_section_table(fresh)}
+    </div>"""
+
+    if recent:
+        sections += f"""
+    <div style="margin-bottom:24px;">
+      <h2 style="color:#fbbf24;font-size:18px;margin-bottom:4px;">🟡 Recent — 1 to 4 Weeks ({len(recent)})</h2>
+      <p style="color:#6b7280;font-size:13px;margin-top:0;margin-bottom:12px;">Still active — most companies take 2-4 weeks to close</p>
+      {_build_section_table(recent)}
+    </div>"""
+
+    if older:
+        sections += f"""
+    <div style="margin-bottom:24px;">
+      <h2 style="color:#9ca3af;font-size:18px;margin-bottom:4px;">⚪ Older — 30+ Days ({len(older)})</h2>
+      <p style="color:#6b7280;font-size:13px;margin-top:0;margin-bottom:12px;">May be filled — check if still open before applying</p>
+      {_build_section_table(older)}
+    </div>"""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:800px;margin:0 auto;padding:32px 16px;">
+    <h1 style="color:#f9fafb;font-size:24px;margin-bottom:8px;">Your Job Matches</h1>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">{len(jobs)} new opportunities scoring above {SCORE_THRESHOLD}</p>
+    {sections}
     <p style="color:#6b7280;font-size:12px;margin-top:24px;">Sent by JobPilot. Manage preferences in your dashboard.</p>
   </div>
 </body>
