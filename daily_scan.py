@@ -73,8 +73,7 @@ def _get_browser():
                 "--no-sandbox", 
                 "--disable-setuid-sandbox", 
                 "--disable-dev-shm-usage",
-                "--single-process",
-                "--js-flags=--max-old-space-size=128",
+                "--js-flags=--max-old-space-size=512",
                 "--disable-gpu",
                 "--disable-extensions"
             ]
@@ -86,7 +85,7 @@ def _check_reclaim_playwright():
     if not hasattr(_local_playwright, "page_count"):
         _local_playwright.page_count = 0
     _local_playwright.page_count += 1
-    if _local_playwright.page_count >= 5:
+    if _local_playwright.page_count >= 15:
         try:
             if hasattr(_local_playwright, "browser") and _local_playwright.browser:
                 _local_playwright.browser.close()
