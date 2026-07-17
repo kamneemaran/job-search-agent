@@ -7824,6 +7824,11 @@ def main():
             if board_name in static_boards:
                 current_queries = [current_queries[0]] if current_queries else [""]
                 print(f"  [{board_name.lower()}] Board ignores search query; executing exactly once to avoid redundant page loads")
+            elif board_name in pw_names:
+                # Playwright boards are slow (20-60s per query). Limit to top 2 queries
+                # to keep total time reasonable without losing relevant matches.
+                current_queries = current_queries[:2]
+                print(f"  [{board_name.lower()}] Playwright board: limited to top {len(current_queries)} queries for speed")
 
             for query in current_queries:
                 if board_name in au_boards:
@@ -7906,16 +7911,37 @@ def main():
             if adzuna_thread.is_alive():
                 print("  [adzuna] Warning: dedicated thread still running after 5min timeout")
 
-            # Execute Playwright scrapers sequentially in the main thread (thread safety guaranteed)
+            # Execute Playwright scrapers in parallel batches of 3
+            # (separate processes, each with own Chromium — safe and fast)
             pw_filter = os.environ.get("PLAYWRIGHT_SCRAPER_FILTER", "")
-            for name, fn in playwright_scrapers:
-                if pw_filter and name != pw_filter:
-                    continue  # Skip scrapers not matching the matrix filter
-                print(f"  [{name.lower()}] Running Playwright scraper sequentially in main thread")
-                try:
-                    all_matches.extend(_process_board(name, fn))
-                except Exception as e:
-                    print(f"  [{name.lower()}] Error: {e}")
+            pw_to_run = [(name, fn) for name, fn in playwright_scrapers if not pw_filter or name == pw_filter]
+            
+            if pw_to_run:
+                print(f"  [playwright] Running {len(pw_to_run)} EU Playwright scrapers in batches of 3")
+                PW_BATCH_SIZE = 3
+                for pw_batch_idx in range(0, len(pw_to_run), PW_BATCH_SIZE):
+                    pw_batch = pw_to_run[pw_batch_idx:pw_batch_idx + PW_BATCH_SIZE]
+                    pw_threads = []
+                    pw_batch_results = []
+                    
+                    def _run_pw_scraper(name, fn, results_list):
+                        try:
+                            results_list.extend(_process_board(name, fn))
+                        except Exception as e:
+                            print(f"  [{name.lower()}] Error: {e}")
+                    
+                    for name, fn in pw_batch:
+                        result_list = []
+                        pw_batch_results.append(result_list)
+                        t = threading.Thread(target=_run_pw_scraper, args=(name, fn, result_list), daemon=True)
+                        pw_threads.append(t)
+                        t.start()
+                    
+                    for t in pw_threads:
+                        t.join(timeout=300)
+                    
+                    for result_list in pw_batch_results:
+                        all_matches.extend(result_list)
 
             # --- Paginated company scrapers (run once, not per query) ---
             for pw_name, pw_fn in [("Philips", search_philips), ("Liebherr", search_liebherr)]:
