@@ -56,6 +56,11 @@ export default function SettingsPage() {
   const [uploadMsg, setUploadMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Skills gap state
+  const [skillsGap, setSkillsGap] = useState<{skill: string; frequency: number}[]>([]);
+  const [skillsGapLoading, setSkillsGapLoading] = useState(false);
+  const [skillsGapAnalyzed, setSkillsGapAnalyzed] = useState(0);
+
   // Webhook state
   const [webhookUrl, setWebhookUrl] = useState("");
 
@@ -110,6 +115,29 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error("Failed to fetch active scans:", err);
+    }
+  };
+
+  const fetchSkillsGap = async () => {
+    setSkillsGapLoading(true);
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/api/skills-gap`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSkillsGap(data.skills_gap || []);
+        setSkillsGapAnalyzed(data.total_jobs_analyzed || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch skills gap:", err);
+    } finally {
+      setSkillsGapLoading(false);
     }
   };
 
@@ -554,6 +582,43 @@ export default function SettingsPage() {
           {uploadMsg && (
             <p className={`mt-2 text-xs ${uploadMsg.startsWith("Error") ? "text-red-400" : "text-emerald-400"}`}>{uploadMsg}</p>
           )}
+        </div>
+
+        {/* Skills Gap Section */}
+        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Skills Gap Analysis</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Skills frequently requested in matched JDs that you don't have</p>
+            </div>
+            <button
+              onClick={fetchSkillsGap}
+              disabled={skillsGapLoading}
+              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50"
+            >
+              {skillsGapLoading ? "Analyzing..." : skillsGap.length > 0 ? "Refresh" : "Analyze"}
+            </button>
+          </div>
+          {skillsGap.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {skillsGap.map((item, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-400"
+                  >
+                    {item.skill}
+                    <span className="text-[9px] text-amber-600 ml-0.5">({item.frequency})</span>
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-2">
+                Based on {skillsGapAnalyzed} recent matched jobs. Number in brackets = how many JDs mention this skill.
+              </p>
+            </>
+          ) : !skillsGapLoading ? (
+            <p className="text-xs text-gray-600">Click "Analyze" to scan your matched job descriptions for skill gaps.</p>
+          ) : null}
         </div>
 
         {/* Email Digest Section */}

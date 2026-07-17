@@ -743,3 +743,70 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             ds.PROFILE["years_experience"] = orig_years
             ds.PROFILE["current_role"] = orig_role
             ds._rebuild_precompiled_patterns()
+
+
+@app.get("/api/skills-gap")
+async def get_skills_gap(authorization: Optional[str] = Header(None)):
+    """Analyze matched job descriptions to find frequently requested skills missing from user profile."""
+    if not authorization:
+        raise HTTPException(401, "Authorization required")
+
+    from api.supabase import get_user_client
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    user_id = user.id
+
+    # Get user's current skills
+    profile_row = sb.table("profiles").select("core_skills").eq("id", user_id).maybe_single().execute()
+    user_skills = set()
+    if profile_row and profile_row.data:
+        raw = profile_row.data.get("core_skills") or []
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:
+                raw = []
+        user_skills = set(s.lower() for s in raw)
+
+    # Also load resume skills
+    try:
+        resume_row = sb.table("resumes").select("parsed_skills").eq("user_id", user_id).eq("is_active", True).order("created_at", desc=True).limit(1).maybe_single().execute()
+        if resume_row and resume_row.data:
+            rs = resume_row.data.get("parsed_skills") or []
+            if isinstance(rs, str):
+                try:
+                    rs = json.loads(rs)
+                except Exception:
+                    rs = []
+            user_skills.update(s.lower() for s in rs)
+    except Exception:
+        pass
+
+    # Get recent matched jobs with descriptions
+    jobs_result = sb.table("jobs").select("description").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
+    if not jobs_result.data:
+        return {"skills_gap": [], "total_jobs_analyzed": 0}
+
+    # Count tech keywords in JDs that user doesn't have
+    ds = _get_ds()
+    import re
+    from collections import Counter
+    gap_counter = Counter()
+
+    for job in jobs_result.data:
+        desc = (job.get("description") or "").lower()
+        if len(desc) < 50:
+            continue
+        for kw in ds.COMMON_TECH_KEYWORDS:
+            if kw in user_skills:
+                continue
+            if re.search(r'\b' + re.escape(kw) + r'\b', desc):
+                gap_counter[kw] += 1
+
+    # Return top 15 missing skills sorted by frequency
+    top_gaps = gap_counter.most_common(15)
+    return {
+        "skills_gap": [{"skill": skill, "frequency": count} for skill, count in top_gaps],
+        "total_jobs_analyzed": len(jobs_result.data),
+        "your_skills_count": len(user_skills),
+    }
