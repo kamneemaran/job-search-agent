@@ -123,6 +123,11 @@ jobs:
                   europe_boards) BATCH="boards-eu" ;;
                   middle_east) BATCH="middle-east" ;;
                   us_canada) BATCH="us-canada" ;;
+                  remote)
+                    # Expand to both remote job boards + remote company ATS
+                    MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-remote"}]')
+                    BATCH="remote"
+                    ;;
                 esac
                 MATRIX=$(echo "$MATRIX" | jq -c --arg b "$BATCH" '.include += [{"batch": $b}]')
               done

@@ -7336,21 +7336,28 @@ def main():
             args.batch = ",".join(_batches_from_db) if len(_batches_from_db) > 1 else _batches_from_db[0] if _batches_from_db else ""
 
         # Map Supabase/digest batch names to daily_scan batch names
+        # Some Supabase names expand to multiple daily_scan batches
         _BATCH_NAME_MAP = {
-            "india": "ats",
-            "europe_companies": "eu",
-            "europe_boards": "boards-eu",
-            "middle_east": "middle-east",
-            "us_canada": "us-canada",
-            # These are the same in both systems:
-            # "apac": "apac", "remote": "remote", "all": "all"
+            "india": ["ats"],
+            "europe_companies": ["eu"],
+            "europe_boards": ["boards-eu"],
+            "middle_east": ["middle-east"],
+            "us_canada": ["us-canada"],
+            "remote": ["boards-remote", "remote"],  # both remote job boards + remote company ATS
         }
         if args.batch:
             _mapped_batches = []
             for _b in args.batch.split(","):
                 _b = _b.strip()
-                _mapped_batches.append(_BATCH_NAME_MAP.get(_b, _b))
-            args.batch = ",".join(_mapped_batches)
+                _mapped_batches.extend(_BATCH_NAME_MAP.get(_b, [_b]))
+            # Deduplicate while preserving order
+            _seen_batches = set()
+            _deduped = []
+            for _b in _mapped_batches:
+                if _b not in _seen_batches:
+                    _seen_batches.add(_b)
+                    _deduped.append(_b)
+            args.batch = ",".join(_deduped)
             print(f"  [supabase] Mapped batches: {args.batch}")
 
         # Update existing RUNNING token (created by digest.py) with run_id and progress
