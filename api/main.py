@@ -246,17 +246,26 @@ async def upload_resume(
                 filename = file.filename
                 storage_path = f"{user_id}/{filename}"
 
+                # Use service role client for DB operations (bypasses RLS)
+                from supabase import create_client as _create_sb
+                _sb_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+                _sb_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
+                sb_admin = _create_sb(_sb_url, _sb_key)
+
                 # Upload file to storage
-                sb.storage.from_("resumes").upload(storage_path, content, {"content-type": "application/pdf", "upsert": "true"})
+                try:
+                    sb.storage.from_("resumes").upload(storage_path, content, {"content-type": "application/pdf", "upsert": "true"})
+                except Exception as storage_err:
+                    print(f"  [resume] Storage upload failed (non-fatal): {storage_err}")
 
                 # Delete all existing resumes for this user (one resume per user)
                 try:
-                    sb.table("resumes").delete().eq("user_id", user_id).execute()
-                except Exception:
-                    pass
+                    sb_admin.table("resumes").delete().eq("user_id", user_id).execute()
+                except Exception as del_err:
+                    print(f"  [resume] Delete old resumes failed: {del_err}")
 
                 # Insert new resume record
-                sb.table("resumes").insert({
+                sb_admin.table("resumes").insert({
                     "user_id": user_id,
                     "filename": filename,
                     "storage_path": storage_path,
@@ -268,15 +277,18 @@ async def upload_resume(
                 }).execute()
 
                 # Update profiles table
-                sb.table("profiles").upsert({
+                sb_admin.table("profiles").upsert({
                     "id": user_id,
                     "full_name": profile.get("name", ""),
                     "core_skills": profile.get("core_skills", []),
                     "current_role": profile.get("current_role", ""),
                     "years_experience": profile.get("years_experience", 0),
                 }, on_conflict="id").execute()
+                print(f"  [resume] Saved to Supabase for user {user_id}: {len(profile.get('core_skills', []))} skills")
             except Exception as e:
                 print(f"  [resume] Supabase save failed: {e}")
+                import traceback
+                traceback.print_exc()
 
         # Register as a local resume version if key is provided
         if key and not missing:
