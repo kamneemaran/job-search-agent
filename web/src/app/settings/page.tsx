@@ -424,9 +424,6 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-white">Email Digest</h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 Email: <span className="text-gray-300">{digestEmail || "not set"}</span>
-                {digestFrequency !== "never" && (
-                  <span className="ml-3 text-indigo-400">Schedule: {digestFrequency}</span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -449,6 +446,57 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          {/* Scan Summary */}
+          {scanSummary && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                <span className="text-[10px] text-gray-500 font-medium">On-Demand Scans (Today)</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-emerald-400 font-bold text-lg">{scanSummary.instant_completed_today}</span>
+                  <span className="text-emerald-500 text-xs">completed</span>
+                  {scanSummary.instant_failed_today > 0 && (
+                    <span className="ml-2 text-red-400 font-bold text-lg">{scanSummary.instant_failed_today}</span>
+                  )}
+                  {scanSummary.instant_failed_today > 0 && (
+                    <span className="text-red-500 text-xs">failed</span>
+                  )}
+                </div>
+                <span className="text-[9px] text-gray-600 mt-1">Triggered via "Send Now"</span>
+              </div>
+              <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                <span className="text-[10px] text-gray-500 font-medium">Scheduled Digest (Auto)</span>
+                <div className="flex flex-col mt-1">
+                  <span className={`font-semibold text-xs ${
+                    scanSummary.last_daily_status === "Completed"
+                      ? "text-emerald-400"
+                      : scanSummary.last_daily_status === "Failed"
+                      ? "text-red-400"
+                      : "text-gray-400"
+                  }`}>
+                    {scanSummary.last_daily_status}
+                  </span>
+                  {scanSummary.last_daily_time > 0 && (
+                    <span className="text-[9px] text-gray-500 mt-0.5">
+                      Last run: {new Date(scanSummary.last_daily_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] text-gray-600 mt-1">Runs on schedule (via "Schedule")</span>
+              </div>
+              <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
+                <span className="text-[10px] text-gray-500 font-medium">Current Schedule</span>
+                <div className="flex flex-col mt-1">
+                  <span className={`font-semibold text-xs ${digestFrequency === "never" ? "text-gray-500" : "text-indigo-400"}`}>
+                    {digestFrequency === "never" ? "Disabled" : digestFrequency.charAt(0).toUpperCase() + digestFrequency.slice(1)}
+                  </span>
+                  {digestFrequency === "weekly" && <span className="text-[9px] text-gray-500 mt-0.5">{digestDayOfWeek.charAt(0).toUpperCase() + digestDayOfWeek.slice(1)}</span>}
+                  {digestFrequency === "daily" && <span className="text-[9px] text-gray-500 mt-0.5">at {digestTimeOfDay}</span>}
+                  {digestFrequency === "monthly" && <span className="text-[9px] text-gray-500 mt-0.5">Day {digestDayOfMonth}</span>}
+                </div>
+              </div>
+            </div>
+          )}
 
           {sendResult && (
             <p className={`mb-4 text-xs font-semibold ${sendError ? "text-red-400" : "text-emerald-400"}`}>
@@ -534,23 +582,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Scan Summary */}
-          {scanSummary && (scanSummary.instant_completed_today > 0 || scanSummary.instant_failed_today > 0) && (
-            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-800/60">
-              <div className="text-center">
-                <span className="text-emerald-400 font-bold text-lg">{scanSummary.instant_completed_today}</span>
-                <p className="text-[10px] text-gray-500">Completed</p>
-              </div>
-              <div className="text-center">
-                <span className={`font-bold text-lg ${scanSummary.instant_failed_today > 0 ? "text-red-400" : "text-gray-500"}`}>{scanSummary.instant_failed_today}</span>
-                <p className="text-[10px] text-gray-500">Failed</p>
-              </div>
-              <div className="text-center">
-                <span className="text-gray-300 font-semibold text-xs">{scanSummary.last_daily_status}</span>
-                <p className="text-[10px] text-gray-500">Daily Digest</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
