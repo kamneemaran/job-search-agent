@@ -7825,10 +7825,9 @@ def main():
                 current_queries = [current_queries[0]] if current_queries else [""]
                 print(f"  [{board_name.lower()}] Board ignores search query; executing exactly once to avoid redundant page loads")
             elif board_name in pw_names:
-                # Playwright boards are slow (20-60s per query). Limit to top 2 queries
-                # to keep total time reasonable without losing relevant matches.
-                current_queries = current_queries[:2]
-                print(f"  [{board_name.lower()}] Playwright board: limited to top {len(current_queries)} queries for speed")
+                # Playwright boards are slow (20-60s per query). Already pruned of seniority
+                # prefixes above. Keep all base title variants to avoid missing matches.
+                pass
 
             for query in current_queries:
                 if board_name in au_boards:
