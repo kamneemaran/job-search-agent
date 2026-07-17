@@ -116,6 +116,14 @@ jobs:
             # If batches are specified, create one matrix entry per batch
             if [ -n "$BATCHES" ] && [ "$BATCHES" != "all" ]; then
               for BATCH in $(echo "$BATCHES" | tr ',' ' '); do
+                # Map Supabase batch names to daily_scan batch names
+                case "$BATCH" in
+                  india) BATCH="ats" ;;
+                  europe_companies) BATCH="eu" ;;
+                  europe_boards) BATCH="boards-eu" ;;
+                  middle_east) BATCH="middle-east" ;;
+                  us_canada) BATCH="us-canada" ;;
+                esac
                 MATRIX=$(echo "$MATRIX" | jq -c --arg b "$BATCH" '.include += [{"batch": $b}]')
               done
             else

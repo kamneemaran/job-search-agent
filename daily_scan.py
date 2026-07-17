@@ -7257,30 +7257,36 @@ def main():
 
         # Enrich skills from active resume's parsed_skills (resume parser extracts 40+ detailed keywords)
         try:
-            _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename").eq("user_id", args.user_id).eq("is_active", True).maybe_single().execute()
+            _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename").eq("user_id", args.user_id).eq("is_active", True).order("created_at", desc=True).limit(5).execute()
+            _best_resume_skills = []
+            _best_resume_name = ""
             if _resume_result and _resume_result.data:
-                _resume_skills = _resume_result.data.get("parsed_skills") or []
-                if isinstance(_resume_skills, str):
-                    try:
-                        _resume_skills = json.loads(_resume_skills)
-                    except Exception:
-                        _resume_skills = []
-                if _resume_skills and len(_resume_skills) > len(_core_skills):
-                    print(f"  [supabase] Enriching profile skills: {len(_core_skills)} profile skills -> {len(_resume_skills)} resume skills (from {_resume_result.data.get('filename', 'active resume')})")
-                    # Merge: resume skills + any profile skills not already covered
-                    _resume_set = set(s.lower() for s in _resume_skills)
-                    _merged = list(_resume_skills)
-                    for _s in _core_skills:
-                        if _s.lower() not in _resume_set:
-                            _merged.append(_s)
-                    _core_skills = _merged
-                elif _resume_skills:
-                    # Resume has fewer skills, but still merge unique ones in
-                    _profile_set = set(s.lower() for s in _core_skills)
-                    for _s in _resume_skills:
-                        if _s.lower() not in _profile_set:
-                            _core_skills.append(_s)
-                            _profile_set.add(_s.lower())
+                for _rrow in _resume_result.data:
+                    _rs = _rrow.get("parsed_skills") or []
+                    if isinstance(_rs, str):
+                        try:
+                            _rs = json.loads(_rs)
+                        except Exception:
+                            _rs = []
+                    if len(_rs) > len(_best_resume_skills):
+                        _best_resume_skills = _rs
+                        _best_resume_name = _rrow.get("filename", "active resume")
+            if _best_resume_skills and len(_best_resume_skills) > len(_core_skills):
+                print(f"  [supabase] Enriching profile skills: {len(_core_skills)} profile skills -> {len(_best_resume_skills)} resume skills (from {_best_resume_name})")
+                # Merge: resume skills + any profile skills not already covered
+                _resume_set = set(s.lower() for s in _best_resume_skills)
+                _merged = list(_best_resume_skills)
+                for _s in _core_skills:
+                    if _s.lower() not in _resume_set:
+                        _merged.append(_s)
+                _core_skills = _merged
+            elif _best_resume_skills:
+                # Resume has fewer skills, but still merge unique ones in
+                _profile_set = set(s.lower() for s in _core_skills)
+                for _s in _best_resume_skills:
+                    if _s.lower() not in _profile_set:
+                        _core_skills.append(_s)
+                        _profile_set.add(_s.lower())
         except Exception as _e:
             print(f"  [supabase] Warning: Could not load resume skills: {_e}")
 
@@ -7328,6 +7334,24 @@ def main():
         # If --batch not provided on CLI, use batches from Supabase
         if not args.batch and _batches_from_db:
             args.batch = ",".join(_batches_from_db) if len(_batches_from_db) > 1 else _batches_from_db[0] if _batches_from_db else ""
+
+        # Map Supabase/digest batch names to daily_scan batch names
+        _BATCH_NAME_MAP = {
+            "india": "ats",
+            "europe_companies": "eu",
+            "europe_boards": "boards-eu",
+            "middle_east": "middle-east",
+            "us_canada": "us-canada",
+            # These are the same in both systems:
+            # "apac": "apac", "remote": "remote", "all": "all"
+        }
+        if args.batch:
+            _mapped_batches = []
+            for _b in args.batch.split(","):
+                _b = _b.strip()
+                _mapped_batches.append(_BATCH_NAME_MAP.get(_b, _b))
+            args.batch = ",".join(_mapped_batches)
+            print(f"  [supabase] Mapped batches: {args.batch}")
 
         # Write RUNNING token to sent_history
         _github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
