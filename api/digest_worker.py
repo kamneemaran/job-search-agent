@@ -197,21 +197,13 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                     
                 seen.add(key)
 
-                with _profile_lock:
-                    orig_skills = ds.PROFILE.get("core_skills")
-                    orig_years = ds.PROFILE.get("years_experience")
-                    try:
-                        ds.PROFILE["core_skills"] = profile["core_skills"]
-                        ds.PROFILE["years_experience"] = profile["years_experience"]
-                        score, note = ds.score_job(
-                            job.get("title", ""),
-                            job.get("description", ""),
-                            job.get("company", ""),
-                            job.get("location", ""),
-                        )
-                    finally:
-                        ds.PROFILE["core_skills"] = orig_skills
-                        ds.PROFILE["years_experience"] = orig_years
+                # Profile already swapped at outer scope (lines 116-120) — just score directly
+                score, note = ds.score_job(
+                    job.get("title", ""),
+                    job.get("description", ""),
+                    job.get("company", ""),
+                    job.get("location", ""),
+                )
 
                 if score >= SCORE_THRESHOLD:
                     salary_info = ds.get_salary_info(
@@ -280,22 +272,13 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                                     
                                 seen.add(key)
                                 
-                                # Score job
-                                with _profile_lock:
-                                    orig_skills = ds.PROFILE.get("core_skills")
-                                    orig_years = ds.PROFILE.get("years_experience")
-                                    try:
-                                        ds.PROFILE["core_skills"] = profile["core_skills"]
-                                        ds.PROFILE["years_experience"] = profile["years_experience"]
-                                        score, note = ds.score_job(
-                                            job.get("title", ""),
-                                            job.get("description", ""),
-                                            job.get("company", ""),
-                                            job.get("location", ""),
-                                        )
-                                    finally:
-                                        ds.PROFILE["core_skills"] = orig_skills
-                                        ds.PROFILE["years_experience"] = orig_years
+                                # Profile already swapped at outer scope — just score directly
+                                score, note = ds.score_job(
+                                    job.get("title", ""),
+                                    job.get("description", ""),
+                                    job.get("company", ""),
+                                    job.get("location", ""),
+                                )
                                         
                                 if score >= SCORE_THRESHOLD:
                                     logger.info(f"[DIGEST-BG-WORKER] Match verified on Board {board_name}! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")

@@ -198,19 +198,11 @@ def run_background_digest_scan(
                 if key in seen:
                     continue
                 seen.add(key)
-                with _profile_lock:
-                    orig_skills = ds.PROFILE.get("core_skills")
-                    orig_years = ds.PROFILE.get("years_experience")
-                    try:
-                        ds.PROFILE["core_skills"] = profile["core_skills"]
-                        ds.PROFILE["years_experience"] = profile["years_experience"]
-                        score, note = ds.score_job(
-                            job.get("title", ""), job.get("description", ""),
-                            job.get("company", ""), job.get("location", ""),
-                        )
-                    finally:
-                        ds.PROFILE["core_skills"] = orig_skills
-                        ds.PROFILE["years_experience"] = orig_years
+                # Profile already swapped at outer scope (lines 116-118) — just score directly
+                score, note = ds.score_job(
+                    job.get("title", ""), job.get("description", ""),
+                    job.get("company", ""), job.get("location", ""),
+                )
 
                 if score >= 65:
                     logger.info(f"[DIGEST-BG-WORKER] Match verified! '{job.get('title')}' at '{job.get('company')}' -> Score: {score}")
@@ -250,8 +242,15 @@ def run_background_digest_scan(
         results.sort(key=lambda x: x["score"], reverse=True)
         logger.info(f"[DIGEST-BG-WORKER] Finished processing. Total unique jobs evaluated: {len(seen)}. Matches above threshold: {len(results)}.")
 
-        # Clean sent_history: keep only non-RUNNING and non-MATCH entries, and append now_iso
-        clean_history = [dt.isoformat() for dt in history_dates]
+        # Clean sent_history: remove RUNNING and MATCH tokens, preserve everything else
+        # (keeps COMPLETED_*, FAILED_*, FINISHED:*, and ISO timestamps)
+        pref_latest = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+        full_history = (pref_latest.data.get("sent_history") or []) if (pref_latest and pref_latest.data) else []
+        clean_history = []
+        for item in full_history:
+            if isinstance(item, str) and (item.startswith("RUNNING:") or item.startswith("MATCH:")):
+                continue
+            clean_history.append(item)
         clean_history.append(now_iso)
 
         if not results:
@@ -877,8 +876,8 @@ async def reset_digest_status(
     if pref_result and pref_result.data:
         curr_history = pref_result.data.get("sent_history") or []
         
-        # Extract target GITHUB_RUN_ID specifically belonging to the targeted scan_id
-        target_run_id = None
+        # Extract target GITHUB_RUN_IDs belonging to the targeted scan_id(s)
+        target_run_ids = []
         new_history = []
         
         for item in curr_history:
@@ -894,7 +893,9 @@ async def reset_digest_status(
                     parts = item.split("|")
                     for part in parts:
                         if part.startswith("run_id:"):
-                            target_run_id = part.replace("run_id:", "").strip()
+                            rid = part.replace("run_id:", "").strip()
+                            if rid and rid != "pending" and rid not in target_run_ids:
+                                target_run_ids.append(rid)
                             break
                     continue # Remove this token
                     
@@ -905,13 +906,13 @@ async def reset_digest_status(
         }).eq("user_id", user_id).execute()
         logger.info(f"[DIGEST-TRIGGER] Force reset running status for user_id={user_id}, scan_id={scan_id}")
 
-        # Cancel the specific GitHub Action workflow if target_run_id was captured and valid
+        # Cancel GitHub Action workflows for all collected run_ids
         gh_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
         gh_repo = os.environ.get("GITHUB_REPO") or os.environ.get("GH_REPO")
         gh_cancelled_count = 0
         gh_error_msg = None
         
-        if target_run_id and target_run_id != "pending" and gh_token and gh_repo:
+        if target_run_ids and gh_token and gh_repo:
             repo_clean = gh_repo.strip()
             if "github.com/" in repo_clean:
                 repo_clean = repo_clean.split("github.com/")[-1]
@@ -920,29 +921,29 @@ async def reset_digest_status(
             repo_clean = repo_clean.strip("/")
             
             import requests
-            cancel_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{target_run_id}/cancel"
             headers = {
                 "Authorization": f"token {gh_token}",
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "JobPilot-API"
             }
-            try:
-                # Cancel only the specific run ID
-                cancel_resp = requests.post(cancel_url, headers=headers, timeout=10)
-                if cancel_resp.status_code == 202:
-                    logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={target_run_id}")
-                    gh_cancelled_count += 1
-                else:
-                    gh_error_msg = f"GitHub API status {cancel_resp.status_code}: {cancel_resp.text}"
-                    logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={target_run_id}: {gh_error_msg}")
-            except Exception as ge:
-                gh_error_msg = f"Request exception: {str(ge)}"
-                logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflow {target_run_id}: {ge}")
+            for target_run_id in target_run_ids:
+                cancel_url = f"https://api.github.com/repos/{repo_clean}/actions/runs/{target_run_id}/cancel"
+                try:
+                    cancel_resp = requests.post(cancel_url, headers=headers, timeout=10)
+                    if cancel_resp.status_code == 202:
+                        logger.info(f"[DIGEST-RESET] Successfully cancelled active GitHub Action workflow run_id={target_run_id}")
+                        gh_cancelled_count += 1
+                    else:
+                        gh_error_msg = f"GitHub API status {cancel_resp.status_code}: {cancel_resp.text}"
+                        logger.warning(f"[DIGEST-RESET] Failed to cancel run_id={target_run_id}: {gh_error_msg}")
+                except Exception as ge:
+                    gh_error_msg = f"Request exception: {str(ge)}"
+                    logger.error(f"[DIGEST-RESET] Error attempting to cancel GitHub Action workflow {target_run_id}: {ge}")
 
         if gh_cancelled_count > 0:
-            msg = f"Scan status reset successfully. Aborted your active GitHub Actions cloud workflow run (ID: {target_run_id})."
-        elif target_run_id and target_run_id != "pending":
-            msg = f"Scan status reset. Warning: Failed to abort cloud run {target_run_id} on GitHub. ({gh_error_msg or 'Check GITHUB_TOKEN permissions'})"
+            msg = f"Scan status reset successfully. Aborted {gh_cancelled_count} active GitHub Actions cloud workflow run(s)."
+        elif target_run_ids:
+            msg = f"Scan status reset. Warning: Failed to abort cloud run(s) {', '.join(target_run_ids)} on GitHub. ({gh_error_msg or 'Check GITHUB_TOKEN permissions'})"
         elif scan_id:
             msg = f"Scan status reset successfully. Removed scan {scan_id}."
         else:
