@@ -2257,179 +2257,180 @@ def _scrape_company_career_page(source):
             print(f"  [pw] Retry attempt {attempt+1} for {source['name']}")
         context = None
         success = False
+        pw_failed = False
         try:
             browser = _get_browser()
             context = _create_context(browser, source.get("url"))
             page = context.new_page()
-        page.set_default_timeout(source.get("timeout", 20000))
-        _with_stealth(page)
-        pw_timeout = source.get("timeout", 20000)
-        page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
-        page.wait_for_timeout(5000)
-
-        page.evaluate("""
-            () => {
-                const overlays = document.querySelectorAll(
-                    '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
-                    '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
-                    '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
-                    '[class*="modal"], [class*="banner"], ' +
-                    '[role="dialog"], [aria-modal="true"]'
-                );
-                overlays.forEach(el => el.remove());
-            }
-        """)
-
-        seen_urls = set()
-        page_jobs = _extract_links(page)
-        for j in page_jobs:
-            if j["url"] not in seen_urls:
-                seen_urls.add(j["url"])
-                jobs.append(j)
-
-        # Try "Show More" / "Load More" / "Show more results" buttons up to 5 times
-        for _sm in range(5):
-            show_more = page.query_selector(
-                'button:has-text("Show More"), button:has-text("show more"), '
-                'button:has-text("Load More"), button:has-text("load more"), '
-                'button:has-text("Show more results"), button:has-text("show more results"), '
-                'button:has-text("More Results"), button:has-text("more results"), '
-                'button:has-text("View More"), button:has-text("view more"), '
-                'button:has-text("See More"), button:has-text("see more"), '
-                'button:has-text("More jobs"), button:has-text("more jobs"), '
-                'button:has-text("Load more jobs"), button:has-text("load more jobs"), '
-                'button:has-text("View All"), button:has-text("view all"), '
-                'a:has-text("Show More"), a:has-text("show more"), '
-                'a:has-text("Load More"), a:has-text("load more"), '
-                'a:has-text("Show more results"), a:has-text("show more results"), '
-                'a:has-text("More Results"), a:has-text("more results"), '
-                'a:has-text("View More"), a:has-text("view more"), '
-                'a:has-text("See More"), a:has-text("see more"), '
-                'a:has-text("More jobs"), a:has-text("more jobs"), '
-                'a:has-text("View All"), a:has-text("view all"), '
-                '[class*="show-more"], [class*="showMore"], '
-                '[class*="load-more"], [class*="loadMore"], '
-                '[class*="load-more-jobs"], [class*="loadMoreJobs"], '
-                '[class*="show-more-results"], [class*="showMoreResults"], '
-                '[class*="view-more"], [class*="viewMore"], '
-                '[class*="view-all"], [class*="viewAll"]'
-            )
-            if show_more:
-                try:
-                    show_more.scroll_into_view_if_needed()
-                    page.evaluate("""
-                        () => {
-                            const overlays = document.querySelectorAll(
-                                '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
-                                '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
-                                '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
-                                '[class*="modal"], [class*="banner"], ' +
-                                '[role="dialog"], [aria-modal="true"]'
-                            );
-                            overlays.forEach(el => el.remove());
-                        }
-                    """)
-                    show_more.click()
-                    page.wait_for_timeout(2000)
-                    page_jobs = _extract_links(page)
-                    for j in page_jobs:
-                        if j["url"] not in seen_urls:
-                            seen_urls.add(j["url"])
-                            jobs.append(j)
-                    continue
-                except Exception:
-                    pass
-            break
-
-        # Pagination: up to 5 additional pages
-        for _pg in range(2, 7):
-            next_btn = None
-            try:
-                next_btn = page.query_selector(
-                    'a[rel="next"], button[aria-label*="Next" i], '
-                    'a.pagination__next, .pagination a.next, '
-                    'a:has-text("Next"), a:has-text("next"), '
-                    'button:has-text("Next"), button:has-text("next")'
-                )
-            except Exception:
-                pass
-            if next_btn:
-                try:
-                    disabled = page.evaluate(
-                        '(el) => el.disabled || el.classList.contains("disabled") '
-                        '|| el.getAttribute("aria-disabled") === "true"',
-                        next_btn
-                    )
-                    if disabled:
-                        break
-                    page.evaluate("""
-                        () => {
-                            const overlays = document.querySelectorAll(
-                                '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
-                                '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
-                                '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
-                                '[class*="modal"], [class*="banner"], ' +
-                                '[role="dialog"], [aria-modal="true"]'
-                            );
-                            overlays.forEach(el => el.remove());
-                        }
-                    """)
-                    next_btn.click(force=True)
-                    page.wait_for_timeout(2000)
-                    try:
-                        page.wait_for_selector("a", timeout=5000)
-                    except Exception:
-                        pass
-                except Exception:
-                    break
-            else:
-                # Try URL-based pagination (page=2, start=10, offset=10, p=2)
-                import re as _re
-                cur = page.url
-                for pat, param in [(r'[?&]page=(\d+)', 'page'), (r'[?&]start=(\d+)', 'start'),
-                                   (r'[?&]offset=(\d+)', 'offset'), (r'[?&]p=(\d+)', 'p')]:
-                    m = _re.search(pat, cur)
-                    if m:
-                        base = _re.sub(r'[?&]' + param + r'=\d+', '', cur)
-                        sep = '&' if '?' in base else '?'
-                        next_url = f"{base}{sep}{param}={_pg}"
-                        try:
-                            page.goto(next_url, timeout=pw_timeout, wait_until="domcontentloaded")
-                            page.wait_for_timeout(2000)
-                        except Exception:
-                            break
-                        break
-                else:
-                    break  # No pagination pattern found
-
+            page.set_default_timeout(source.get("timeout", 20000))
+            _with_stealth(page)
+            pw_timeout = source.get("timeout", 20000)
+            page.goto(source["url"], timeout=pw_timeout, wait_until="domcontentloaded")
+            page.wait_for_timeout(5000)
+    
+            page.evaluate("""
+                () => {
+                    const overlays = document.querySelectorAll(
+                        '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                        '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                        '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                        '[class*="modal"], [class*="banner"], ' +
+                        '[role="dialog"], [aria-modal="true"]'
+                    );
+                    overlays.forEach(el => el.remove());
+                }
+            """)
+    
+            seen_urls = set()
             page_jobs = _extract_links(page)
-            new_count = 0
             for j in page_jobs:
                 if j["url"] not in seen_urls:
                     seen_urls.add(j["url"])
                     jobs.append(j)
-                    new_count += 1
-            if new_count == 0:
+    
+            # Try "Show More" / "Load More" / "Show more results" buttons up to 5 times
+            for _sm in range(5):
+                show_more = page.query_selector(
+                    'button:has-text("Show More"), button:has-text("show more"), '
+                    'button:has-text("Load More"), button:has-text("load more"), '
+                    'button:has-text("Show more results"), button:has-text("show more results"), '
+                    'button:has-text("More Results"), button:has-text("more results"), '
+                    'button:has-text("View More"), button:has-text("view more"), '
+                    'button:has-text("See More"), button:has-text("see more"), '
+                    'button:has-text("More jobs"), button:has-text("more jobs"), '
+                    'button:has-text("Load more jobs"), button:has-text("load more jobs"), '
+                    'button:has-text("View All"), button:has-text("view all"), '
+                    'a:has-text("Show More"), a:has-text("show more"), '
+                    'a:has-text("Load More"), a:has-text("load more"), '
+                    'a:has-text("Show more results"), a:has-text("show more results"), '
+                    'a:has-text("More Results"), a:has-text("more results"), '
+                    'a:has-text("View More"), a:has-text("view more"), '
+                    'a:has-text("See More"), a:has-text("see more"), '
+                    'a:has-text("More jobs"), a:has-text("more jobs"), '
+                    'a:has-text("View All"), a:has-text("view all"), '
+                    '[class*="show-more"], [class*="showMore"], '
+                    '[class*="load-more"], [class*="loadMore"], '
+                    '[class*="load-more-jobs"], [class*="loadMoreJobs"], '
+                    '[class*="show-more-results"], [class*="showMoreResults"], '
+                    '[class*="view-more"], [class*="viewMore"], '
+                    '[class*="view-all"], [class*="viewAll"]'
+                )
+                if show_more:
+                    try:
+                        show_more.scroll_into_view_if_needed()
+                        page.evaluate("""
+                            () => {
+                                const overlays = document.querySelectorAll(
+                                    '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                                    '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                                    '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                                    '[class*="modal"], [class*="banner"], ' +
+                                    '[role="dialog"], [aria-modal="true"]'
+                                );
+                                overlays.forEach(el => el.remove());
+                            }
+                        """)
+                        show_more.click()
+                        page.wait_for_timeout(2000)
+                        page_jobs = _extract_links(page)
+                        for j in page_jobs:
+                            if j["url"] not in seen_urls:
+                                seen_urls.add(j["url"])
+                                jobs.append(j)
+                        continue
+                    except Exception:
+                        pass
                 break
-        success = True
-    except Exception as e:
-        pw_failed = True
-        pw_error = str(e)
-        print(f"  [pw] Playwright failed for {source['name']}: {e}")
-        if "browser has been closed" in pw_error.lower() or "Target page" in pw_error:
-            if hasattr(_local_playwright, "browser"):
-                _local_playwright.browser = None
-                _local_playwright.page_count = 0
-            continue  # retry with fresh browser
-    finally:
-        if context:
-            try:
-                context.close()
-            except Exception:
-                pass
-        _check_reclaim_playwright()
-    if success:
-        break
+    
+            # Pagination: up to 5 additional pages
+            for _pg in range(2, 7):
+                next_btn = None
+                try:
+                    next_btn = page.query_selector(
+                        'a[rel="next"], button[aria-label*="Next" i], '
+                        'a.pagination__next, .pagination a.next, '
+                        'a:has-text("Next"), a:has-text("next"), '
+                        'button:has-text("Next"), button:has-text("next")'
+                    )
+                except Exception:
+                    pass
+                if next_btn:
+                    try:
+                        disabled = page.evaluate(
+                            '(el) => el.disabled || el.classList.contains("disabled") '
+                            '|| el.getAttribute("aria-disabled") === "true"',
+                            next_btn
+                        )
+                        if disabled:
+                            break
+                        page.evaluate("""
+                            () => {
+                                const overlays = document.querySelectorAll(
+                                    '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
+                                    '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
+                                    '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
+                                    '[class*="modal"], [class*="banner"], ' +
+                                    '[role="dialog"], [aria-modal="true"]'
+                                );
+                                overlays.forEach(el => el.remove());
+                            }
+                        """)
+                        next_btn.click(force=True)
+                        page.wait_for_timeout(2000)
+                        try:
+                            page.wait_for_selector("a", timeout=5000)
+                        except Exception:
+                            pass
+                    except Exception:
+                        break
+                else:
+                    # Try URL-based pagination (page=2, start=10, offset=10, p=2)
+                    import re as _re
+                    cur = page.url
+                    for pat, param in [(r'[?&]page=(\d+)', 'page'), (r'[?&]start=(\d+)', 'start'),
+                                       (r'[?&]offset=(\d+)', 'offset'), (r'[?&]p=(\d+)', 'p')]:
+                        m = _re.search(pat, cur)
+                        if m:
+                            base = _re.sub(r'[?&]' + param + r'=\d+', '', cur)
+                            sep = '&' if '?' in base else '?'
+                            next_url = f"{base}{sep}{param}={_pg}"
+                            try:
+                                page.goto(next_url, timeout=pw_timeout, wait_until="domcontentloaded")
+                                page.wait_for_timeout(2000)
+                            except Exception:
+                                break
+                            break
+                    else:
+                        break  # No pagination pattern found
+    
+                page_jobs = _extract_links(page)
+                new_count = 0
+                for j in page_jobs:
+                    if j["url"] not in seen_urls:
+                        seen_urls.add(j["url"])
+                        jobs.append(j)
+                        new_count += 1
+                if new_count == 0:
+                    break
+            success = True
+        except Exception as e:
+            pw_failed = True
+            pw_error = str(e)
+            print(f"  [pw] Playwright failed for {source['name']}: {e}")
+            if "browser has been closed" in pw_error.lower() or "Target page" in pw_error:
+                if hasattr(_local_playwright, "browser"):
+                    _local_playwright.browser = None
+                    _local_playwright.page_count = 0
+                continue  # retry with fresh browser
+        finally:
+            if context:
+                try:
+                    context.close()
+                except Exception:
+                    pass
+            _check_reclaim_playwright()
+        if success:
+            break
 
     if pw_failed or not jobs:
         # Skip HTTP fallback if Playwright failed due to Cloudflare, download trigger, or connection reset
