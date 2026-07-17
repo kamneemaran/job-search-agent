@@ -249,8 +249,11 @@ async def upload_resume(
                 # Upload file to storage
                 sb.storage.from_("resumes").upload(storage_path, content, {"content-type": "application/pdf", "upsert": "true"})
 
-                # Deactivate other resumes
-                sb.table("resumes").update({"is_active": False}).eq("user_id", user_id).eq("is_active", True).execute()
+                # Delete all existing resumes for this user (one resume per user)
+                try:
+                    sb.table("resumes").delete().eq("user_id", user_id).execute()
+                except Exception:
+                    pass
 
                 # Insert new resume record
                 sb.table("resumes").insert({
