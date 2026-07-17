@@ -7195,7 +7195,7 @@ def main():
     parser.add_argument("--email-to", help="Email recipient (overrides .env EMAIL_TO)")
     parser.add_argument("--gmail-user", help="Gmail address (overrides .env GMAIL_ADDRESS)")
     parser.add_argument("--gmail-pass", help="Gmail App Password (overrides .env)")
-    parser.add_argument("--threshold", type=int, default=70, help="Match score threshold (default: 70)")
+    parser.add_argument("--threshold", type=int, default=65, help="Match score threshold (default: 65)")
     parser.add_argument("--source-types", default="all",
                         choices=["all", "ats", "boards", "playwright"],
                         help="Which source types to scan: ats (Greenhouse/Lever/Ashby), "
