@@ -39,6 +39,12 @@ export default function SettingsPage() {
   const [sendError, setSendError] = useState(false);
   const [sentHistory, setSentHistory] = useState<string[]>([]);
 
+  // Modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showSendNowModal, setShowSendNowModal] = useState(false);
+  const [sendNowBatches, setSendNowBatches] = useState<string[]>(["all"]);
+  const [sendNowDateFilter, setSendNowDateFilter] = useState("any");
+
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [activeResume, setActiveResume] = useState("");
@@ -70,7 +76,6 @@ export default function SettingsPage() {
     loadSettings();
   }, []);
 
-  // Tick local countdown timer every second
   useEffect(() => {
     const t = setInterval(() => {
       setCurrentTime(Math.floor(Date.now() / 1000));
@@ -103,7 +108,7 @@ export default function SettingsPage() {
     if (activeScans.length > 0) {
       interval = setInterval(() => {
         fetchActiveScans();
-      }, 120000); // Poll active scans every 2 minutes
+      }, 120000);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -137,27 +142,6 @@ export default function SettingsPage() {
     setTimeout(() => setSendResult(""), 5000);
   };
 
-  const handleResumeScan = async () => {
-    setSending(true);
-    setSendResult("");
-    setSendError(false);
-    try {
-      const res = await sendDigestNow(digestEmail, "resume", digestBatches, postedDateFilter);
-      setSendResult(res.message);
-      
-      const d = await getDigestPreferences().catch(() => null);
-      if (d) {
-        setSentHistory(d.sent_history || []);
-      }
-      await fetchActiveScans();
-    } catch (err) {
-      setSendResult(err instanceof Error ? err.message : "Failed to resume digest");
-      setSendError(true);
-    } finally {
-      setSending(false);
-    }
-  };
-
   const loadSettings = async () => {
     setLoading(true);
     try {
@@ -181,7 +165,6 @@ export default function SettingsPage() {
       setPostedDateFilter(digest.posted_date_filter || "any");
       setSentHistory(digest.sent_history || []);
 
-      // Get email from auth if digest email is empty
       const supabase = getBrowserClient();
       if (!digest.email) {
         const { data } = await supabase.auth.getSession();
@@ -190,7 +173,6 @@ export default function SettingsPage() {
         }
       }
 
-      // Fetch active resume from Supabase database
       try {
         const { data: resumes } = await supabase
           .from("resumes")
@@ -203,7 +185,7 @@ export default function SettingsPage() {
       } catch (err) {
         console.error("Failed to fetch active resume:", err);
       }
-      
+
       await fetchActiveScans();
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -228,45 +210,122 @@ export default function SettingsPage() {
     setSkillsInput(updated.join(", "));
   };
 
-  const handleSave = async () => {
+  const handleUpdateProfile = async () => {
     setSaving(true);
     setMessage("");
     try {
-      await Promise.all([
-        updateProfile({
-          name,
-          current_role: currentRole,
-          core_skills: skills,
-          years_experience: yearsExperience,
-        }),
-        updateDigestPreferences({
-          enabled: digestFrequency !== "never",
-          frequency: digestFrequency,
-          email: digestEmail,
-          day_of_week: digestDayOfWeek,
-          day_of_month: digestDayOfMonth,
-          time_of_day: digestTimeOfDay,
-          batches: digestBatches,
-          posted_date_filter: postedDateFilter,
-        }),
-      ]);
-
-      setMessage("Settings saved successfully.");
+      await updateProfile({
+        name,
+        current_role: currentRole,
+        core_skills: skills,
+        years_experience: yearsExperience,
+      });
+      setMessage("Profile updated successfully.");
     } catch (err) {
-      setMessage(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
+      setMessage(`Error: ${err instanceof Error ? err.message : "Update failed"}`);
     } finally {
       setSaving(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
-  const runningItem = sentHistory.find((x) => x.startsWith("RUNNING:"));
-  const runningParts = runningItem ? runningItem.replace("RUNNING:", "").split("|") : [];
-  const progressText = runningParts[0] || "";
-  const progressTimestampStr = runningParts[1] || "";
-  const progressTimestamp = progressTimestampStr ? parseInt(progressTimestampStr, 10) : 0;
+  const handleSaveSchedule = async () => {
+    setSaving(true);
+    try {
+      await updateDigestPreferences({
+        enabled: digestFrequency !== "never",
+        frequency: digestFrequency,
+        email: digestEmail,
+        day_of_week: digestDayOfWeek,
+        day_of_month: digestDayOfMonth,
+        time_of_day: digestTimeOfDay,
+        batches: digestBatches,
+        posted_date_filter: postedDateFilter,
+      });
+      setShowScheduleModal(false);
+      setSendResult("Schedule saved successfully.");
+      setSendError(false);
+    } catch (err) {
+      setSendResult(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
+      setSendError(true);
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSendResult(""), 4000);
+    }
+  };
 
-  const currentEpoch = Math.floor(Date.now() / 1000);
-  const isStalled = !!runningItem && (progressTimestamp === 0 || (currentEpoch - progressTimestamp) > 300);
+  const handleSendNow = async () => {
+    setSending(true);
+    setSendResult("");
+    setSendError(false);
+    try {
+      const res = await sendDigestNow(digestEmail, "now", sendNowBatches, sendNowDateFilter);
+      setSendResult(res.message);
+      const isMsgError = res.message.toLowerCase().includes("fail") ||
+        res.message.toLowerCase().includes("error") ||
+        res.message.toLowerCase().includes("limit") ||
+        res.message.toLowerCase().includes("unauthorized") ||
+        !res.sent;
+      if (isMsgError) {
+        setSendError(true);
+      }
+      setShowSendNowModal(false);
+      await fetchActiveScans();
+    } catch (err) {
+      setSendResult(err instanceof Error ? err.message : "Failed to send digest");
+      setSendError(true);
+    } finally {
+      setSending(false);
+      setTimeout(() => setSendResult(""), 5000);
+    }
+  };
+
+  const BATCH_OPTIONS = [
+    { id: "all", label: "All Regions (Complete Master Scan)" },
+    { id: "india", label: "India" },
+    { id: "europe_companies", label: "Europe Companies" },
+    { id: "europe_boards", label: "Europe Job Boards" },
+    { id: "middle_east", label: "Middle East" },
+    { id: "apac", label: "APAC" },
+    { id: "us_canada", label: "US & Canada" },
+    { id: "remote", label: "Remote (Global)" },
+  ];
+
+  const DATE_FILTER_OPTIONS = [
+    { value: "any", label: "Any Time" },
+    { value: "1d", label: "Last 24 Hours" },
+    { value: "1w", label: "Last 1 Week" },
+    { value: "1m", label: "Last 1 Month" },
+    { value: "3m", label: "Last 3 Months" },
+  ];
+
+  const BatchSelector = ({ batches, setBatches }: { batches: string[]; setBatches: (b: string[]) => void }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {BATCH_OPTIONS.map((batch) => (
+        <label key={batch.id} className="inline-flex items-center gap-2 text-sm cursor-pointer text-gray-300 hover:text-white">
+          <input
+            type="checkbox"
+            checked={batches.includes(batch.id)}
+            onChange={(e) => {
+              if (batch.id === "all") {
+                setBatches(e.target.checked ? ["all"] : []);
+              } else {
+                let updated = [...batches].filter((x) => x !== "all");
+                if (e.target.checked) {
+                  updated.push(batch.id);
+                } else {
+                  updated = updated.filter((x) => x !== batch.id);
+                }
+                setBatches(updated.length === 0 ? ["all"] : updated);
+              }
+            }}
+            className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span>{batch.label}</span>
+        </label>
+      ))}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -280,7 +339,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="text-3xl font-bold mb-2">Settings</h1>
       <p className="text-gray-400 text-sm mb-8">
-        Manage your profile, email digest, and resume.
+        Manage your profile and email digest preferences.
       </p>
 
       <div className="space-y-6">
@@ -327,9 +386,6 @@ export default function SettingsPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
                 placeholder="Python, TypeScript, AWS"
               />
-              <p className="mt-1 text-[11px] text-indigo-400 leading-relaxed">
-                💡 <strong>Note</strong>: Your job match scores are heavily calculated on the basis of these Core Skills. You can update this list or keep it as shown.
-              </p>
             </div>
           </div>
           {skills.length > 0 && (
@@ -340,84 +396,90 @@ export default function SettingsPage() {
                   className="inline-flex items-center gap-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-400"
                 >
                   {skill}
-                  <button
-                    onClick={() => removeSkill(i)}
-                    className="ml-0.5 text-indigo-400 hover:text-white"
-                  >
-                    &times;
-                  </button>
+                  <button onClick={() => removeSkill(i)} className="ml-0.5 text-indigo-400 hover:text-white">&times;</button>
                 </span>
               ))}
             </div>
           )}
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={handleUpdateProfile}
+              disabled={saving}
+              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Updating..." : "Update Profile"}
+            </button>
+            {message && (
+              <p className={`text-sm ${message.startsWith("Error") ? "text-red-400" : "text-emerald-400"}`}>
+                {message}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Email Digest Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
-          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-white">Email Digest</h2>
-              <p className="text-xs text-gray-500">Automated scheduler preferences</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Email: <span className="text-gray-300">{digestEmail || "not set"}</span>
+                {digestFrequency !== "never" && (
+                  <span className="ml-3 text-indigo-400">Schedule: {digestFrequency}</span>
+                )}
+              </p>
             </div>
-            {digestFrequency !== "never" && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={async () => {
-                    setSending(true);
-                    setSendResult("");
-                    setSendError(false);
-                    try {
-                      const res = await sendDigestNow(digestEmail, "now", digestBatches, postedDateFilter);
-                      setSendResult(res.message);
-                      const isMsgError = res.message.toLowerCase().includes("fail") || 
-                                         res.message.toLowerCase().includes("error") || 
-                                         res.message.toLowerCase().includes("limit") || 
-                                         res.message.toLowerCase().includes("unauthorized") ||
-                                         !res.sent;
-                      if (isMsgError) {
-                        setSendError(true);
-                      }
-                      await fetchActiveScans();
-                    } catch (err) {
-                      setSendResult(err instanceof Error ? err.message : "Failed to send digest");
-                      setSendError(true);
-                    } finally {
-                      setSending(false);
-                    }
-                  }}
-                  disabled={sending || activeScans.length >= 5}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {sending ? "Starting..." : activeScans.length >= 5 ? "Limit Reached" : "Send Now"}
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowScheduleModal(true)}
+                className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-xs sm:text-sm font-semibold text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+              >
+                Schedule
+              </button>
+              <button
+                onClick={() => {
+                  setSendNowBatches([...digestBatches]);
+                  setSendNowDateFilter(postedDateFilter);
+                  setShowSendNowModal(true);
+                }}
+                disabled={sending || activeScans.length >= 5}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeScans.length >= 5 ? "Limit Reached" : "Send Now"}
+              </button>
+            </div>
           </div>
 
+          {sendResult && (
+            <p className={`mb-4 text-xs font-semibold ${sendError ? "text-red-400" : "text-emerald-400"}`}>
+              {sendResult}
+            </p>
+          )}
+
+          {/* Active Scans */}
           {activeScans.length > 0 && (
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-4">
               {activeScans.map((scan) => {
-                const formattedDate = scan.timestamp > 0 
+                const formattedDate = scan.timestamp > 0
                   ? new Date(scan.timestamp * 1000).toLocaleString(undefined, {
-                      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
-                    })
+                    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                  })
                   : "Just now";
 
                 const batchTitle = scan.batches.map(b => b === "all" ? "Master Scan" : b.charAt(0).toUpperCase() + b.slice(1).replace("_", " ")).join(", ");
 
-                const statusColor = scan.status === "in_progress" 
+                const statusColor = scan.status === "in_progress"
                   ? "text-emerald-400 bg-emerald-950/40 border-emerald-500/20"
-                  : scan.status === "queued" || scan.status === "Starting Cloud Scan..." || scan.status.startsWith("Starting")
-                  ? "text-yellow-400 bg-yellow-950/40 border-yellow-500/20"
-                  : "text-gray-400 bg-gray-900 border-gray-800";
+                  : scan.status === "queued" || scan.status.startsWith("Starting")
+                    ? "text-yellow-400 bg-yellow-950/40 border-yellow-500/20"
+                    : "text-gray-400 bg-gray-900 border-gray-800";
 
                 const statusText = scan.status === "in_progress"
                   ? "Running"
                   : scan.status === "queued" || scan.status.startsWith("Starting")
-                  ? "Queued"
-                  : scan.status.replace("_", " ").charAt(0).toUpperCase() + scan.status.replace("_", " ").slice(1);
+                    ? "Queued"
+                    : scan.status.charAt(0).toUpperCase() + scan.status.slice(1);
 
-                // Calculate countdown / elapsed
                 const remainingSecs = Math.max(0, (scan.timestamp + scan.estimated_duration) - currentTime);
                 const elapsedSecs = Math.max(0, currentTime - scan.timestamp);
                 const fmtTime = (secs: number) => {
@@ -426,42 +488,27 @@ export default function SettingsPage() {
                   const s = secs % 60;
                   return `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`;
                 };
-                const formatCountdown = (secs: number) => {
-                  if (secs <= 0) return `Running for: ${fmtTime(elapsedSecs)}`;
-                  return `Est. remaining: ${fmtTime(secs)}`;
-                };
 
                 return (
-                  <div key={scan.scan_id} className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-4 shadow-lg shadow-indigo-500/5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex gap-3 items-start w-full">
-                        <span className={`text-xl shrink-0 ${scan.status === "in_progress" ? "animate-spin" : ""}`}>
+                  <div key={scan.scan_id} className="rounded-lg border border-indigo-500/20 bg-indigo-950/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`shrink-0 ${scan.status === "in_progress" ? "animate-spin" : ""}`}>
                           {scan.status === "in_progress" ? "🌀" : "⏳"}
                         </span>
-                        <div className="text-xs text-indigo-200 leading-relaxed w-full">
-                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                            <span className="font-bold text-indigo-400 uppercase tracking-wider text-[10px]">
-                              Cloud Scan Triggered ({formattedDate})
-                            </span>
-                            <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border ${statusColor}`}>
-                              {statusText}
-                            </span>
-                            <span className="rounded bg-indigo-900/40 border border-indigo-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-300">
-                              Batches: {batchTitle}
-                            </span>
-                            <span className="rounded bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 animate-pulse">
-                              {formatCountdown(remainingSecs)}
-                            </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-xs text-indigo-300">{batchTitle}</span>
+                            <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border ${statusColor}`}>{statusText}</span>
+                            <span className="text-[10px] text-gray-500">{formattedDate}</span>
                           </div>
-                          <p className="text-indigo-200 text-xs leading-relaxed">
-                            Your <strong>{batchTitle}</strong> scan is started and running securely in the cloud. You do not need to keep this tab open! Once completed, all scored matching jobs will be compiled and sent directly to your inbox at <strong className="text-white font-semibold">{digestEmail || "your registered email"}</strong>.
-                          </p>
-                          <p className="mt-1 text-gray-500 text-[10px]">
-                            Run ID: <span className="font-mono text-gray-400">{scan.run_id === "pending" ? "Initializing on runner..." : scan.run_id}</span>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {remainingSecs > 0 ? `~${fmtTime(remainingSecs)} remaining` : `Running for ${fmtTime(elapsedSecs)}`}
+                            {scan.run_id !== "pending" && <span className="ml-2">Run: {scan.run_id}</span>}
                           </p>
                         </div>
                       </div>
-                      <div className="flex md:flex-col gap-2 shrink-0 self-end md:self-center">
+                      <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={async () => {
                             setRefreshingId(scan.scan_id);
@@ -469,15 +516,15 @@ export default function SettingsPage() {
                             setRefreshingId(null);
                           }}
                           disabled={refreshingId === scan.scan_id}
-                          className="rounded border border-indigo-500/20 bg-indigo-950/40 px-2.5 py-1 text-[11px] font-semibold text-indigo-300 hover:bg-indigo-900/30 disabled:opacity-50 transition-all cursor-pointer text-center whitespace-nowrap"
+                          className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-50"
                         >
-                          {refreshingId === scan.scan_id ? "Refreshing..." : "Refresh Status"}
+                          {refreshingId === scan.scan_id ? "..." : "Refresh"}
                         </button>
                         <button
                           onClick={() => handleCancelScan(scan.scan_id)}
-                          className="rounded bg-red-950/45 border border-red-500/20 px-2.5 py-1 text-[11px] font-semibold text-red-300 hover:bg-red-900/30 hover:text-red-200 transition-all cursor-pointer text-center whitespace-nowrap"
+                          className="rounded border border-red-800 px-2 py-1 text-[10px] text-red-400 hover:text-red-200 hover:border-red-600"
                         >
-                          Cancel Scan
+                          Cancel
                         </button>
                       </div>
                     </div>
@@ -487,239 +534,189 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {scanSummary && (
-            <div className="mt-4 border-t border-gray-800/60 pt-4 mb-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Today's Scan Summary</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
-                  <span className="text-[10px] text-gray-500 font-medium">Instant Runs Completed</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-emerald-400 font-bold text-lg">{scanSummary.instant_completed_today}</span>
-                    <span className="text-emerald-500 text-xs">✓</span>
-                  </div>
-                </div>
-                
-                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
-                  <span className="text-[10px] text-gray-500 font-medium">Instant Runs Failed</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className={`font-bold text-lg ${scanSummary.instant_failed_today > 0 ? "text-red-400" : "text-gray-400"}`}>
-                      {scanSummary.instant_failed_today}
-                    </span>
-                    {scanSummary.instant_failed_today > 0 && <span className="text-red-500 text-xs">⚠</span>}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-800/40 bg-gray-900/30 p-3 flex flex-col justify-between">
-                  <span className="text-[10px] text-gray-500 font-medium">Daily Scheduled Digest</span>
-                  <div className="flex flex-col mt-1">
-                    <span className={`font-semibold text-xs ${
-                      scanSummary.last_daily_status === "Completed" 
-                        ? "text-emerald-400" 
-                        : scanSummary.last_daily_status === "Failed" 
-                        ? "text-red-400" 
-                        : "text-gray-400"
-                    }`}>
-                      {scanSummary.last_daily_status}
-                    </span>
-                    {scanSummary.last_daily_time > 0 && (
-                      <span className="text-[9px] text-gray-500 mt-0.5">
-                        {new Date(scanSummary.last_daily_time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    )}
-                  </div>
-                </div>
+          {/* Scan Summary */}
+          {scanSummary && (scanSummary.instant_completed_today > 0 || scanSummary.instant_failed_today > 0) && (
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-800/60">
+              <div className="text-center">
+                <span className="text-emerald-400 font-bold text-lg">{scanSummary.instant_completed_today}</span>
+                <p className="text-[10px] text-gray-500">Completed</p>
+              </div>
+              <div className="text-center">
+                <span className={`font-bold text-lg ${scanSummary.instant_failed_today > 0 ? "text-red-400" : "text-gray-500"}`}>{scanSummary.instant_failed_today}</span>
+                <p className="text-[10px] text-gray-500">Failed</p>
+              </div>
+              <div className="text-center">
+                <span className="text-gray-300 font-semibold text-xs">{scanSummary.last_daily_status}</span>
+                <p className="text-[10px] text-gray-500">Daily Digest</p>
               </div>
             </div>
-          )}
-
-          {sendResult && (
-            <p className={`mb-4 text-xs font-semibold ${sendError || sendResult.toLowerCase().includes("fail") || sendResult.toLowerCase().includes("error") || sendResult.toLowerCase().includes("limit") ? "text-red-400" : "text-emerald-400"}`}>
-              {sendResult}
-            </p>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Frequency</label>
-              <select
-                value={digestFrequency}
-                onChange={(e) => setDigestFrequency(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="never">Never (Disabled)</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Scraper Job Age Filter</label>
-              <select
-                value={postedDateFilter}
-                onChange={(e) => setPostedDateFilter(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
-              >
-                <option value="any">Any Time</option>
-                <option value="1d">Last 24 Hours</option>
-                <option value="1w">Last 1 Week</option>
-                <option value="1m">Last 1 Month</option>
-                <option value="3m">Last 3 Months</option>
-              </select>
-              <p className="mt-1 text-[10px] text-gray-500">
-                Only matches and emails jobs posted within this selected timeframe. Recommended to keep your pipeline completely fresh!
-              </p>
-            </div>
-
-            {digestFrequency === "weekly" && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Send on Day</label>
-                <select
-                  value={digestDayOfWeek}
-                  onChange={(e) => setDigestDayOfWeek(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none capitalize"
-                >
-                  <option value="monday">Monday</option>
-                  <option value="tuesday">Tuesday</option>
-                  <option value="wednesday">Wednesday</option>
-                  <option value="thursday">Thursday</option>
-                  <option value="friday">Friday</option>
-                  <option value="saturday">Saturday</option>
-                  <option value="sunday">Sunday</option>
-                </select>
-              </div>
-            )}
-
-            {digestFrequency === "monthly" && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Send on Day of Month</label>
-                <select
-                  value={digestDayOfMonth}
-                  onChange={(e) => setDigestDayOfMonth(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                >
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      Day {day}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {digestFrequency === "daily" && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Send at Time</label>
-                <select
-                  value={digestTimeOfDay}
-                  onChange={(e) => setDigestTimeOfDay(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                >
-                  {Array.from({ length: 24 }, (_, i) => {
-                    const hour = String(i).padStart(2, "0");
-                    return `${hour}:00`;
-                  }).map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Email Address</label>
-              <input
-                type="email"
-                value={digestEmail}
-                onChange={(e) => setDigestEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div className="col-span-1 sm:col-span-2 pt-3 border-t border-gray-800">
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Included Scraper Batches in Email Digest
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                Choose which regions/boards you want the automated scheduler to scan for your matches.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { id: "all", label: "All Regions (Complete Master Scan)" },
-                  { id: "india", label: "India boards & company career pages" },
-                  { id: "europe_companies", label: "Europe company career pages (e.g. ASML, Adyen)" },
-                  { id: "europe_boards", label: "Europe job boards (IamExpat, TogetherAbroad, Arbeitnow)" },
-                  { id: "middle_east", label: "Middle East job boards & company careers" },
-                  { id: "apac", label: "APAC job boards & company careers" },
-                  { id: "us_canada", label: "US & Canada job boards & company careers" },
-                  { id: "remote", label: "Global Remote boards (WeWorkRemotely, Remotive)" },
-                 ].map((batch) => {
-                  const isChecked = digestBatches.includes(batch.id);
-
-                  return (
-                    <label
-                      key={batch.id}
-                      className="inline-flex items-start gap-2.5 text-sm cursor-pointer text-gray-300 hover:text-white"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          if (batch.id === "all") {
-                            if (e.target.checked) {
-                              setDigestBatches(["all"]);
-                            } else {
-                              setDigestBatches([]);
-                            }
-                          } else {
-                            let updated = [...digestBatches];
-                            if (updated.includes("all")) {
-                              updated = updated.filter((x) => x !== "all");
-                            }
-                            if (e.target.checked) {
-                              updated.push(batch.id);
-                            } else {
-                              updated = updated.filter((x) => x !== batch.id);
-                            }
-                            if (updated.length === 0) {
-                              updated = ["all"];
-                            }
-                            setDigestBatches(updated);
-                          }
-                        }}
-                        className="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 mt-1"
-                      />
-                      <span>{batch.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Save */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? "Saving..." : "Save Settings"}
-          </button>
-          {message && (
-            <p
-              className={`text-sm ${
-                message.startsWith("Error") ? "text-red-400" : "text-emerald-400"
-              }`}
-            >
-              {message}
-            </p>
           )}
         </div>
       </div>
+
+      {/* Schedule Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowScheduleModal(false)}>
+          <div className="w-full max-w-lg mx-4 rounded-xl border border-gray-700 bg-gray-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-4">Schedule Email Digest</h3>
+
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={digestEmail}
+                  onChange={(e) => setDigestEmail(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Frequency</label>
+                <select
+                  value={digestFrequency}
+                  onChange={(e) => setDigestFrequency(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="never">Never (Disabled)</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+
+              {digestFrequency === "weekly" && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Day of Week</label>
+                  <select
+                    value={digestDayOfWeek}
+                    onChange={(e) => setDigestDayOfWeek(e.target.value)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none capitalize"
+                  >
+                    {["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map(d => (
+                      <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {digestFrequency === "monthly" && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Day of Month</label>
+                  <select
+                    value={digestDayOfMonth}
+                    onChange={(e) => setDigestDayOfMonth(Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  >
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                      <option key={day} value={day}>Day {day}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {digestFrequency === "daily" && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Time of Day</label>
+                  <select
+                    value={digestTimeOfDay}
+                    onChange={(e) => setDigestTimeOfDay(e.target.value)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`).map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Job Age Filter</label>
+                <select
+                  value={postedDateFilter}
+                  onChange={(e) => setPostedDateFilter(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  {DATE_FILTER_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Job Boards / Regions</label>
+                <BatchSelector batches={digestBatches} setBatches={setDigestBatches} />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-800">
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 hover:text-white hover:border-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSchedule}
+                disabled={saving}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Schedule"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Now Modal */}
+      {showSendNowModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowSendNowModal(false)}>
+          <div className="w-full max-w-lg mx-4 rounded-xl border border-gray-700 bg-gray-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-4">Run Scan Now</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Job Age Filter</label>
+                <select
+                  value={sendNowDateFilter}
+                  onChange={(e) => setSendNowDateFilter(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  {DATE_FILTER_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Job Boards / Regions</label>
+                <BatchSelector batches={sendNowBatches} setBatches={setSendNowBatches} />
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Results will be sent to <span className="text-gray-300 font-medium">{digestEmail || "your email"}</span>
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-800">
+              <button
+                onClick={() => setShowSendNowModal(false)}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 hover:text-white hover:border-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendNow}
+                disabled={sending}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {sending ? "Starting..." : "Start Scan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
