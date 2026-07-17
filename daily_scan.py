@@ -7205,7 +7205,125 @@ def main():
     parser.add_argument("--preview", action="store_true",
                         help="Save email HTML to preview.html instead of sending")
     parser.add_argument("--save", default="last_scan_results.json", help="Output JSON path")
+    parser.add_argument("--user-id", type=str, default="",
+                        help="Supabase user ID — load profile from Supabase instead of hardcoded PROFILE")
+    parser.add_argument("--scan-id", type=str, default="",
+                        help="Scan ID for tracking progress in Supabase sent_history")
+    parser.add_argument("--posted-date-filter", type=str, default="any",
+                        help="Filter jobs by posted date: 1d, 1w, 1m, 3m, any (default: any)")
     args = parser.parse_args()
+
+    # --- If --user-id is provided, load profile from Supabase ---
+    _supabase_user_profile = None  # will hold {core_skills, years_experience, current_role, email}
+    _supabase_client = None
+    _supabase_scan_id = args.scan_id or None
+    _supabase_posted_date_filter = args.posted_date_filter or "any"
+
+    if args.user_id:
+        print(f"  [supabase] Loading profile for user_id={args.user_id}...")
+        _sb_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+        _sb_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not _sb_url or not _sb_key:
+            print("Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+            sys.exit(1)
+
+        from supabase import create_client as _sb_create
+        _supabase_client = _sb_create(_sb_url, _sb_key)
+
+        # Load user profile
+        _profile_result = _supabase_client.table("profiles").select("*").eq("id", args.user_id).maybe_single().execute()
+        if not _profile_result.data:
+            print(f"Error: No profile found for user_id={args.user_id}")
+            sys.exit(1)
+
+        _row = _profile_result.data
+        _core_skills = _row.get("core_skills") or []
+        if isinstance(_core_skills, str):
+            try:
+                _core_skills = json.loads(_core_skills)
+            except Exception:
+                _core_skills = []
+        if not _core_skills or not isinstance(_core_skills, list):
+            print(f"Error: User {args.user_id} has no core_skills")
+            sys.exit(1)
+
+        # Load email from email_preferences
+        _pref_result = _supabase_client.table("email_preferences").select("*").eq("user_id", args.user_id).maybe_single().execute()
+        _to_email = ""
+        _batches_from_db = []
+        if _pref_result and _pref_result.data:
+            _to_email = _pref_result.data.get("email", "")
+            _batches_from_db = _pref_result.data.get("batches") or []
+
+            # Extract batches and posted_date_filter from RUNNING token if scan_id matches
+            _sent_hist = _pref_result.data.get("sent_history") or []
+            for _item in _sent_hist:
+                if isinstance(_item, str) and _item.startswith("RUNNING:"):
+                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _item:
+                        for _part in _item.split("|"):
+                            if _part.startswith("batches:"):
+                                _batches_from_db = _part.replace("batches:", "").split(",")
+                            elif _part.startswith("posted_date_filter:"):
+                                _supabase_posted_date_filter = _part.replace("posted_date_filter:", "").strip()
+                        break
+
+        _supabase_user_profile = {
+            "core_skills": _core_skills,
+            "years_experience": _row.get("years_experience", 0) or 0,
+            "current_role": _row.get("current_role", ""),
+            "email": _to_email,
+            "batches": _batches_from_db,
+            "posted_date_filter": _supabase_posted_date_filter,
+        }
+
+        # Swap PROFILE with Supabase user's profile
+        PROFILE["name"] = _row.get("full_name") or _row.get("name") or PROFILE["name"]
+        PROFILE["core_skills"] = _core_skills
+        PROFILE["years_experience"] = _supabase_user_profile["years_experience"]
+        PROFILE["current_role"] = _supabase_user_profile.get("current_role", "")
+        PROFILE["title_red_flags"] = auto_detect_title_red_flags(_core_skills)
+        _rebuild_precompiled_patterns()
+
+        # Set email recipient
+        if _to_email:
+            os.environ["EMAIL_TO"] = _to_email
+
+        # If --batch not provided on CLI, use batches from Supabase
+        if not args.batch and _batches_from_db:
+            args.batch = ",".join(_batches_from_db) if len(_batches_from_db) > 1 else _batches_from_db[0] if _batches_from_db else ""
+
+        # Write RUNNING token to sent_history
+        _github_run_id = os.environ.get("GITHUB_RUN_ID") or "pending"
+        _batches_str = args.batch or "all"
+        import time as _time_mod
+        # Use batch name in token so parallel batch jobs don't clobber each other
+        _batch_label = args.batch or _batches_str
+        _running_token = f"RUNNING:Scraping {_batch_label} in GitHub Actions...|batches:{_batch_label}|posted_date_filter:{_supabase_posted_date_filter}|scan_id:{_supabase_scan_id or 'unknown'}|batch:{_batch_label}|run_id:{_github_run_id}|{int(_time_mod.time())}"
+        try:
+            _curr_hist = (_pref_result.data.get("sent_history") or []) if (_pref_result and _pref_result.data) else []
+            _new_hist = []
+            _replaced = False
+            for _x in _curr_hist:
+                if isinstance(_x, str) and _x.startswith("RUNNING:"):
+                    # Only replace if same scan_id AND same batch
+                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _x and f"batch:{_batch_label}" in _x:
+                        _new_hist.append(_running_token)
+                        _replaced = True
+                    else:
+                        _new_hist.append(_x)
+                else:
+                    _new_hist.append(_x)
+            if not _replaced:
+                _new_hist.append(_running_token)
+            _supabase_client.table("email_preferences").update({
+                "sent_history": _new_hist,
+            }).eq("user_id", args.user_id).execute()
+            print(f"  [supabase] Registered RUNNING token (run_id={_github_run_id})")
+        except Exception as _e:
+            print(f"  [supabase] Warning: Failed to set running token: {_e}")
+
+        print(f"  [supabase] Profile loaded: {PROFILE['name']} | {PROFILE['years_experience']}yr | {len(_core_skills)} skills")
+        print(f"  [supabase] Email: {_to_email} | Batches: {args.batch or 'all'}")
 
     # --- If --profile is provided, load profile from JSON ---
     if args.profile:
@@ -8088,6 +8206,66 @@ def main():
             print(f"  [gsheet] Synced {len(all_matches)} matches to Google Sheet")
         except Exception as e:
             print(f"  [gsheet] Error: {e}")
+
+    # --- Supabase: update sent_history and log jobs to tracker ---
+    if args.user_id and _supabase_client:
+        import time as _time_mod2
+        try:
+            # Load current sent_history
+            _pref_r = _supabase_client.table("email_preferences").select("sent_history").eq("user_id", args.user_id).maybe_single().execute()
+            _curr_h = (_pref_r.data.get("sent_history") or []) if (_pref_r and _pref_r.data) else []
+
+            # Remove RUNNING token for this scan_id + batch, add COMPLETED
+            _batch_label2 = args.batch or "all"
+            _clean_h = []
+            for _x in _curr_h:
+                if isinstance(_x, str) and _x.startswith("RUNNING:"):
+                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _x and f"batch:{_batch_label2}" in _x:
+                        continue
+                    elif not _supabase_scan_id:
+                        continue
+                _clean_h.append(_x)
+            _clean_h.append(f"COMPLETED_INSTANT:{int(_time_mod2.time())}|jobs:{len(all_matches)}|batch:{_batch_label2}")
+
+            _supabase_client.table("email_preferences").update({
+                "sent_history": _clean_h,
+                "last_sent_at": datetime.now().isoformat(),
+            }).eq("user_id", args.user_id).execute()
+            print(f"  [supabase] Updated sent_history: COMPLETED with {len(all_matches)} jobs")
+        except Exception as _e:
+            print(f"  [supabase] Warning: Failed to update completion status: {_e}")
+
+        # Log jobs to Supabase jobs table
+        try:
+            _logged = 0
+            for _m in all_matches:
+                _existing = (
+                    _supabase_client.table("jobs")
+                    .select("id")
+                    .eq("user_id", args.user_id)
+                    .eq("title", _m["title"])
+                    .eq("company", _m["company"])
+                    .limit(1)
+                    .execute()
+                )
+                if _existing.data:
+                    continue
+                _supabase_client.table("jobs").insert({
+                    "user_id": args.user_id,
+                    "title": _m["title"],
+                    "company": _m["company"],
+                    "url": _m.get("url", ""),
+                    "score": _m.get("score", 0),
+                    "location": _m.get("location", ""),
+                    "salary": _format_salary(_m.get("salary_info", {})) if _m.get("salary_info") else "",
+                    "source": _m.get("source", "daily_scan"),
+                    "status": "new",
+                }).execute()
+                _logged += 1
+            if _logged:
+                print(f"  [supabase] Logged {_logged} jobs to tracker for user {args.user_id}")
+        except Exception as _e:
+            print(f"  [supabase] Warning: Failed to log jobs to tracker: {_e}")
 
     print("=== Scan complete ===")
 

@@ -602,6 +602,7 @@ async def send_digest(
                 "client_payload": {
                     "user_id": user_id,
                     "scan_id": scan_id,
+                    "batches": batches_str,
                 }
             }
             

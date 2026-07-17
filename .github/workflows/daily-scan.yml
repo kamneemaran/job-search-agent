@@ -1,6 +1,8 @@
 name: Daily Job Scan
 
 on:
+  repository_dispatch:
+    types: [manual_scan]
   workflow_dispatch:
     inputs:
       batch-ats:
@@ -60,7 +62,8 @@ on:
         type: boolean
       resume_url:
         description: "Direct download URL to resume PDF (Google Drive, Dropbox, S3, etc.)"
-        required: true
+        required: false
+        default: ""
       gmail_user:
         description: "Gmail address (defaults to secrets.GMAIL_ADDRESS)"
         required: false
@@ -93,26 +96,58 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      is_web_trigger: ${{ steps.matrix.outputs.is_web_trigger }}
+      user_id: ${{ steps.matrix.outputs.user_id }}
+      scan_id: ${{ steps.matrix.outputs.scan_id }}
     steps:
       - id: matrix
         run: |
           MATRIX='{"include":[]}'
-          [[ "${{ github.event.inputs.batch-ats }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"ats"}]')
-          [[ "${{ github.event.inputs.batch-boards-major }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-major"}]')
-          [[ "${{ github.event.inputs.batch-boards-AU-NZ }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-AU-NZ"}]')
-          [[ "${{ github.event.inputs.batch-boards-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-eu"}]')
-          [[ "${{ github.event.inputs.batch-playwright }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"playwright"}]')
-          [[ "${{ github.event.inputs.batch-global }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"global"}]')
-          [[ "${{ github.event.inputs.batch-apac }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"apac"}]')
-          [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"us-canada"}]')
-          [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"middle-east"}]')
-          [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"eu"}]')
-          [[ "${{ github.event.inputs.batch-remote }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"remote"}]')
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          IS_WEB="false"
+          USER_ID=""
+          SCAN_ID=""
 
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            IS_WEB="true"
+            USER_ID="${{ github.event.client_payload.user_id }}"
+            SCAN_ID="${{ github.event.client_payload.scan_id }}"
+            BATCHES="${{ github.event.client_payload.batches }}"
+
+            # If batches are specified, create one matrix entry per batch
+            if [ -n "$BATCHES" ] && [ "$BATCHES" != "all" ]; then
+              for BATCH in $(echo "$BATCHES" | tr ',' ' '); do
+                MATRIX=$(echo "$MATRIX" | jq -c --arg b "$BATCH" '.include += [{"batch": $b}]')
+              done
+            else
+              # Default: run all batches in parallel
+              for BATCH in ats boards-major boards-eu boards-remote playwright eu global apac us-canada middle-east remote; do
+                MATRIX=$(echo "$MATRIX" | jq -c --arg b "$BATCH" '.include += [{"batch": $b}]')
+              done
+            fi
+          else
+            # workflow_dispatch: build matrix from boolean inputs
+            [[ "${{ github.event.inputs.batch-ats }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"ats"}]')
+            [[ "${{ github.event.inputs.batch-boards-major }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-major"}]')
+            [[ "${{ github.event.inputs.batch-boards-AU-NZ }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-AU-NZ"}]')
+            [[ "${{ github.event.inputs.batch-boards-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"boards-eu"}]')
+            [[ "${{ github.event.inputs.batch-playwright }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"playwright"}]')
+            [[ "${{ github.event.inputs.batch-global }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"global"}]')
+            [[ "${{ github.event.inputs.batch-apac }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"apac"}]')
+            [[ "${{ github.event.inputs.batch-us-canada }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"us-canada"}]')
+            [[ "${{ github.event.inputs.batch-middle-east }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"middle-east"}]')
+            [[ "${{ github.event.inputs.batch-eu }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"eu"}]')
+            [[ "${{ github.event.inputs.batch-remote }}" == "true" ]] && MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"batch":"remote"}]')
+          fi
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "is_web_trigger=$IS_WEB" >> "$GITHUB_OUTPUT"
+          echo "user_id=$USER_ID" >> "$GITHUB_OUTPUT"
+          echo "scan_id=$SCAN_ID" >> "$GITHUB_OUTPUT"
+
+  # Setup job: only needed for manual workflow_dispatch (downloads resume, gsheet creds)
   setup:
     needs: resolve
-    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' }}
+    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' && needs.resolve.outputs.is_web_trigger != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -131,6 +166,11 @@ jobs:
       - name: Download resume from URL
         run: |
           URL="${{ github.event.inputs.resume_url }}"
+          if [ -z "$URL" ]; then
+            echo "No resume URL provided, creating empty placeholder"
+            touch resume.pdf
+            exit 0
+          fi
           if echo "$URL" | grep -q 'drive.google.com'; then
             FILE_ID=$(echo "$URL" | sed 's|.*[=/]\([a-zA-Z0-9_-]\{25,\}\).*|\1|')
             echo "Downloading from Google Drive (file ID: $FILE_ID)..."
@@ -171,9 +211,10 @@ jobs:
             ind_sponsors_cache.json
           retention-days: 1
 
+  # Scan job for manual workflow_dispatch (resume-based, uses setup artifacts)
   scan:
     needs: [resolve, setup]
-    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' }}
+    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' && needs.resolve.outputs.is_web_trigger != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -198,13 +239,9 @@ jobs:
 
       - name: Validate config
         run: |
-          if [ ! -f "resume.pdf" ]; then
-            echo "Resume PDF not found"
-            exit 1
-          fi
           python -c "
           import os
-          for var in ['GMAIL_ADDRESS', 'GMAIL_APP_PASSWORD', 'GSHEET_ID']:
+          for var in ['GMAIL_ADDRESS', 'GMAIL_APP_PASSWORD']:
               if not os.getenv(var):
                   print(f'Missing secret: {var}')
                   exit(1)
@@ -215,7 +252,11 @@ jobs:
         run: |
           PROFILE_FLAG=""
           [[ -n "${{ inputs.profile }}" ]] && PROFILE_FLAG="--profile ${{ inputs.profile }}"
-          python daily_scan.py --resume resume.pdf $PROFILE_FLAG --batch ${{ matrix.batch }} 2>&1 | tee scan_batch_${{ matrix.batch }}.log
+          RESUME_FLAG=""
+          if [ -f "resume.pdf" ] && [ -s "resume.pdf" ]; then
+            RESUME_FLAG="--resume resume.pdf"
+          fi
+          python daily_scan.py $RESUME_FLAG $PROFILE_FLAG --batch ${{ matrix.batch }} 2>&1 | tee scan_batch_${{ matrix.batch }}.log
 
       - uses: actions/upload-artifact@v5
         if: always()
@@ -225,4 +266,54 @@ jobs:
             scan_batch_${{ matrix.batch }}.log
             last_scan_results_batch_${{ matrix.batch }}.json
             last_scan_results.json
+          retention-days: 7
+
+  # Scan job for web-triggered repository_dispatch (Supabase profile, no resume needed)
+  scan-web:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.matrix != '{"include":[]}' && needs.resolve.outputs.is_web_trigger == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Restore Google service account
+        run: echo '${{ secrets.GSHEET_SERVICE_ACCOUNT_JSON }}' > gsheet_service_account.json
+        continue-on-error: true
+
+      - name: Cache IND sponsor list
+        run: python cache_ind_sponsors.py 2>&1
+        continue-on-error: true
+
+      - name: Run batch (Supabase profile)
+        run: |
+          python daily_scan.py \
+            --user-id "${{ needs.resolve.outputs.user_id }}" \
+            --scan-id "${{ needs.resolve.outputs.scan_id }}" \
+            --batch ${{ matrix.batch }} \
+            2>&1 | tee scan_batch_${{ matrix.batch }}.log
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: scan-web-logs-${{ matrix.batch }}
+          path: |
+            scan_batch_${{ matrix.batch }}.log
+            last_scan_results_batch_${{ matrix.batch }}.json
           retention-days: 7
