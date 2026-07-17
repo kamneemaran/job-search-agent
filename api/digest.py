@@ -53,6 +53,7 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
         sent_history=row.get("sent_history") or [],
         batches=batches_data,
         posted_date_filter=row.get("posted_date_filter", "any"),
+        webhook_url=row.get("webhook_url", ""),
     )
 
 
@@ -78,6 +79,7 @@ async def update_digest_preferences(
         "sent_history": prefs.sent_history,
         "batches": prefs.batches,
         "posted_date_filter": prefs.posted_date_filter,
+        "webhook_url": prefs.webhook_url,
     }
 
     try:

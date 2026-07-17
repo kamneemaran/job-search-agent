@@ -7259,6 +7259,7 @@ def main():
     # --- If --user-id is provided, load profile from Supabase ---
     _supabase_user_profile = None  # will hold {core_skills, years_experience, current_role, email}
     _supabase_client = None
+    _webhook_url = ""
     _supabase_scan_id = args.scan_id or None
     _supabase_posted_date_filter = args.posted_date_filter or "any"
 
@@ -7350,6 +7351,7 @@ def main():
         if _pref_result and _pref_result.data:
             _to_email = _pref_result.data.get("email", "")
             _batches_from_db = _pref_result.data.get("batches") or []
+            _webhook_url = _pref_result.data.get("webhook_url", "")
 
             # Extract batches and posted_date_filter from RUNNING token if scan_id matches
             _sent_hist = _pref_result.data.get("sent_history") or []
@@ -8410,6 +8412,25 @@ def main():
                 print(f"  [supabase] Logged {_logged} jobs to tracker for user {args.user_id}")
         except Exception as _e:
             print(f"  [supabase] Warning: Failed to log jobs to tracker: {_e}")
+
+        # Send webhook notification if configured
+        if _webhook_url:
+            try:
+                _webhook_payload = {
+                    "text": f"Scan complete: {len(all_matches)} job matches found (batch: {args.batch or 'all'})",
+                    "content": f"Scan complete: {len(all_matches)} job matches found (batch: {args.batch or 'all'})",
+                    "username": "JobPilot",
+                    "matches": len(all_matches),
+                    "batch": args.batch or "all",
+                    "top_jobs": [{"title": m["title"], "company": m["company"], "score": m["score"], "url": m.get("url", "")} for m in all_matches[:5]],
+                }
+                _wh_resp = requests.post(_webhook_url, json=_webhook_payload, timeout=10)
+                if _wh_resp.status_code < 300:
+                    print(f"  [webhook] Notified: {_webhook_url[:50]}...")
+                else:
+                    print(f"  [webhook] Warning: status {_wh_resp.status_code}")
+            except Exception as _e:
+                print(f"  [webhook] Warning: Failed to send webhook: {_e}")
 
     print("=== Scan complete ===")
 

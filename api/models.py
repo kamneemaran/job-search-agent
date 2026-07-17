@@ -152,3 +152,4 @@ class DigestPreferences(BaseModel):
     sent_history: list[str] = []
     batches: list[str] = ["all"]
     posted_date_filter: str = "any"
+    webhook_url: str = ""
