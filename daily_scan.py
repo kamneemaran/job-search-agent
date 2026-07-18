@@ -5227,8 +5227,36 @@ def build_email_html(matches, failed_parse=None):
 def send_email(html_body, subject="Daily Job Matches", recipient=None, raise_on_error=False):
     gmail_address = os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
     gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
     if not recipient:
         recipient = os.environ.get("EMAIL_TO") or gmail_address
+
+    # Prefer SendGrid (HTTP API) over SMTP — works on Vercel serverless
+    if sendgrid_key:
+        try:
+            import urllib.request
+            data = json.dumps({
+                "personalizations": [{"to": [{"email": recipient}]}],
+                "from": {"email": gmail_address},
+                "subject": subject,
+                "content": [{"type": "text/html", "value": html_body}],
+            }).encode()
+            req = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {sendgrid_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+            urllib.request.urlopen(req, timeout=15)
+            print(f"Email sent to {recipient} via SendGrid")
+            return True
+        except Exception as e:
+            print(f"Failed to send email via SendGrid: {e}")
+            if raise_on_error:
+                raise
+            return False
 
     if not gmail_app_password:
         msg = "GMAIL_APP_PASSWORD not set in environment"
