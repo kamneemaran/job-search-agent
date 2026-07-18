@@ -25,6 +25,7 @@ export default function SearchPage() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [tracked, setTracked] = useState<Set<string>>(new Set());
+  const [trackerMsg, setTrackerMsg] = useState<{ key: string; text: string } | null>(null);
 
   const getTargetedBoards = () => {
     const locLower = (location || "").toLowerCase();
@@ -112,6 +113,10 @@ export default function SearchPage() {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("409") || msg.includes("already")) {
         setTracked((prev) => new Set(prev).add(key));
+        const status = msg.match(/status:\s*(\w+)/i)?.[1] || "tracked";
+        const label = status === "applied" ? "Already applied" : status === "rejected" ? "Already rejected" : status === "offer" ? "Offer received" : "Already in tracker";
+        setTrackerMsg({ key, text: label });
+        setTimeout(() => setTrackerMsg((prev) => prev?.key === key ? null : prev), 3000);
       } else {
         alert("Failed to add to tracker: " + msg);
       }
@@ -353,6 +358,12 @@ export default function SearchPage() {
       {searched && !loading && results.length === 0 && !error && (
         <div className="text-center py-16 text-gray-500">
           No jobs found matching your criteria. Try lowering the threshold or changing your query.
+        </div>
+      )}
+
+      {trackerMsg && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
+          {trackerMsg.text}
         </div>
       )}
 

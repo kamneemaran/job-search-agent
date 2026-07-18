@@ -73,14 +73,15 @@ async def add_to_tracker(
 
     existing = (
         sb.table("jobs")
-        .select("id")
+        .select("id, status")
         .eq("user_id", user_id)
         .eq("title", req.title)
         .eq("company", req.company)
         .execute()
     )
     if existing.data:
-        raise HTTPException(409, "Job already in tracker")
+        st = existing.data[0].get("status", "unknown")
+        raise HTTPException(409, detail=f"Job already in tracker (status: {st})")
 
     insert_data = {
         "user_id": user_id,
