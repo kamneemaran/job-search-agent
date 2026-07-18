@@ -5242,7 +5242,7 @@ def send_email(html_body, subject="Daily Job Matches", recipient=None):
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
             server.login(gmail_address, gmail_app_password)
             server.sendmail(gmail_address, recipient, msg.as_string())
         print(f"Email sent to {recipient}")
