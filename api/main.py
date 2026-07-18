@@ -386,9 +386,14 @@ def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(
         html = ds.build_email_html(jobs_data)
         to_email = req.email or user_email or os.environ.get("EMAIL_TO") or ""
         try:
+            has_sg = bool(os.environ.get("SENDGRID_API_KEY"))
+            has_gmail = bool(os.environ.get("GMAIL_APP_PASSWORD"))
+            logger.info(f"send-results: sg_key={has_sg} gmail_pw={has_gmail} to={to_email}")
             ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email or None, raise_on_error=True)
         except Exception as e:
-            return {"message": f"Email send failed: {e}", "sent": False}
+            err = str(e)
+            logger.error(f"send-results email error: {err}")
+            return {"message": f"Email send failed: {err}", "sent": False}
         if ok:
             return {"message": "Email sent", "sent": True}
         return {"message": "Email send failed — unknown error", "sent": False}
