@@ -5234,8 +5234,7 @@ def send_email(html_body, subject="Daily Job Matches", recipient=None, raise_on_
     # Prefer SendGrid (HTTP API) over SMTP — works on Vercel serverless
     if sendgrid_key:
         try:
-            import requests as _req
-            resp = _req.post(
+            resp = requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
                 json={
                     "personalizations": [{"to": [{"email": recipient}]}],
