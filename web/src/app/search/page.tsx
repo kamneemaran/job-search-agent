@@ -139,6 +139,23 @@ export default function SearchPage() {
     }
   };
 
+  const sourceUrl = (source: string, title: string, company: string) => {
+    const q = encodeURIComponent(`${company} ${title}`);
+    const map: Record<string, string> = {
+      "LinkedIn": "https://www.linkedin.com/jobs/search/?keywords=",
+      "Indeed": "https://www.indeed.com/jobs?q=",
+      "Naukri": "https://www.naukri.com/",
+      "Glassdoor": "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=",
+      "Instahyre": "https://www.instahyre.com/search-jobs/?q=",
+      "WeWorkRemotely": "https://weworkremotely.com/remote-jobs/search?term=",
+      "Remotive": "https://remotive.com/remote-jobs?search=",
+      "Seek": "https://www.seek.com.au/",
+      "Xing": "https://www.xing.com/jobs/search?keywords=",
+    };
+    const base = map[source] || "https://www.google.com/search?q=";
+    return base + q;
+  };
+
   const scoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400 bg-emerald-400/10";
     if (score >= 65) return "text-yellow-400 bg-yellow-400/10";
@@ -449,19 +466,13 @@ export default function SearchPage() {
                       >
                         {isTracked ? "✓ Tracked" : "+ Track"}
                       </button>
-                      {job.url ? (
-                        <a href={job.url} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:bg-gray-800 transition-colors">
-                          Apply &rarr;
-                        </a>
-                      ) : (
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(job.company + " careers " + job.title)}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="rounded-lg border border-gray-700/50 px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors"
-                        >
-                          Search
-                        </a>
-                      )}
+                      <a
+                        href={job.url || sourceUrl(job.source, job.title, job.company)}
+                        target="_blank" rel="noopener noreferrer"
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${job.url ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600"}`}
+                      >
+                        {job.url ? "Apply →" : "Open Source"}
+                      </a>
                     </div>
                   </div>
                 </div>
