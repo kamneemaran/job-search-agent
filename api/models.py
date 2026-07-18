@@ -142,6 +142,11 @@ class ProfileUpdateRequest(BaseModel):
     core_skills: list[str] = []
 
 
+class SendResultsRequest(BaseModel):
+    jobs: list[JobResult]
+    email: str = ""
+
+
 class DigestPreferences(BaseModel):
     enabled: bool = True
     frequency: str = "weekly"

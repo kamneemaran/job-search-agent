@@ -58,7 +58,7 @@ from api.models import (
     SearchRequest, SearchResponse, JobResult,
     ResumeUploadResponse, ResumeInfo, ListResumesResponse, ProfileResponse,
     TrackerJob, TrackerUpdateRequest, TrackerResponse,
-    ProfileUpdateRequest, DigestSendRequest,
+    ProfileUpdateRequest, DigestSendRequest, SendResultsRequest,
 )
 from api.tracker import router as tracker_router
 from api.digest import router as digest_router
@@ -356,6 +356,30 @@ def score_job(req: ScoreRequest, authorization: Optional[str] = Header(None)):
             ds._rebuild_precompiled_patterns()
 
     return ScoreResponse(score=score, note=note, title=req.title, company=req.company)
+
+
+@app.post("/api/send-results")
+def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(None)):
+    """Email the current search results to the user."""
+    if not authorization:
+        raise HTTPException(401, "Authorization required")
+
+    ds = _get_ds()
+    profile = _get_user_profile(authorization)
+
+    with _profile_lock:
+        ds.PROFILE["core_skills"] = profile["core_skills"]
+        ds.PROFILE["years_experience"] = profile["years_experience"]
+        ds.PROFILE["current_role"] = profile.get("current_role", "")
+        ds._rebuild_precompiled_patterns()
+
+    jobs_data = [j.model_dump() if hasattr(j, 'model_dump') else dict(j) for j in req.jobs]
+    html = ds.build_email_html(jobs_data)
+    to_email = req.email or os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
+    ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email)
+    if ok:
+        return {"message": "Email sent", "sent": True}
+    return {"message": "Failed to send email", "sent": False}
 
 
 @app.post("/api/search", response_model=SearchResponse)

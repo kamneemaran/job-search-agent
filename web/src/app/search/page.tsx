@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { searchJobs, addToTracker, getProfile, type JobResult } from "@/lib/api";
+import { searchJobs, addToTracker, getProfile, sendResultsToEmail, type JobResult } from "@/lib/api";
 
 export default function SearchPage() {
   const router = useRouter();
@@ -26,6 +26,8 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [tracked, setTracked] = useState<Set<string>>(new Set());
   const [trackerMsg, setTrackerMsg] = useState<{ key: string; text: string } | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSentMsg, setEmailSentMsg] = useState("");
 
   const getTargetedBoards = () => {
     const locLower = (location || "").toLowerCase();
@@ -120,6 +122,20 @@ export default function SearchPage() {
       } else {
         alert("Failed to add to tracker: " + msg);
       }
+    }
+  };
+
+  const handleSendResults = async () => {
+    setSendingEmail(true);
+    setEmailSentMsg("");
+    try {
+      const res = await sendResultsToEmail(results);
+      setEmailSentMsg(res.sent ? "Results sent to your email!" : "Failed to send: " + res.message);
+    } catch (err: unknown) {
+      setEmailSentMsg("Failed to send: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setSendingEmail(false);
+      setTimeout(() => setEmailSentMsg(""), 4000);
     }
   };
 
@@ -367,11 +383,26 @@ export default function SearchPage() {
         </div>
       )}
 
+      {emailSentMsg && (
+        <div className={`mb-4 rounded-lg border px-4 py-2 text-sm ${emailSentMsg.includes("sent") ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+          {emailSentMsg}
+        </div>
+      )}
+
       {results.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">{results.length} matches found</h2>
-            <span className="text-sm text-gray-500">Sorted by score</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSendResults}
+                disabled={sendingEmail}
+                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50"
+              >
+                {sendingEmail ? "Sending..." : "Send to Email"}
+              </button>
+              <span className="text-sm text-gray-500">Sorted by score</span>
+            </div>
           </div>
           <div className="space-y-3">
             {results.map((job, i) => {
@@ -418,9 +449,17 @@ export default function SearchPage() {
                       >
                         {isTracked ? "✓ Tracked" : "+ Track"}
                       </button>
-                      {job.url && (
+                      {job.url ? (
                         <a href={job.url} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:bg-gray-800 transition-colors">
                           Apply &rarr;
+                        </a>
+                      ) : (
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(job.company + " careers " + job.title)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="rounded-lg border border-gray-700/50 px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors"
+                        >
+                          Search
                         </a>
                       )}
                     </div>

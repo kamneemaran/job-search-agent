@@ -245,3 +245,10 @@ export async function sendDigestNow(email?: string, schedule: string = "now", ba
     body: JSON.stringify({ schedule, email: email || "", batches, posted_date_filter }),
   });
 }
+
+export async function sendResultsToEmail(jobs: JobResult[], email?: string): Promise<{ message: string; sent: boolean }> {
+  return apiFetch("/api/send-results", {
+    method: "POST",
+    body: JSON.stringify({ jobs, email: email || "" }),
+  });
+}
