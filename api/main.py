@@ -625,6 +625,24 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 "WorkAtStartup": ds.search_workatstartup,
                 "ArcDev": ds.search_arcdev,
                 "WorkingNomads": ds.search_workingnomads,
+                "Seek": ds.search_seek,
+                "Jora": ds.search_jora,
+                "Xing": ds.search_xing,
+                "JobsCh": ds.search_jobsch,
+                "JobsinGermany": ds.search_jobsingermany,
+                "SkipTheDrive": ds.search_skipthedrive,
+                "Jobspresso": ds.search_jobspresso,
+                "BulldogJob": ds.search_bulldogjob,
+                "Crossover": ds.search_crossover,
+                "Kelly": ds.search_kelly,
+                "EnglishJobSearch": ds.search_englishjobsearch,
+                "Workew": ds.search_workew,
+                "MonsterDE": ds.search_monsterde,
+                "Reed": ds.search_reed,
+                "Jobsite": ds.search_jobsite,
+                "Freelancermap": ds.search_freelancermap,
+                "Intermediair": ds.search_intermediair,
+                "NationaleVacaturebank": ds.search_nationalevacaturebank,
             }
 
             if req.sources:
@@ -633,6 +651,13 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     for name in req.sources
                     if name in BOARD_MAP
                 ]
+                if not target_boards:
+                    # Fallback to defaults if none matched
+                    target_boards = [
+                        ("LinkedIn", ds.search_linkedin),
+                        ("Indeed", ds.search_indeed),
+                        ("Glassdoor", ds.search_glassdoor),
+                    ]
             elif is_remote_search:
                 # Remote-specific high-signal job boards
                 target_boards = [
