@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { searchJobs, addToTracker, getProfile, sendResultsToEmail, type JobResult } from "@/lib/api";
+import { searchJobs, addToTracker, getProfile, type JobResult } from "@/lib/api";
+import { getBrowserClient } from "@/lib/supabase/client";
 
 export default function SearchPage() {
   const router = useRouter();
@@ -129,13 +130,29 @@ export default function SearchPage() {
     setSendingEmail(true);
     setEmailSentMsg("");
     try {
-      const res = await sendResultsToEmail(results);
-      setEmailSentMsg(res.sent ? "Results sent to your email!" : "Failed to send: " + res.message);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      const { data: session } = await (await import("@/lib/supabase/client")).getBrowserClient().auth.getSession();
+      const token = session?.session?.access_token;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/send-results`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ jobs: results, email: "" }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+      setEmailSentMsg(data.sent ? "Results sent to your email!" : "Failed to send: " + (data.message || ""));
     } catch (err: unknown) {
-      setEmailSentMsg("Failed to send: " + (err instanceof Error ? err.message : "Unknown error"));
+      if (err instanceof Error && err.name === "AbortError") {
+        setEmailSentMsg("Request timed out. Check your email config in Settings.");
+      } else {
+        setEmailSentMsg("Failed to send: " + (err instanceof Error ? err.message : "Unknown error"));
+      }
     } finally {
       setSendingEmail(false);
-      setTimeout(() => setEmailSentMsg(""), 4000);
+      setTimeout(() => setEmailSentMsg(""), 6000);
     }
   };
 
@@ -149,8 +166,39 @@ export default function SearchPage() {
       "Instahyre": "https://www.instahyre.com/search-jobs/?q=",
       "WeWorkRemotely": "https://weworkremotely.com/remote-jobs/search?term=",
       "Remotive": "https://remotive.com/remote-jobs?search=",
+      "RemoteOK": "https://remoteok.com/remote-jobs/?search=",
+      "Himalayas": "https://himalayas.app/jobs/search?query=",
+      "ArcDev": "https://arc.dev/search?q=",
+      "WorkingNomads": "https://www.workingnomads.com/jobs?search=",
+      "NoDesk": "https://nodesk.co/remote-jobs/?search=",
+      "WorkAtStartup": "https://www.workatastartup.com/jobs?query=",
+      "SkipTheDrive": "https://www.skipthedrive.com/?s=",
+      "Jobspresso": "https://jobspresso.co/?s=",
       "Seek": "https://www.seek.com.au/",
+      "Jora": "https://au.jora.com/j?sp=homepage&q=",
       "Xing": "https://www.xing.com/jobs/search?keywords=",
+      "JobsCh": "https://www.jobs.ch/en/search/?q=",
+      "JobsinGermany": "https://www.jobsingermany.com/en/job/search?q=",
+      "StepStone": "https://www.stepstone.de/en/jobs/?q=",
+      "Arbeitnow": "https://www.arbeitnow.com/jobs/search?q=",
+      "EURES": "https://ec.europa.eu/eures/portal/jv-se/search?keywords=",
+      "IamExpat": "https://www.iamexpat.nl/career/jobs/search?keyword=",
+      "TogetherAbroad": "https://www.togetherabroad.nl/search?q=",
+      "WelcomeToNL": "https://www.welcometothenetherland.com/en/jobs?search=",
+      "WorkInFinland": "https://www.workinfinland.com/en/search?q=",
+      "WorkInLux": "https://www.workinlux.lu/en/jobs?search=",
+      "FoundIt": "https://www.foundit.in/search?q=",
+      "TimesJobs": "https://www.timesjobs.com/job-search?q=",
+      "VisaSponsor": "https://visa-sponsor-jobs.com/?s=",
+      "WomenInTech": "https://www.womenintech.co.uk/jobs?search=",
+      "SimplyHired": "https://www.simplyhired.com/search?q=",
+      "EnglishJobSearch": "https://englishjobsearch.com/job/?s=",
+      "BulldogJob": "https://bulldogjob.com/companies/jobs?q=",
+      "Crossover": "https://www.crossover.com/jobs?q=",
+      "Kelly": "https://www.kellyservices.com/search/?q=",
+      "MonsterDE": "https://www.monster.de/en/jobs/search?q=",
+      "Reed": "https://www.reed.co.uk/jobs?keywords=",
+      "Jobsite": "https://www.jobsite.co.uk/jobs?keywords=",
     };
     const base = map[source] || "https://www.google.com/search?q=";
     return base + q;

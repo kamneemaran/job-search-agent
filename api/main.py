@@ -373,10 +373,16 @@ def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(
         ds.PROFILE["current_role"] = profile.get("current_role", "")
         ds._rebuild_precompiled_patterns()
 
+    # Get user's email from auth
+    from api.supabase import get_user_client
+    sb = get_user_client(authorization)
+    user = sb.auth.get_user().user
+    user_email = user.email or ""
+
     jobs_data = [j.model_dump() if hasattr(j, 'model_dump') else dict(j) for j in req.jobs]
     html = ds.build_email_html(jobs_data)
-    to_email = req.email or os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
-    ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email)
+    to_email = req.email or user_email or os.environ.get("EMAIL_TO") or ""
+    ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email or None)
     if ok:
         return {"message": "Email sent", "sent": True}
     return {"message": "Failed to send email", "sent": False}
