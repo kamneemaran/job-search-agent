@@ -49,7 +49,8 @@ export default function SearchPage() {
   const CATEGORY_MAP: Record<string, string[]> = {
     "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas", "NoDesk", "WorkAtStartup", "ArcDev", "WorkingNomads"],
     "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed"],
-    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux"],
+    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "JobsCh", "JobsinGermany"],
+    "APAC": ["Seek", "Jora"],
     "Global": ["LinkedIn", "Indeed", "Glassdoor", "VisaSponsor"]
   };
 

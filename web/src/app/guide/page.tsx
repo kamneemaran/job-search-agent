@@ -96,6 +96,108 @@ export default function GuidePage() {
         </section>
       </div>
 
+      {/* Section 5 */}
+      <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-8">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-xl text-indigo-400 font-bold border border-indigo-500/20">5</span>
+          <div className="space-y-2 w-full">
+            <h2 className="text-xl font-semibold text-white">Job Sources We Cover</h2>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              JobPilot aggregates listings from <strong className="text-white">50+ job boards</strong> and <strong className="text-white">1260+ ATS company career pages</strong>. Sources are organized by region and run in parallel batches.
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {/* Global / Major Boards */}
+              <div className="space-y-1">
+                <h3 className="text-indigo-400 font-semibold text-xs uppercase tracking-wider">Global Major Boards</h3>
+                <ul className="list-disc pl-5 text-gray-400 space-y-0.5 text-xs">
+                  <li>LinkedIn</li>
+                  <li>Indeed</li>
+                  <li>Glassdoor</li>
+                  <li>Naukri</li>
+                  <li>SimplyHired</li>
+                  <li>Foundit (ex-Monster India)</li>
+                  <li>TimesJobs</li>
+                  <li>Instahyre</li>
+                  <li>WomenInTech</li>
+                  <li>Adzuna</li>
+                  <li>Reed (UK)</li>
+                  <li>Jobsite (UK)</li>
+                </ul>
+              </div>
+
+              {/* APAC */}
+              <div className="space-y-1">
+                <h3 className="text-indigo-400 font-semibold text-xs uppercase tracking-wider">APAC</h3>
+                <ul className="list-disc pl-5 text-gray-400 space-y-0.5 text-xs">
+                  <li>Seek (Australia)</li>
+                  <li>Jora (Australia)</li>
+                </ul>
+              </div>
+
+              {/* Europe */}
+              <div className="space-y-1">
+                <h3 className="text-indigo-400 font-semibold text-xs uppercase tracking-wider">Europe</h3>
+                <ul className="list-disc pl-5 text-gray-400 space-y-0.5 text-xs">
+                  <li>Xing (Germany)</li>
+                  <li>StepStone (Germany)</li>
+                  <li>MonsterDE (Germany)</li>
+                  <li>JobsinGermany</li>
+                  <li>Bundesagentur (Germany)</li>
+                  <li>Freelancermap (Germany)</li>
+                  <li>JobsCh (Switzerland)</li>
+                  <li>NetEmpregos (Portugal)</li>
+                  <li>SAPOEmprego (Portugal)</li>
+                  <li>Infoempleo (Spain)</li>
+                  <li>IndeedNL (Netherlands)</li>
+                  <li>Intermediair (Netherlands)</li>
+                  <li>NationaleVacaturebank (Netherlands)</li>
+                  <li>IamExpat (Netherlands)</li>
+                  <li>WelcomeToNL (Netherlands)</li>
+                  <li>TogetherAbroad (Netherlands)</li>
+                  <li>WorkInLux (Luxembourg)</li>
+                  <li>WorkinFinland (Finland)</li>
+                  <li>EURES (EU-wide)</li>
+                  <li>EnglishJobSearch (EU)</li>
+                  <li>Bulldogjob (Poland/EU)</li>
+                </ul>
+              </div>
+
+              {/* Remote-First Boards */}
+              <div className="space-y-1">
+                <h3 className="text-indigo-400 font-semibold text-xs uppercase tracking-wider">Remote-First Boards</h3>
+                <ul className="list-disc pl-5 text-gray-400 space-y-0.5 text-xs">
+                  <li>WeWorkRemotely</li>
+                  <li>Remotive</li>
+                  <li>RemoteOK</li>
+                  <li>SkipTheDrive</li>
+                  <li>WorkingNomads</li>
+                  <li>Jobspresso</li>
+                  <li>WorkAtAStartup</li>
+                  <li>ArcDev</li>
+                  <li>Himalayas</li>
+                  <li>NoDesk</li>
+                  <li>Workew</li>
+                  <li>Arbeitnow</li>
+                  <li>VisaSponsor</li>
+                  <li>Incluso</li>
+                  <li>Crossover</li>
+                  <li>Kelly</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Company ATS sources */}
+            <div className="mt-4">
+              <h3 className="text-indigo-400 font-semibold text-xs uppercase tracking-wider mb-1">ATS Company Career Pages</h3>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                <strong className="text-white">1260+ companies</strong> across 6 region files — <strong className="text-white">Global</strong>, <strong className="text-white">US/Canada</strong>, <strong className="text-white">EU</strong>, <strong className="text-white">APAC</strong>, <strong className="text-white">Middle East</strong>, and <strong className="text-white">Remote-first</strong>. Each company's ATS (Greenhouse, Lever, Workday, Taleo, etc.) is scraped directly. Plus a Google Sheets links sheet with 50+ additional job board URLs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="text-center mt-12">
         <Link
           href="/search"
