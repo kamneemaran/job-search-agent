@@ -5802,15 +5802,19 @@ def search_foundit(query, location="India", max_results=500):
             titles = re.findall(r'"title":"([^"]+)"', resp.text)
             companies = re.findall(r'"company":"([^"]+)"', resp.text)
             locs = re.findall(r'"location":"([^"]+)"', resp.text)
+            urls = re.findall(r'"(?:url|applyUrl|jobUrl|jdUrl)":"([^"]+)"', resp.text)
             if not titles:
                 break  # No more results
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
+                raw_url = urls[i] if i < len(urls) else ""
+                if raw_url and not raw_url.startswith("http"):
+                    raw_url = "https://www.foundit.in" + raw_url
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Unknown",
                     "location": locs[i] if i < len(locs) else location,
-                    "url": "", "description": f"Foundit: {titles[i]}",
+                    "url": raw_url, "description": f"Foundit: {titles[i]}",
                 })
             if len(jobs) >= max_results or len(titles) < page_size:
                 break
@@ -5843,7 +5847,10 @@ def search_timesjobs(query, location="India", max_results=500):
                     break
                 t = item.get("jobTitle", item.get("title", "")) if isinstance(item, dict) else str(item)
                 c = item.get("companyName", item.get("company", "")) if isinstance(item, dict) else ""
-                if t: jobs.append({"title": t, "company": c, "location": location, "url": "", "description": t})
+                raw_url = item.get("jdUrl", item.get("jobUrl", item.get("url", ""))) if isinstance(item, dict) else ""
+                if raw_url and not raw_url.startswith("http"):
+                    raw_url = "https://www.timesjobs.com" + raw_url
+                if t: jobs.append({"title": t, "company": c, "location": location, "url": raw_url, "description": t})
             if len(jobs) >= max_results:
                 break
             time.sleep(1)
@@ -5955,12 +5962,20 @@ def search_jora(query, location="Australia", max_results=500):
                 "[data-test='company-name'], .company-name, span[class*='company']",
                 "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
             )
+            links = _playwright_scrape(
+                page_url,
+                "a[class*='title'], [data-test='job-title'], h2 a, a[class*='job-link']",
+                "els => els.map(e => e.href).filter(h => h && h.startsWith('http')).slice(0, 25)"
+            )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
+                link = links[i] if i < len(links) else ""
+                if link and not link.startswith("http"):
+                    link = "https://au.jora.com" + link
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Jora",
-                    "location": location, "url": "", "description": f"Jora AU: {titles[i]}",
+                    "location": location, "url": link, "description": f"Jora AU: {titles[i]}",
                 })
             if len(jobs) >= max_results:
                 break
@@ -6033,12 +6048,18 @@ def search_jobsch(query, location="Switzerland", max_results=500):
                 "span[class*='company'], [data-test='company']",
                 "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
             )
+            links = _playwright_scrape(
+                page_url,
+                "a[class*='title'], h2 a, [data-test='job-title']",
+                "els => els.map(e => e.href).filter(h => h && h.startsWith('http')).slice(0, 25)"
+            )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
+                link = links[i] if i < len(links) else ""
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Jobs.ch",
-                    "location": location, "url": "", "description": f"Jobs.ch: {titles[i]}",
+                    "location": location, "url": link, "description": f"Jobs.ch: {titles[i]}",
                 })
             if len(jobs) >= max_results:
                 break
@@ -6069,12 +6090,18 @@ def search_jobsingermany(query, location="Germany", max_results=500):
                 "span[class*='company'], [data-test='company']",
                 "els => els.map(e => e.innerText.trim()).filter(t => t.length > 1)"
             )
+            links = _playwright_scrape(
+                page_url,
+                "h2 a, h3 a, a[class*='job'], [data-test='job-title']",
+                "els => els.map(e => e.href).filter(h => h && h.startsWith('http')).slice(0, 25)"
+            )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
+                link = links[i] if i < len(links) else ""
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "JobsinGermany",
-                    "location": location, "url": "", "description": f"JobsinGermany: {titles[i]}",
+                    "location": location, "url": link, "description": f"JobsinGermany: {titles[i]}",
                 })
             if len(jobs) >= max_results:
                 break
@@ -7054,8 +7081,16 @@ def search_crossover(query, location="Remote", max_results=500):
                     continue
                 if title not in seen:
                     seen.add(title)
+                    link_el = card.select_one('a[href]')
+                    card_url = ""
+                    if link_el:
+                        href = link_el.get("href", "")
+                        if href.startswith("/"):
+                            card_url = "https://www.crossover.com" + href
+                        elif href.startswith("http"):
+                            card_url = href
                     jobs.append({"title": title, "company": "Crossover",
-                                 "location": "Remote", "url": url,
+                                 "location": "Remote", "url": card_url,
                                  "description": title})
             if jobs:
                 print(f"  [crossover] {len(jobs)} jobs for '{query}'")
