@@ -3200,22 +3200,34 @@ def search_linkedin(query, location="India", max_results=500):
 
 
 def search_linkedin_au(query, location="Australia", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    au_kw = ["australia", "sydney", "melbourne", "brisbane", "perth", "adelaide", "canberra", "gold coast", "newcastle", "au"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in au_kw)]
 
 def search_linkedin_nz(query, location="New Zealand", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    nz_kw = ["new zealand", "nz", "auckland", "wellington", "christchurch", "hamilton", "tauranga", "dunedin", "queenstown"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in nz_kw)]
 
 def search_linkedin_sg(query, location="Singapore", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    sg_kw = ["singapore", "sg"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in sg_kw)]
 
 def search_linkedin_jp(query, location="Japan", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    jp_kw = ["japan", "tokyo", "osaka", "kyoto", "yokohama", "nagoya", "sapporo", "fukuoka", "kobe"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in jp_kw)]
 
 def search_linkedin_kr(query, location="South Korea", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    kr_kw = ["south korea", "korea", "seoul", "busan", "incheon", "daegu", "daejeon"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in kr_kw)]
 
 def search_linkedin_hk(query, location="Hong Kong", max_results=500):
-    return search_linkedin(query, location, max_results)
+    jobs = search_linkedin(query, location, max_results)
+    hk_kw = ["hong kong", "hk"]
+    return [j for j in jobs if any(k in j.get("location", "").lower() for k in hk_kw)]
 
 def search_linkedin_uk(query, location="United Kingdom", max_results=500):
     return search_linkedin(query, location, max_results)
