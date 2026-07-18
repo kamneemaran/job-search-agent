@@ -385,10 +385,13 @@ def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(
             return {"message": "No jobs to send", "sent": False}
         html = ds.build_email_html(jobs_data)
         to_email = req.email or user_email or os.environ.get("EMAIL_TO") or ""
-        ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email or None)
+        try:
+            ok = ds.send_email(html, subject=f"Search Results: {len(jobs_data)} Matches", recipient=to_email or None, raise_on_error=True)
+        except Exception as e:
+            return {"message": f"Email send failed: {e}", "sent": False}
         if ok:
             return {"message": "Email sent", "sent": True}
-        return {"message": "Failed to send email — check GMAIL_APP_PASSWORD in Settings", "sent": False}
+        return {"message": "Email send failed — unknown error", "sent": False}
     except HTTPException:
         raise
     except Exception as e:

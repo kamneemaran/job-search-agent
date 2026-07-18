@@ -5224,15 +5224,17 @@ def build_email_html(matches, failed_parse=None):
     """
 
 
-def send_email(html_body, subject="Daily Job Matches", recipient=None):
+def send_email(html_body, subject="Daily Job Matches", recipient=None, raise_on_error=False):
     gmail_address = os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
     gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
     if not recipient:
         recipient = os.environ.get("EMAIL_TO") or gmail_address
 
     if not gmail_app_password:
-        print("Email not sent - GMAIL_APP_PASSWORD not set.")
-        print("Set GMAIL_APP_PASSWORD in .env or as environment variable.")
+        msg = "GMAIL_APP_PASSWORD not set in environment"
+        print(f"Email not sent - {msg}")
+        if raise_on_error:
+            raise RuntimeError(msg)
         return False
 
     msg = MIMEMultipart("alternative")
@@ -5249,6 +5251,8 @@ def send_email(html_body, subject="Daily Job Matches", recipient=None):
         return True
     except Exception as e:
         print(f"Failed to send email: {e}")
+        if raise_on_error:
+            raise
         return False
 
 
