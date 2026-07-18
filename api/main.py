@@ -358,6 +358,34 @@ def score_job(req: ScoreRequest, authorization: Optional[str] = Header(None)):
     return ScoreResponse(score=score, note=note, title=req.title, company=req.company)
 
 
+@app.get("/api/test-network")
+def test_network():
+    """Test outbound network connectivity from Vercel."""
+    import socket, requests as _req
+    results = {}
+    # Test DNS
+    try:
+        socket.getaddrinfo("api.sendgrid.com", 443)
+        results["dns"] = "ok"
+    except Exception as e:
+        results["dns"] = str(e)
+    # Test HTTPS
+    try:
+        r = _req.get("https://api.sendgrid.com/v3", timeout=5)
+        results["https"] = f"status={r.status_code}"
+    except Exception as e:
+        results["https"] = str(e)
+    # Test alternate
+    try:
+        r = _req.get("https://www.google.com", timeout=5)
+        results["google"] = f"status={r.status_code}"
+    except Exception as e:
+        results["google"] = str(e)
+    results["sendgrid_key_set"] = bool(os.environ.get("SENDGRID_API_KEY"))
+    results["gmail_pw_set"] = bool(os.environ.get("GMAIL_APP_PASSWORD"))
+    return results
+
+
 @app.post("/api/send-results")
 def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(None)):
     """Email the current search results to the user."""
