@@ -52,10 +52,30 @@ from daily_scan import (
     tailoring_suggestion,
     fetch_jobs_from_source,
     search_linkedin,
+    search_linkedin_au,
+    search_linkedin_nz,
+    search_linkedin_sg,
+    search_linkedin_jp,
+    search_linkedin_kr,
+    search_linkedin_hk,
+    search_linkedin_uk,
+    search_linkedin_de,
     search_indeed,
+    search_indeed_au,
+    search_indeed_nz,
+    search_indeed_sg,
+    search_indeed_jp,
+    search_indeed_kr,
+    search_indeed_hk,
+    search_indeed_uk,
+    search_indeed_de,
     search_naukri,
     search_instahyre,
     search_glassdoor,
+    search_glassdoor_au,
+    search_glassdoor_sg,
+    search_glassdoor_uk,
+    search_glassdoor_de,
     search_simplyhired,
     search_weworkremotely,
     search_womenintech,
@@ -680,9 +700,29 @@ def _search_jobs(
 
     board_scrapers = [
         ("LinkedIn", search_linkedin),
+        ("LinkedInAU", search_linkedin_au),
+        ("LinkedInNZ", search_linkedin_nz),
+        ("LinkedInSG", search_linkedin_sg),
+        ("LinkedInJP", search_linkedin_jp),
+        ("LinkedInKR", search_linkedin_kr),
+        ("LinkedInHK", search_linkedin_hk),
+        ("LinkedInUK", search_linkedin_uk),
+        ("LinkedInDE", search_linkedin_de),
         ("Indeed", search_indeed),
+        ("IndeedAU", search_indeed_au),
+        ("IndeedNZ", search_indeed_nz),
+        ("IndeedSG", search_indeed_sg),
+        ("IndeedJP", search_indeed_jp),
+        ("IndeedKR", search_indeed_kr),
+        ("IndeedHK", search_indeed_hk),
+        ("IndeedUK", search_indeed_uk),
+        ("IndeedDE", search_indeed_de),
         ("Naukri", search_naukri),
         ("Glassdoor", search_glassdoor),
+        ("GlassdoorAU", search_glassdoor_au),
+        ("GlassdoorSG", search_glassdoor_sg),
+        ("GlassdoorUK", search_glassdoor_uk),
+        ("GlassdoorDE", search_glassdoor_de),
         ("SimplyHired", search_simplyhired),
         ("WeWorkRemotely", search_weworkremotely),
         ("WomenInTech", search_womenintech),
@@ -885,11 +925,19 @@ def _search_jobs(
                 resume = pick_resume(job["company"])
                 all_jobs.append({**job, "score": score, "relocation_note": note, "salary_info": salary_info, "resume": resume})
 
-    # Job board scrapers — run all expanded queries, deduplicate
+    # Job board scrapers — use base role titles, no seniority prefixes
+    # Keyword search handles seniority, but 1 title misses alternate role names
+    # (e.g. "software engineer" != "backend engineer" != "platform engineer")
+    board_queries = [query] if query else expanded_queries[:1]
+    if not query and len(expanded_queries) > 1:
+        base_role_titles = [q for q in expanded_queries if "+" not in q
+                            and not any(q.lower().startswith(p + " ") for p in
+                                        ["senior", "lead", "staff", "principal", "junior", "associate", "sr.", "sr"])]
+        board_queries = base_role_titles if base_role_titles else expanded_queries[:1]
     for board_name, board_fn in board_scrapers:
         if sources_lower and not any(s in board_name.lower() for s in sources_lower):
             continue
-        for q in expanded_queries:
+        for q in board_queries:
             try:
                 jobs = board_fn(q, location=effective_location, max_results=max_results)
                 for job in jobs:
@@ -911,11 +959,11 @@ def _search_jobs(
                     "error": str(e)[:200],
                 })
 
-    # Playwright scrapers
+    # Playwright scrapers — same, original query only
     for pw_name, pw_fn in pw_scrapers:
         if sources_lower and not any(s in pw_name.lower() for s in sources_lower):
             continue
-        for q in expanded_queries:
+        for q in board_queries:
             try:
                 jobs = pw_fn(q, location=effective_location, max_results=max_results)
                 for job in jobs:

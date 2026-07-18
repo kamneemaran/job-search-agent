@@ -1979,7 +1979,7 @@ ROLE_DOMAIN_QUERIES = {
     },
     "backend": {
         "titles": ["backend engineer", "software engineer", "platform engineer",
-                    "distributed systems engineer", "back-end engineer"],
+                    "distributed systems engineer"],
         "stems": ["backend", "software", "platform", "distributed"],
     },
     "frontend": {
@@ -3199,6 +3199,31 @@ def search_linkedin(query, location="India", max_results=500):
     return jobs
 
 
+def search_linkedin_au(query, location="Australia", max_results=500):
+    return search_linkedin(query, "Australia", max_results)
+
+def search_linkedin_nz(query, location="New Zealand", max_results=500):
+    return search_linkedin(query, "New Zealand", max_results)
+
+def search_linkedin_sg(query, location="Singapore", max_results=500):
+    return search_linkedin(query, "Singapore", max_results)
+
+def search_linkedin_jp(query, location="Japan", max_results=500):
+    return search_linkedin(query, "Japan", max_results)
+
+def search_linkedin_kr(query, location="South Korea", max_results=500):
+    return search_linkedin(query, "South Korea", max_results)
+
+def search_linkedin_hk(query, location="Hong Kong", max_results=500):
+    return search_linkedin(query, "Hong Kong", max_results)
+
+def search_linkedin_uk(query, location="United Kingdom", max_results=500):
+    return search_linkedin(query, "United Kingdom", max_results)
+
+def search_linkedin_de(query, location="Germany", max_results=500):
+    return search_linkedin(query, "Germany", max_results)
+
+
 def search_indeed(query, location="India", max_results=500):
     """Search Indeed for jobs matching a query using Playwright (paginated)."""
     jobs = []
@@ -3257,6 +3282,31 @@ def search_indeed(query, location="India", max_results=500):
     except Exception as e:
         print(f"  [indeed] Error searching '{query}': {e}")
     return jobs
+
+
+def search_indeed_au(query, location="Australia", max_results=500):
+    return search_indeed(query, "Australia", max_results)
+
+def search_indeed_nz(query, location="New Zealand", max_results=500):
+    return search_indeed(query, "New Zealand", max_results)
+
+def search_indeed_sg(query, location="Singapore", max_results=500):
+    return search_indeed(query, "Singapore", max_results)
+
+def search_indeed_jp(query, location="Japan", max_results=500):
+    return search_indeed(query, "Japan", max_results)
+
+def search_indeed_kr(query, location="South Korea", max_results=500):
+    return search_indeed(query, "South Korea", max_results)
+
+def search_indeed_hk(query, location="Hong Kong", max_results=500):
+    return search_indeed(query, "Hong Kong", max_results)
+
+def search_indeed_uk(query, location="United Kingdom", max_results=500):
+    return search_indeed(query, "United Kingdom", max_results)
+
+def search_indeed_de(query, location="Germany", max_results=500):
+    return search_indeed(query, "Germany", max_results)
 
 
 def _indeed_parse_page(html, location):
@@ -3812,6 +3862,19 @@ def search_glassdoor(query, location="India", max_results=500):
     except Exception as e:
         print(f"  [glassdoor] Error searching '{query}': {e}")
     return jobs
+
+
+def search_glassdoor_au(query, location="Australia", max_results=500):
+    return search_glassdoor(query, "Australia", max_results)
+
+def search_glassdoor_sg(query, location="Singapore", max_results=500):
+    return search_glassdoor(query, "Singapore", max_results)
+
+def search_glassdoor_uk(query, location="United Kingdom", max_results=500):
+    return search_glassdoor(query, "United Kingdom", max_results)
+
+def search_glassdoor_de(query, location="Germany", max_results=500):
+    return search_glassdoor(query, "Germany", max_results)
 
 
 def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
@@ -4564,6 +4627,67 @@ def search_adzuna(query, location="Remote", max_results=500):
             print(f"  [adzuna] {len(jobs)} jobs for '{query}'")
     except Exception as e:
         print(f"  [adzuna] Error: {e}")
+    return jobs
+
+
+_adzuna_au_last_call = 0.0
+_adzuna_au_delay = 10.0
+
+def search_adzuna_au(query, location="Australia", max_results=500):
+    """Search Adzuna Australia for jobs using cloudscraper (paginated)."""
+    global _adzuna_au_last_call, _adzuna_au_delay
+    elapsed = time.time() - _adzuna_au_last_call
+    if elapsed < _adzuna_au_delay:
+        time.sleep(_adzuna_au_delay - elapsed)
+    _adzuna_au_last_call = time.time()
+    jobs = []
+    q = query.replace(" ", "+")
+    max_pages = 3
+    try:
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False})
+        for page_num in range(1, max_pages + 1):
+            url = f"https://www.adzuna.com.au/search?cat=2&loc=105392&q={q}&page={page_num}" if page_num > 1 else f"https://www.adzuna.com.au/search?cat=2&loc=105392&q={q}"
+            resp = None
+            retries = 3
+            backoff = 15.0
+            for attempt in range(retries + 1):
+                resp = scraper.get(url, timeout=20)
+                if resp.status_code == 429:
+                    print(f"  [adzuna-au] HTTP 429 — rate limited, backing off {backoff}s")
+                    _adzuna_au_delay = max(_adzuna_au_delay, 15.0)
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                else:
+                    break
+            if resp.status_code != 200:
+                if page_num == 1: print(f"  [adzuna-au] HTTP {resp.status_code}")
+                break
+            if page_num > 1: time.sleep(2)
+            html = resp.text
+            articles = re.findall(r'<article[^>]*data-aid="(\d+)"[^>]*>(.*?)</article>', html, re.DOTALL)
+            if not articles: break
+            for aid, card in articles:
+                if len(jobs) >= max_results: break
+                title_match = re.search(r'<h2[^>]*>.*?<a[^>]*>(.*?)</a>', card, re.DOTALL)
+                title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip() if title_match else ""
+                if not title or len(title) < 4: continue
+                url_match = re.search(r'href="(https://www\.adzuna\.com\.au/jobs/details/\d+)"', card)
+                job_url = url_match.group(1) if url_match else ""
+                company_match = re.search(r'<div[^>]*class="[^"]*ui-company[^"]*"[^>]*>(.*?)</div>', card, re.DOTALL)
+                company = re.sub(r'<[^>]+>', '', company_match.group(1)).strip() if company_match else "Unknown"
+                loc_match = re.search(r'class="[^"]*ui-location[^"]*"[^>]*>([^<]+)', card)
+                loc = loc_match.group(1).strip() if loc_match else location
+                desc_match = re.search(r'class="[^"]*ad-description[^"]*"[^>]*>(.*?)</span>', card, re.DOTALL)
+                desc_text = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip() if desc_match else ""
+                jobs.append({
+                    "title": title, "company": company, "location": loc,
+                    "url": job_url, "description": desc_text or f"Adzuna AU: {title} at {company}",
+                })
+            if len(jobs) >= max_results: break
+            time.sleep(1)
+        if jobs: print(f"  [adzuna-au] {len(jobs)} jobs for '{query}'")
+    except Exception as e:
+        print(f"  [adzuna-au] Error: {e}")
     return jobs
 
 

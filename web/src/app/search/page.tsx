@@ -51,11 +51,10 @@ export default function SearchPage() {
   }, []);
 
   const CATEGORY_MAP: Record<string, string[]> = {
-    "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas", "NoDesk", "WorkAtStartup", "ArcDev", "WorkingNomads"],
-    "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed"],
-    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "JobsCh", "JobsinGermany"],
-    "APAC": ["Seek", "Jora"],
-    "Global": ["LinkedIn", "Indeed", "Glassdoor", "VisaSponsor"]
+    "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas", "Xing", "WorkAtStartup", "ArcDev", "WorkingNomads"],
+    "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"],
+    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "JobsCh", "JobsinGermany", "LinkedInUK", "LinkedInDE", "IndeedUK", "IndeedDE", "GlassdoorUK", "GlassdoorDE"],
+    "APAC": ["Seek", "Jora", "Adzuna", "LinkedInAU", "LinkedInSG", "LinkedInNZ", "IndeedAU", "IndeedSG", "GlassdoorAU", "GlassdoorSG"],
   };
 
   const handleSelectCategory = (catName: string) => {
@@ -160,9 +159,29 @@ export default function SearchPage() {
     const q = encodeURIComponent(`${company} ${title}`);
     const map: Record<string, string> = {
       "LinkedIn": "https://www.linkedin.com/jobs/search/?keywords=",
+      "LinkedInAU": "https://au.linkedin.com/jobs/search/?keywords=",
+      "LinkedInNZ": "https://nz.linkedin.com/jobs/search/?keywords=",
+      "LinkedInSG": "https://sg.linkedin.com/jobs/search/?keywords=",
+      "LinkedInJP": "https://jp.linkedin.com/jobs/search/?keywords=",
+      "LinkedInKR": "https://kr.linkedin.com/jobs/search/?keywords=",
+      "LinkedInHK": "https://hk.linkedin.com/jobs/search/?keywords=",
+      "LinkedInUK": "https://uk.linkedin.com/jobs/search/?keywords=",
+      "LinkedInDE": "https://de.linkedin.com/jobs/search/?keywords=",
       "Indeed": "https://www.indeed.com/jobs?q=",
+      "IndeedAU": "https://au.indeed.com/jobs?q=",
+      "IndeedNZ": "https://nz.indeed.com/jobs?q=",
+      "IndeedSG": "https://sg.indeed.com/jobs?q=",
+      "IndeedJP": "https://jp.indeed.com/jobs?q=",
+      "IndeedKR": "https://kr.indeed.com/jobs?q=",
+      "IndeedHK": "https://hk.indeed.com/jobs?q=",
+      "IndeedUK": "https://uk.indeed.com/jobs?q=",
+      "IndeedDE": "https://de.indeed.com/jobs?q=",
       "Naukri": "https://www.naukri.com/",
       "Glassdoor": "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=",
+      "GlassdoorAU": "https://www.glassdoor.com.au/Job/jobs.htm?sc.keyword=",
+      "GlassdoorSG": "https://www.glassdoor.sg/Job/jobs.htm?sc.keyword=",
+      "GlassdoorUK": "https://www.glassdoor.co.uk/Job/jobs.htm?sc.keyword=",
+      "GlassdoorDE": "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=",
       "Instahyre": "https://www.instahyre.com/search-jobs/?q=",
       "WeWorkRemotely": "https://weworkremotely.com/remote-jobs/search?term=",
       "Remotive": "https://remotive.com/remote-jobs?search=",
@@ -170,7 +189,6 @@ export default function SearchPage() {
       "Himalayas": "https://himalayas.app/jobs/search?query=",
       "ArcDev": "https://arc.dev/search?q=",
       "WorkingNomads": "https://www.workingnomads.com/jobs?search=",
-      "NoDesk": "https://nodesk.co/remote-jobs/?search=",
       "WorkAtStartup": "https://www.workatastartup.com/jobs?query=",
       "SkipTheDrive": "https://www.skipthedrive.com/?s=",
       "Jobspresso": "https://jobspresso.co/?s=",
@@ -198,6 +216,7 @@ export default function SearchPage() {
       "Kelly": "https://www.kellyservices.com/search/?q=",
       "MonsterDE": "https://www.monster.de/en/jobs/search?q=",
       "Reed": "https://www.reed.co.uk/jobs?keywords=",
+      "Adzuna": "https://www.adzuna.com.au/search?q=",
       "Jobsite": "https://www.jobsite.co.uk/jobs?keywords=",
     };
     const base = map[source] || "https://www.google.com/search?q=";
