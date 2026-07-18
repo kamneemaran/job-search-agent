@@ -5234,22 +5234,21 @@ def send_email(html_body, subject="Daily Job Matches", recipient=None, raise_on_
     # Prefer SendGrid (HTTP API) over SMTP — works on Vercel serverless
     if sendgrid_key:
         try:
-            import urllib.request
-            data = json.dumps({
-                "personalizations": [{"to": [{"email": recipient}]}],
-                "from": {"email": gmail_address},
-                "subject": subject,
-                "content": [{"type": "text/html", "value": html_body}],
-            }).encode()
-            req = urllib.request.Request(
+            import requests as _req
+            resp = _req.post(
                 "https://api.sendgrid.com/v3/mail/send",
-                data=data,
+                json={
+                    "personalizations": [{"to": [{"email": recipient}]}],
+                    "from": {"email": gmail_address},
+                    "subject": subject,
+                    "content": [{"type": "text/html", "value": html_body}],
+                },
                 headers={
                     "Authorization": f"Bearer {sendgrid_key}",
-                    "Content-Type": "application/json",
                 },
+                timeout=15,
             )
-            urllib.request.urlopen(req, timeout=15)
+            resp.raise_for_status()
             print(f"Email sent to {recipient} via SendGrid")
             return True
         except Exception as e:
