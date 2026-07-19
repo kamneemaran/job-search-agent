@@ -665,6 +665,18 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             # Bug 2 fix: default empty location to "Remote" so scrapers get a valid location
             if not effective_location:
                 effective_location = "Remote"
+            # Infer effective_location from board sources when location is not explicit
+            if effective_location == "Remote" and req.sources:
+                _INDIA_BOARDS = {"Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"}
+                _GERMANY_BOARDS = {"Arbeitnow", "LinkedInDE", "IndeedDE", "GlassdoorDE", "JobsinGermany", "Xing", "StepStone", "Bundesagentur", "JobsCh"}
+                _NL_BOARDS = {"IamExpat", "TogetherAbroad", "WelcomeToNL", "Intermediair", "NationaleVacaturebank"}
+                src_set = set(req.sources)
+                if src_set & _INDIA_BOARDS:
+                    effective_location = "India"
+                elif src_set & _GERMANY_BOARDS:
+                    effective_location = "Germany"
+                elif src_set & _NL_BOARDS:
+                    effective_location = "Netherlands"
             loc_lower = effective_location.lower()
             is_remote_search = req.work_mode == "remote"
             if not is_remote_search:
