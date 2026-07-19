@@ -3200,33 +3200,22 @@ def search_linkedin(query, location="India", max_results=500):
 
 
 def search_linkedin_au(query, location="Australia", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    au_kw = ["australia", "sydney", "melbourne", "brisbane", "perth", "adelaide", "canberra", "gold coast", "newcastle", "au"]
-    return [j for j in jobs if any(k in j.get("location", "").lower() for k in au_kw)]
+    return search_linkedin(query, "Australia", max_results)
 
 def search_linkedin_nz(query, location="New Zealand", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    nz_kw = ["new zealand", "nz", "auckland", "wellington", "christchurch", "hamilton", "tauranga", "dunedin", "queenstown"]
-    return [j for j in jobs if any(k in j.get("location", "").lower() for k in nz_kw)]
+    return search_linkedin(query, "New Zealand", max_results)
 
 def search_linkedin_sg(query, location="Singapore", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    sg_kw = ["singapore", "sg"]
-    return [j for j in jobs if any(k in j.get("location", "").lower() for k in sg_kw)]
+    return search_linkedin(query, "Singapore", max_results)
 
 def search_linkedin_jp(query, location="Japan", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    jp_kw = ["japan", "tokyo", "osaka", "kyoto", "yokohama", "nagoya", "sapporo", "fukuoka", "kobe"]
-    return [j for j in jobs if any(k in j.get("location", "").lower() for k in jp_kw)]
+    return search_linkedin(query, "Japan", max_results)
 
 def search_linkedin_kr(query, location="South Korea", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    kr_kw = ["south korea", "korea", "seoul", "busan", "incheon", "daegu", "daejeon"]
-    return [j for j in jobs if any(k in j.get("location", "").lower() for k in kr_kw)]
+    return search_linkedin(query, "South Korea", max_results)
 
 def search_linkedin_hk(query, location="Hong Kong", max_results=500):
-    jobs = search_linkedin(query, location, max_results)
-    hk_kw = ["hong kong", "hk"]
+    return search_linkedin(query, "Hong Kong", max_results)
     return [j for j in jobs if any(k in j.get("location", "").lower() for k in hk_kw)]
 
 def search_linkedin_uk(query, location="United Kingdom", max_results=500):
@@ -3297,28 +3286,28 @@ def search_indeed(query, location="India", max_results=500):
 
 
 def search_indeed_au(query, location="Australia", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "Australia", max_results)
 
 def search_indeed_nz(query, location="New Zealand", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "New Zealand", max_results)
 
 def search_indeed_sg(query, location="Singapore", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "Singapore", max_results)
 
 def search_indeed_jp(query, location="Japan", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "Japan", max_results)
 
 def search_indeed_kr(query, location="South Korea", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "South Korea", max_results)
 
 def search_indeed_hk(query, location="Hong Kong", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "Hong Kong", max_results)
 
 def search_indeed_uk(query, location="United Kingdom", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "United Kingdom", max_results)
 
 def search_indeed_de(query, location="Germany", max_results=500):
-    return search_indeed(query, location, max_results)
+    return search_indeed(query, "Germany", max_results)
 
 
 def _indeed_parse_page(html, location):
@@ -3877,16 +3866,16 @@ def search_glassdoor(query, location="India", max_results=500):
 
 
 def search_glassdoor_au(query, location="Australia", max_results=500):
-    return search_glassdoor(query, location, max_results)
+    return search_glassdoor(query, "Australia", max_results)
 
 def search_glassdoor_sg(query, location="Singapore", max_results=500):
-    return search_glassdoor(query, location, max_results)
+    return search_glassdoor(query, "Singapore", max_results)
 
 def search_glassdoor_uk(query, location="United Kingdom", max_results=500):
-    return search_glassdoor(query, location, max_results)
+    return search_glassdoor(query, "United Kingdom", max_results)
 
 def search_glassdoor_de(query, location="Germany", max_results=500):
-    return search_glassdoor(query, location, max_results)
+    return search_glassdoor(query, "Germany", max_results)
 
 
 def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
@@ -7949,16 +7938,6 @@ def main():
         ("JobsinGermany", search_jobsingermany),
         ("WorkinFinland", search_workinfinland),
         ("EURES", search_eures),
-
-        # APAC region-specific boards
-        ("LinkedInAU", search_linkedin_au),
-        ("LinkedInNZ", search_linkedin_nz),
-        ("LinkedInSG", search_linkedin_sg),
-        ("IndeedAU", search_indeed_au),
-        ("IndeedNZ", search_indeed_nz),
-        ("IndeedSG", search_indeed_sg),
-        ("GlassdoorAU", search_glassdoor_au),
-        ("GlassdoorSG", search_glassdoor_sg),
     ]
     # Split boards: boards-major = global/major boards, boards-AU-NZ = niche/regional boards
     _split = 9
@@ -8010,8 +7989,7 @@ def main():
         ]
     domain_queries = build_domain_queries()
     if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "remote")):
-        au_boards = {"Seek", "Jora", "LinkedInAU", "LinkedInNZ", "IndeedAU", "IndeedNZ", "GlassdoorAU"}
-        sg_boards = {"LinkedInSG", "IndeedSG", "GlassdoorSG"}
+        au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
         single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
@@ -8046,8 +8024,6 @@ def main():
             for query in current_queries:
                 if board_name in au_boards:
                     regions = ["Australia", "New Zealand"]
-                elif board_name in sg_boards:
-                    regions = ["Singapore"]
                 elif board_name in eu_boards:
                     regions = ["Germany", "Switzerland", "Remote"]
                 elif board_name in single_run_boards:
