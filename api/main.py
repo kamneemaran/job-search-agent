@@ -519,6 +519,15 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     if not has_loc_match:
                         print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - location '{job.get('location')}' not matched in {req.locations}")
                         return False
+                elif effective_location and effective_location not in ("Remote", ""):
+                    eff_lower = effective_location.lower()
+                    if any(city in eff_lower for city in ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad", "chennai", "delhi", "noida", "gurgaon", "kolkata", "ahmedabad", "jaipur"]):
+                        _INDIA_CITIES = ["india", "pune", "mumbai", "bangalore", "bengaluru", "hyderabad",
+                                         "chennai", "delhi", "gurgaon", "gurugram", "noida", "kolkata",
+                                         "ahmedabad", "jaipur", "kochi", "coimbatore"]
+                        if not any(c in loc for c in _INDIA_CITIES):
+                            print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - outside India (effective_location={effective_location})")
+                            return False
                 if skills_lower and not any(s in combined for s in skills_lower):
                     print(f"  [filter] SKIP: '{job.get('title')}' @ '{job.get('company')}' - combined text doesn't match skills {req.skills}")
                     return False

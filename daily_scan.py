@@ -3225,7 +3225,7 @@ def search_linkedin_de(query, location="Germany", max_results=500):
     return search_linkedin(query, location, max_results)
 
 
-def search_indeed(query, location="India", max_results=500):
+def search_indeed(query, location="India", max_results=500, base_url="https://www.indeed.com"):
     """Search Indeed for jobs matching a query using Playwright (paginated)."""
     jobs = []
     loc_param = location.replace(" ", "+")
@@ -3235,7 +3235,7 @@ def search_indeed(query, location="India", max_results=500):
     try:
         for page_num in range(max_pages):
             start = page_num * 10  # Indeed uses start=0, 10, 20...
-            page_url = f"https://www.indeed.com/jobs?q={query_param}&l={loc_param}&start={start}"
+            page_url = f"{base_url}/jobs?q={query_param}&l={loc_param}&start={start}"
             html = _playwright_html(page_url)
             titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
             companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
@@ -3261,7 +3261,7 @@ def search_indeed(query, location="India", max_results=500):
             for i in range(min_len):
                 if len(jobs) >= max_results:
                     break
-                job_url = "https://www.indeed.com" + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
+                job_url = base_url + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
                 posted_at = _parse_relative_date(date_texts[i]) if i < len(date_texts) else None
                 jobs.append({
                     "title": titles[i].strip(),
@@ -3286,28 +3286,28 @@ def search_indeed(query, location="India", max_results=500):
 
 
 def search_indeed_au(query, location="Australia", max_results=500):
-    return search_indeed(query, "Australia", max_results)
+    return search_indeed(query, "Australia", max_results, base_url="https://au.indeed.com")
 
 def search_indeed_nz(query, location="New Zealand", max_results=500):
-    return search_indeed(query, "New Zealand", max_results)
+    return search_indeed(query, "New Zealand", max_results, base_url="https://nz.indeed.com")
 
 def search_indeed_sg(query, location="Singapore", max_results=500):
-    return search_indeed(query, "Singapore", max_results)
+    return search_indeed(query, "Singapore", max_results, base_url="https://sg.indeed.com")
 
 def search_indeed_jp(query, location="Japan", max_results=500):
-    return search_indeed(query, "Japan", max_results)
+    return search_indeed(query, "Japan", max_results, base_url="https://jp.indeed.com")
 
 def search_indeed_kr(query, location="South Korea", max_results=500):
-    return search_indeed(query, "South Korea", max_results)
+    return search_indeed(query, "South Korea", max_results, base_url="https://kr.indeed.com")
 
 def search_indeed_hk(query, location="Hong Kong", max_results=500):
-    return search_indeed(query, "Hong Kong", max_results)
+    return search_indeed(query, "Hong Kong", max_results, base_url="https://hk.indeed.com")
 
 def search_indeed_uk(query, location="United Kingdom", max_results=500):
-    return search_indeed(query, "United Kingdom", max_results)
+    return search_indeed(query, "United Kingdom", max_results, base_url="https://uk.indeed.com")
 
 def search_indeed_de(query, location="Germany", max_results=500):
-    return search_indeed(query, "Germany", max_results)
+    return search_indeed(query, "Germany", max_results, base_url="https://de.indeed.com")
 
 
 def _indeed_parse_page(html, location):
