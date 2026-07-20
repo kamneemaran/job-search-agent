@@ -670,6 +670,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 _INDIA_BOARDS = {"Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"}
                 _GERMANY_BOARDS = {"Arbeitnow", "LinkedInDE", "IndeedDE", "GlassdoorDE", "JobsinGermany", "Xing", "StepStone", "Bundesagentur", "JobsCh"}
                 _NL_BOARDS = {"IamExpat", "TogetherAbroad", "WelcomeToNL", "Intermediair", "NationaleVacaturebank"}
+                _AUSTRIA_BOARDS = {"WorkInAustria"}
                 src_set = set(req.sources)
                 if src_set & _INDIA_BOARDS:
                     effective_location = "India"
@@ -677,6 +678,8 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     effective_location = "Germany"
                 elif src_set & _NL_BOARDS:
                     effective_location = "Netherlands"
+                elif src_set & _AUSTRIA_BOARDS:
+                    effective_location = "Austria"
             loc_lower = effective_location.lower()
             is_remote_search = req.work_mode == "remote"
             if not is_remote_search:
@@ -743,6 +746,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 "Seek": ds.search_seek,
                 "Jora": ds.search_jora,
                 "Xing": ds.search_xing,
+                "WorkInAustria": ds.search_workinaustria,
                 "JobsCh": ds.search_jobsch,
                 "JobsinGermany": ds.search_jobsingermany,
                 "SkipTheDrive": ds.search_skipthedrive,

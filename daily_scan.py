@@ -6183,6 +6183,62 @@ def search_xing(query, location="Germany", max_results=500):
     return jobs
 
 
+def search_workinaustria(query, location="Austria", max_results=500):
+    """Search Work in Austria (ABA portal) for jobs using their public JSON API."""
+    jobs = []
+    params = {
+        "sid": "aba",
+        "sort": 0,
+        "radius": 0,
+        "jobnews_type": 1,
+        "fulltext": 0,
+        "q": query,
+        "mode": "AND",
+        "qmode": 1,
+        "id": 2512,  # IT professions
+        "cluster_id": 8,
+        "per_page": min(max_results, 50),
+        "page": 1,
+        "dejob": 0, "recruit": 0, "tmpjob": 0, "workjob": 0,
+        "edujob": 0, "praktikum": 0, "fulltime": 0, "parttime": 0,
+        "minijob": 0, "seasonal": 0, "holiday": 0, "time_factor": 0,
+        "specialjob": 0, "disability_friendly": 0,
+        "skill_level1": 0, "skill_level2": 0, "skill_level3": 0,
+        "partner_jobs_only": 0, "other_jobs": 0, "state_id": 0,
+    }
+    try:
+        resp = requests.get(
+            "https://jobs.workinaustria.com/api/v1/jobnews/form_job_list",
+            params=params,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"},
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            print(f"  [workinaustria] HTTP {resp.status_code}")
+            return jobs
+        data = resp.json()
+        for entry in data.get("jobs", []):
+            if len(entry) < 5:
+                continue
+            job_id = entry[1]
+            title = entry[2]
+            loc = entry[3]
+            company = entry[4]
+            url = f"https://jobs.workinaustria.com/jobview/{job_id}" if job_id else ""
+            jobs.append({
+                "title": title,
+                "company": company,
+                "location": loc,
+                "url": url,
+                "description": f"Work in Austria: {title} at {company} in {loc}",
+            })
+        if jobs:
+            print(f"  [workinaustria] {len(jobs)} jobs for '{query}' (total {data.get('amt', 0)})")
+    except Exception as e:
+        print(f"  [workinaustria] Error: {e}")
+    return jobs
+
+
 def search_jobsch(query, location="Switzerland", max_results=500):
     """Search Jobs.ch (Switzerland) for jobs using Playwright (paginated)."""
     jobs = []

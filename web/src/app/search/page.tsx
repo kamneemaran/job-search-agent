@@ -53,7 +53,7 @@ export default function SearchPage() {
   const CATEGORY_MAP: Record<string, string[]> = {
     "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas", "Xing", "WorkAtStartup", "ArcDev", "WorkingNomads"],
     "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"],
-    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "JobsCh", "JobsinGermany", "LinkedInUK", "LinkedInDE", "IndeedUK", "IndeedDE", "GlassdoorUK", "GlassdoorDE"],
+    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "WorkInAustria", "JobsCh", "JobsinGermany", "LinkedInUK", "LinkedInDE", "IndeedUK", "IndeedDE", "GlassdoorUK", "GlassdoorDE"],
     "APAC": ["Seek", "Jora", "Adzuna", "LinkedInAU", "LinkedInSG", "LinkedInNZ", "IndeedAU", "IndeedSG", "GlassdoorAU", "GlassdoorSG"],
   };
 
@@ -205,6 +205,7 @@ export default function SearchPage() {
       "WelcomeToNL": "https://www.welcometothenetherland.com/en/jobs?search=",
       "WorkInFinland": "https://www.workinfinland.com/en/search?q=",
       "WorkInLux": "https://www.workinlux.lu/en/jobs?search=",
+      "WorkInAustria": "https://jobs.workinaustria.com/jobs?lang=en&filters=id%3D2512%3Bcluster_id%3D8%3Bper_page%3D20%3Bpage%3D1%3Bmode%3DAND%3Bqmode%3D1&q=",
       "FoundIt": "https://www.foundit.in/search?q=",
       "TimesJobs": "https://www.timesjobs.com/job-search?q=",
       "VisaSponsor": "https://visa-sponsor-jobs.com/?s=",
@@ -451,7 +452,7 @@ export default function SearchPage() {
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin"></div>
           </div>
           <p className="text-gray-400 text-sm">Searching job boards and company career pages...</p>
-          <p className="text-gray-600 text-xs mt-1">This may take up to 30 seconds</p>
+          <p className="text-gray-600 text-xs mt-1">Typically takes 15–25 seconds</p>
         </div>
       )}
 
