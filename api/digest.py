@@ -85,10 +85,14 @@ async def update_digest_preferences(
     try:
         sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
     except Exception as e:
-        # Remove batches and posted_date_filter from dict so it can upsert successfully even if columns haven't been added yet
+        # Remove newer columns that may not exist yet in the database
         data.pop("batches", None)
         data.pop("posted_date_filter", None)
-        sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
+        data.pop("webhook_url", None)
+        try:
+            sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
+        except Exception:
+            pass
 
     return prefs
 
