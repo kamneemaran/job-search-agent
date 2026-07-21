@@ -8044,7 +8044,7 @@ def main():
             ("Kelly", search_kelly),
         ]
     domain_queries = build_domain_queries()
-    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote", "remote")):
+    if args.source_types in ("all", "boards") and (args.batch == "" or args.batch in ("boards-major", "boards-AU-NZ", "boards-eu", "boards-remote")):
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
