@@ -790,7 +790,8 @@ async def get_active_scans(
                 
                 # If finished, we remove it from database (so we don't append it to new_history)
                 if is_finished:
-                    new_history.pop() # Remove the item we just appended
+                    if new_history:
+                        new_history.pop() # Remove the item we just appended
                     history_updated = True
                     logger.info(f"[DIGEST-STATUS] Detected finished cloud scan {run_id} ({live_status}). Cleaned from database.")
                     continue
