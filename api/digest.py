@@ -669,12 +669,25 @@ async def get_active_scans(
 ):
     if not authorization:
         raise HTTPException(401, "Authorization required")
-        
-    sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    user_id = user.id
     
-    pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+    try:
+        sb = get_user_client(authorization)
+        user = sb.auth.get_user().user
+        if not user:
+            raise HTTPException(401, "Invalid session")
+        user_id = user.id
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DIGEST-SCANS] Auth failed: {e}")
+        raise HTTPException(401, f"Authentication failed: {e}")
+    
+    try:
+        pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()
+    except Exception as e:
+        logger.error(f"[DIGEST-SCANS] DB query failed: {e}")
+        return {"active_scans": [], "summary": {"instant_completed_today": 0, "instant_failed_today": 0, "daily_completed_today": 0, "daily_failed_today": 0, "last_daily_status": "Unknown", "last_daily_time": 0}}
+    
     active_scans = []
     
     if pref_result and pref_result.data:
