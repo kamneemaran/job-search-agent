@@ -174,17 +174,28 @@ def read_jobs_from_sheet(
 
         jobs = []
         for row in values[1:]:
-            if len(row) < 3: # Require at least Title and Company
+            # Ensure the row is padded to at least 8 elements to prevent any IndexError
+            row = list(row) + [""] * (8 - len(row))
+            
+            title = row[1].strip()
+            company = row[2].strip()
+            if not title or not company:
                 continue
+
+            try:
+                score_val = int(float(str(row[0]).strip())) if row[0] else 0
+            except ValueError:
+                score_val = 0
+
             jobs.append({
-                "score": int(row[0]) if len(row) > 0 and row[0].isdigit() else 0,
-                "title": row[1] if len(row) > 1 else "",
-                "company": row[2] if len(row) > 2 else "",
-                "location": row[3] if len(row) > 3 else "",
-                "url": row[4] if len(row) > 4 else "",
-                "company_link": row[5] if len(row) > 5 else "",
-                "status": row[6] if len(row) > 6 else "new",
-                "date_updated": row[7] if len(row) > 7 else "",
+                "score": score_val,
+                "title": title,
+                "company": company,
+                "location": row[3].strip(),
+                "url": row[4].strip(),
+                "company_link": row[5].strip(),
+                "status": row[6].strip().lower() or "new",
+                "date_updated": row[7].strip(),
             })
         return jobs
     except Exception as e:

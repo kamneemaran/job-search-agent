@@ -247,6 +247,7 @@ def pull_sheet(authorization: Optional[str] = Header(None)):
     inserted_count = 0
     updated_count = 0
     new_jobs_to_insert = []
+    seen_in_sheet = set()
 
     for sj in sheet_jobs:
         title = sj.get("title", "").strip()
@@ -254,7 +255,11 @@ def pull_sheet(authorization: Optional[str] = Header(None)):
         if not title or not company:
             continue
 
-        key = (title.lower(), company.lower())
+        key = (title.lower().strip(), company.lower().strip())
+        if key in seen_in_sheet:
+            continue
+        seen_in_sheet.add(key)
+
         status = sj.get("status", "new").strip().lower()
         if status not in ("new", "applied", "rejected", "offer"):
             status = "new"
