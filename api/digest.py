@@ -22,7 +22,7 @@ _profile_lock = threading.Lock()
 
 
 @router.get("/preferences", response_model=DigestPreferences)
-async def get_digest_preferences(authorization: Optional[str] = Header(None)):
+def get_digest_preferences(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(401, "Authorization required")
 
@@ -58,7 +58,7 @@ async def get_digest_preferences(authorization: Optional[str] = Header(None)):
 
 
 @router.put("/preferences", response_model=DigestPreferences)
-async def update_digest_preferences(
+def update_digest_preferences(
     prefs: DigestPreferences,
     authorization: Optional[str] = Header(None),
 ):
@@ -349,7 +349,7 @@ def run_background_digest_scan(
 
 
 @router.post("/send")
-async def send_digest(
+def send_digest(
     req: DigestSendRequest,
     background_tasks: BackgroundTasks,
     authorization: Optional[str] = Header(None),
@@ -663,7 +663,7 @@ async def send_digest(
 
 
 @router.get("/scans")
-async def get_active_scans(
+def get_active_scans(
     refresh_id: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
@@ -880,7 +880,7 @@ async def get_active_scans(
 
 
 @router.post("/reset")
-async def reset_digest_status(
+def reset_digest_status(
     scan_id: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):

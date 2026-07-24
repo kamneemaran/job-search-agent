@@ -72,8 +72,8 @@ def sync_jobs_to_sheet(
 ) -> bool:
     """Write tracked jobs to a Google Sheet.
 
-    Creates a 'Job Tracker' tab with columns:
-    Title, Company, Location, Score, Status, URL, Notes, Last Updated
+    Creates a 'Job Tracker' tab with columns matching the official layout:
+    Score, Title, Company, Location, URL, Company Link, Status, Date Found
     """
     sheet_id = parse_sheet_url(sheet_url)
     if not sheet_id:
@@ -84,10 +84,13 @@ def sync_jobs_to_sheet(
         service = _get_gsheet_service(sa_json)
         sheets_api = service.spreadsheets()
 
-        # Ensure "Job Tracker" tab exists
+        # Ensure "Job Tracker" tab exists (or "All Jobs" if preferred)
         spreadsheet = sheets_api.get(spreadsheetId=sheet_id).execute()
         tab_name = "Job Tracker"
         existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
+
+        if "All Jobs" in existing_tabs:
+            tab_name = "All Jobs"
 
         if tab_name not in existing_tabs:
             sheets_api.batchUpdate(
@@ -96,22 +99,27 @@ def sync_jobs_to_sheet(
             ).execute()
 
         # Build rows
-        headers = ["Title", "Company", "Location", "Score", "Status", "URL", "Notes", "Last Updated"]
+        headers = ["Score", "Title", "Company", "Location", "URL", "Company Link", "Status", "Date Found"]
         rows = [headers]
         for j in jobs:
+            company = j.get("company", "")
+            comp_link = j.get("company_link") or j.get("company_url") or ""
+            if not comp_link and company:
+                comp_link = f"https://www.linkedin.com/company/{company.lower().replace(' ', '')}"
+            
             rows.append([
-                j.get("title", ""),
-                j.get("company", ""),
-                j.get("location", ""),
                 str(j.get("score", 0)),
-                j.get("status", "new"),
+                j.get("title", ""),
+                company,
+                j.get("location", ""),
                 j.get("url", ""),
-                j.get("notes", ""),
-                j.get("updated_at", "") or j.get("date_updated", ""),
+                comp_link,
+                j.get("status", "new"),
+                (j.get("updated_at") or j.get("date_updated") or j.get("date_found") or "")[:10],
             ])
 
         # Write to sheet (clear first, then write)
-        range_str = f"{tab_name}!A1:H{len(rows)}"
+        range_str = f"'{tab_name}'!A1:H{len(rows)}"
         sheets_api.values().clear(
             spreadsheetId=sheet_id,
             range=tab_name,
@@ -136,7 +144,7 @@ def read_jobs_from_sheet(
 ) -> list[dict]:
     """Read tracked jobs from a Google Sheet.
 
-    Expects: Title, Company, Location, Score, Status, URL, Notes, Last Updated
+    Expects matching columns: Score, Title, Company, Location, URL, Company Link, Status, Date Found
     """
     sheet_id = parse_sheet_url(sheet_url)
     if not sheet_id:
@@ -144,28 +152,38 @@ def read_jobs_from_sheet(
 
     try:
         service = _get_gsheet_service(sa_json)
+        spreadsheet = service.spreadsheets().get(spreadsheetId=sheet_id).execute()
+        existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
+
+        target_tab = "Job Tracker"
+        if "All Jobs" in existing_tabs:
+            target_tab = "All Jobs"
+        elif "Job Tracker" in existing_tabs:
+            target_tab = "Job Tracker"
+        elif existing_tabs:
+            target_tab = existing_tabs[0]
+
         result = service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
-            range="Job Tracker!A:H",
+            range=f"'{target_tab}'!A:H",
         ).execute()
 
         values = result.get("values", [])
         if len(values) < 2:
             return []
 
-        headers = values[0]
         jobs = []
         for row in values[1:]:
-            if len(row) < 2:
+            if len(row) < 3: # Require at least Title and Company
                 continue
             jobs.append({
-                "title": row[0] if len(row) > 0 else "",
-                "company": row[1] if len(row) > 1 else "",
-                "location": row[2] if len(row) > 2 else "",
-                "score": int(row[3]) if len(row) > 3 and row[3].isdigit() else 0,
-                "status": row[4] if len(row) > 4 else "new",
-                "url": row[5] if len(row) > 5 else "",
-                "notes": row[6] if len(row) > 6 else "",
+                "score": int(row[0]) if len(row) > 0 and row[0].isdigit() else 0,
+                "title": row[1] if len(row) > 1 else "",
+                "company": row[2] if len(row) > 2 else "",
+                "location": row[3] if len(row) > 3 else "",
+                "url": row[4] if len(row) > 4 else "",
+                "company_link": row[5] if len(row) > 5 else "",
+                "status": row[6] if len(row) > 6 else "new",
                 "date_updated": row[7] if len(row) > 7 else "",
             })
         return jobs

@@ -205,7 +205,7 @@ export default function SettingsPage() {
 
       // Extract last scan job count from sent_history
       const completedEntries = (digest.sent_history || []).filter(
-        (x: string) => typeof x === "string" && x.startsWith("COMPLETED_INSTANT:")
+        (x: string) => typeof x === "string" && (x.startsWith("COMPLETED_INSTANT:") || x.startsWith("COMPLETED_DAILY:"))
       );
       if (completedEntries.length > 0) {
         const last = completedEntries[completedEntries.length - 1];

@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 
 
 @router.get("", response_model=TrackerResponse)
-async def get_tracker(
+def get_tracker(
     status: str = "",
     limit: int = 50,
     authorization: Optional[str] = Header(None),
@@ -58,7 +58,7 @@ async def get_tracker(
 
 
 @router.post("/add")
-async def add_to_tracker(
+def add_to_tracker(
     req: TrackerAddRequest,
     authorization: Optional[str] = Header(None),
 ):
@@ -102,7 +102,7 @@ async def add_to_tracker(
 
 
 @router.post("/update")
-async def update_tracker(
+def update_tracker(
     req: TrackerUpdateRequest,
     authorization: Optional[str] = Header(None),
 ):
@@ -144,7 +144,7 @@ async def update_tracker(
 
 
 @router.delete("/{title}/{company}")
-async def remove_from_tracker(
+def remove_from_tracker(
     title: str,
     company: str,
     authorization: Optional[str] = Header(None),
@@ -180,7 +180,7 @@ def _require_user(authorization):
 
 
 @router.get("/sheet")
-async def get_tracker_sheet(authorization: Optional[str] = Header(None)):
+def get_tracker_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
     result = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
     url = result.data.get("tracker_sheet_url", "") if result.data else ""
@@ -188,7 +188,7 @@ async def get_tracker_sheet(authorization: Optional[str] = Header(None)):
 
 
 @router.put("/sheet")
-async def set_tracker_sheet(
+def set_tracker_sheet(
     body: dict,
     authorization: Optional[str] = Header(None),
 ):
@@ -199,7 +199,7 @@ async def set_tracker_sheet(
 
 
 @router.post("/sheet/sync")
-async def sync_sheet(authorization: Optional[str] = Header(None)):
+def sync_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
 
     # Get user's sheet URL
@@ -223,7 +223,7 @@ async def sync_sheet(authorization: Optional[str] = Header(None)):
 
 
 @router.post("/sheet/pull")
-async def pull_sheet(authorization: Optional[str] = Header(None)):
+def pull_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
 
     # Get user's sheet URL
@@ -241,11 +241,12 @@ async def pull_sheet(authorization: Optional[str] = Header(None)):
         return {"status": "no_changes", "count": 0, "message": "No jobs found in sheet or failed to read."}
 
     # Fetch existing jobs from DB
-    existing_q = sb.table("jobs").select("id, title, company").eq("user_id", user.id).execute()
-    existing_map = {(j["title"].lower().strip(), j["company"].lower().strip()): j["id"] for j in existing_q.data}
+    existing_q = sb.table("jobs").select("id, title, company, status, location, score, url, notes").eq("user_id", user.id).execute()
+    existing_map = {(j["title"].lower().strip(), j["company"].lower().strip()): j for j in existing_q.data}
 
     inserted_count = 0
     updated_count = 0
+    new_jobs_to_insert = []
 
     for sj in sheet_jobs:
         title = sj.get("title", "").strip()
@@ -269,15 +270,37 @@ async def pull_sheet(authorization: Optional[str] = Header(None)):
         }
 
         if key in existing_map:
-            # Update existing job
-            job_id = existing_map[key]
-            sb.table("jobs").update(job_data).eq("id", job_id).execute()
-            updated_count += 1
+            # Check if any fields actually changed before performing an update
+            existing_job = existing_map[key]
+            changed = False
+            for field in ["location", "score", "url", "notes", "status"]:
+                val_sheet = job_data[field]
+                val_db = existing_job.get(field)
+                if field == "score":
+                    try:
+                        val_sheet = int(val_sheet)
+                        val_db = int(val_db or 0)
+                    except ValueError:
+                        pass
+                
+                if str(val_sheet).strip() != str(val_db or "").strip():
+                    changed = True
+                    break
+
+            if changed:
+                sb.table("jobs").update(job_data).eq("id", existing_job["id"]).execute()
+                updated_count += 1
         else:
-            # Insert new job
+            # Collect for bulk insert
             job_data["user_id"] = user.id
-            sb.table("jobs").insert(job_data).execute()
+            new_jobs_to_insert.append(job_data)
             inserted_count += 1
+
+    if new_jobs_to_insert:
+        # Perform bulk insert in batches of 100 to avoid any database payload limits
+        for idx in range(0, len(new_jobs_to_insert), 100):
+            batch = new_jobs_to_insert[idx : idx + 100]
+            sb.table("jobs").insert(batch).execute()
 
     return {
         "status": "success",
@@ -306,13 +329,13 @@ def _find_column(headers, aliases):
 
 
 @router.post("/import")
-async def import_tracker(
+def import_tracker(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(None),
 ):
     sb, user = _require_user(authorization)
 
-    content = await file.read()
+    content = file.file.read()
     filename = (file.filename or "").lower()
 
     rows = []
@@ -385,7 +408,7 @@ async def import_tracker(
 
 
 @router.get("/export")
-async def export_tracker(
+def export_tracker(
     authorization: Optional[str] = Header(None),
 ):
     sb = get_user_client(authorization)
