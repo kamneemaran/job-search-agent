@@ -807,6 +807,9 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
         return True
 
+    # Enrich thin descriptions by fetching full JD from job URLs before scoring
+    all_raw_jobs = [(ds._enrich_job_description(job), src) for job, src in all_raw_jobs]
+
     all_jobs = []
 
     # Hold the lock only for local filtering and scoring

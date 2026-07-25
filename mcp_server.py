@@ -47,6 +47,7 @@ from daily_scan import (
     UNIVERSAL_RED_FLAGS,
     JobTracker,
     score_job,
+    _enrich_job_description,
     pick_resume,
     company_url,
     tailoring_suggestion,
@@ -102,7 +103,8 @@ from daily_scan import (
     search_workatstartup,
     search_visasponsor,
     search_incluso,
-    # search_adzuna,  # commented out - heavy rate limiting, not used in on-demand search    search_reed,
+    # search_adzuna commented out: heavy rate limiting, not used in on-demand search; still runs in daily digest
+    search_reed,
     search_jobsite,
     search_intermediair,
     search_nationalevacaturebank,
@@ -864,6 +866,8 @@ def _search_jobs(
 
     def _score(job):
         """Score job, with career page fallback for visa check."""
+        # Enrich thin descriptions by fetching full JD from the job URL
+        _enrich_job_description(job)
         desc = job.get("description", "")
         if desc.startswith(("LinkedIn job:", "Indeed job:", "Naukri job:", "Instahyre job:",
                             "Glassdoor job:", "SimplyHired:", "WomenInTech UK job:",

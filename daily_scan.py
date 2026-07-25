@@ -1096,6 +1096,59 @@ def _get_seniority_keywords(years_experience):
     else:
         return []  # No seniority bonus for <3 years
 
+def _enrich_job_description(job: dict) -> dict:
+    """Fetch full JD text from job URL when description is too short to score."""
+
+    desc = job.get("description", "") or ""
+    if len(desc) > 100:
+        return job
+    url = job.get("url", "") or ""
+    if not url or not url.startswith("http"):
+        return job
+
+    try:
+        from bs4 import BeautifulSoup
+
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml",
+        }
+        resp = requests.get(url, timeout=10, headers=headers, allow_redirects=True)
+        if resp.status_code != 200:
+            return job
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header", "form"]):
+            tag.decompose()
+        text = soup.get_text(separator=" ", strip=True)
+        text = re.sub(r"\s+", " ", text)[:3000]
+
+        if len(text) > len(desc):
+            job["description"] = text
+    except Exception:
+        pass
+    return job
+
+
+def _enrich_descriptions(jobs: list[dict], max_workers: int = 8) -> list[dict]:
+    """Enrich job descriptions by fetching full JD from URLs (parallel)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    enriched = list(jobs)
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_enrich_job_description, j): i for i, j in enumerate(enriched)}
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                enriched[idx] = future.result(timeout=15)
+            except Exception:
+                pass
+    return enriched
+
+
 def score_job(title, description, company, location=""):
     """
     Returns (score 0-100, note string).
