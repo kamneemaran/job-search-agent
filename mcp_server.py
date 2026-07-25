@@ -89,7 +89,7 @@ from daily_scan import (
     search_arbeitnow,
     search_seek,
     search_jora,
-    search_xing,
+    # search_xing,  # removed from on-demand search (Playwright-based, slow)
     search_jobsch,
     search_workinaustria,
     search_jobsingermany,
@@ -736,7 +736,7 @@ def _search_jobs(
         ("Arbeitnow", search_arbeitnow),
         ("Seek", search_seek),
         ("Jora", search_jora),
-        ("Xing", search_xing),
+        # ("Xing", search_xing),  # removed: Playwright-based, JS-heavy, slow in on-demand search
         ("WorkInAustria", search_workinaustria),
         ("JobsCh", search_jobsch),
         ("JobsinGermany", search_jobsingermany),

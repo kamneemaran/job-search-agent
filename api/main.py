@@ -582,7 +582,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         "WorkingNomads": ds.search_workingnomads,
         "Seek": ds.search_seek,
         "Jora": ds.search_jora,
-        "Xing": ds.search_xing,
+        # "Xing": ds.search_xing,  # removed: Playwright-based, JS-heavy, exceeds 12s API timeout
         "WorkInAustria": ds.search_workinaustria,
         "JobsCh": ds.search_jobsch,
         "JobsinGermany": ds.search_jobsingermany,
