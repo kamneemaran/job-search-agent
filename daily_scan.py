@@ -858,11 +858,11 @@ _JUNIOR_RE = []
 _TITLE_RED_FLAG_RE = []
 _SKILL_RE = []
 _EXP_PATTERNS = [
-    (re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\w+\s+)*?(?:exp|experience)'), 'min'),
-    (re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\w+\s+)*?(?:exp|experience))?'), 'min'),
-    (re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\w+\s+)*?(?:exp|experience))?'), 'max'),
-    (re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\w+\s+)*?(?:exp|experience)'), 'range'),
-    (re.compile(r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\w+\s+)*?(?:exp|experience|professional|relevant|work)'), 'range'),
+    (re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'), 'min'),
+    (re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?'), 'min'),
+    (re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?'), 'max'),
+    (re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'), 'range'),
+    (re.compile(r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience|professional|relevant|work)'), 'range'),
 ]
 _TRAVEL_HEAVY_RE = re.compile(r'(\d+)\s*%\s*travel')
 _TRAVEL_MANDATORY_RE = [re.compile(p) for p in [
