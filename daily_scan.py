@@ -7636,6 +7636,8 @@ def main():
         if not args.batch and _batches_from_db:
             args.batch = ",".join(_batches_from_db) if len(_batches_from_db) > 1 else _batches_from_db[0] if _batches_from_db else ""
 
+        # Guard against recursive batch expansion (parent process already mapped these)
+        _batch_already_mapped = os.environ.get("JOBPILOT_BATCH_MAPPED")
         # Map Supabase/digest batch names to daily_scan batch names
         # Some Supabase names expand to multiple daily_scan batches
         _BATCH_NAME_MAP = {
@@ -7646,7 +7648,7 @@ def main():
             "us_canada": ["us-canada"],
             "remote": ["boards-remote", "remote"],  # both remote job boards + remote company ATS
         }
-        if args.batch:
+        if not _batch_already_mapped and args.batch:
             _mapped_batches = []
             for _b in args.batch.split(","):
                 _b = _b.strip()
@@ -7836,7 +7838,9 @@ def main():
                 new_argv.append(a)
             new_argv += ["--batch", b]
             import subprocess as _sp
-            result = _sp.run([sys.executable] + new_argv)
+            _sp_env = os.environ.copy()
+            _sp_env["JOBPILOT_BATCH_MAPPED"] = "1"
+            result = _sp.run([sys.executable] + new_argv, env=_sp_env)
             if result.returncode != 0:
                 print(f"  Batch '{b}' failed with exit code {result.returncode}")
         return
