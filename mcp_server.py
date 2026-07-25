@@ -102,8 +102,7 @@ from daily_scan import (
     search_workatstartup,
     search_visasponsor,
     search_incluso,
-    search_adzuna,
-    search_reed,
+    # search_adzuna,  # commented out - heavy rate limiting, not used in on-demand search    search_reed,
     search_jobsite,
     search_intermediair,
     search_nationalevacaturebank,
@@ -752,7 +751,7 @@ def _search_jobs(
         ("WorkAtAStartup", search_workatstartup),
         ("StepStone", search_stepstone),
         ("MonsterDE", search_monsterde),
-        ("Adzuna", search_adzuna),
+        # "Adzuna" removed: heavy rate-limiting (10s+ delay) causes timeouts in on-demand search; still runs in daily digest
         ("Reed", search_reed),
         ("Jobsite", search_jobsite),
         ("Intermediair", search_intermediair),
