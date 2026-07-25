@@ -672,7 +672,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     from concurrent.futures import ThreadPoolExecutor, as_completed
     scraper_timeout = 12.0
 
-    with ThreadPoolExecutor(max_workers=len(target_boards)) as executor:
+    with ThreadPoolExecutor(max_workers=min(len(target_boards), 3)) as executor:
         future_to_board = {
             executor.submit(fn, search_query, effective_location, fetch_per_board): name
             for name, fn in target_boards
