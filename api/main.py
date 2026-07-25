@@ -886,6 +886,8 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             ds.PROFILE["current_role"] = orig_role
             ds._rebuild_precompiled_patterns()
 
+    return SearchResponse(jobs=all_jobs, total=len(all_jobs), query=search_query)
+
 
 @app.get("/api/skills-gap")
 def get_skills_gap(authorization: Optional[str] = Header(None)):
