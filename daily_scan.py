@@ -6096,13 +6096,28 @@ def search_seek(query, location="Australia", max_results=500):
                 "a[data-automation='jobTitle']",
                 "els => els.map(e => e.href).filter(h => h.includes('/job/'))"
             )
+            # Scrape subtitle/summary from job cards for experience filtering
+            subtitles = _playwright_scrape(
+                page_url,
+                "[data-automation='jobCard'], article, [class*='job-card'], [class*='jobcard'], [data-testid='job-card']",
+                "els => els.map(e => {
+                    const titleEl = e.querySelector('[data-automation=\"jobTitle\"], h3, [data-testid=\"job-card-title\"]');
+                    const title = titleEl ? titleEl.innerText.trim() : '';
+                    const allText = (e.innerText || '').trim();
+                    // Return text after the title (subtitle/summary)
+                    const idx = title ? allText.indexOf(title) + title.length : 0;
+                    return (allText.slice(idx) || '').trim().slice(0, 300);
+                }).filter(t => t.length > 5)"
+            )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
+                subtitle = subtitles[i] if i < len(subtitles) else ""
+                desc = f"Seek AU: {titles[i]}. {subtitle}" if subtitle else f"Seek AU: {titles[i]}"
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Seek",
                     "location": location, "url": links[i] if i < len(links) else "",
-                    "description": f"Seek AU: {titles[i]}",
+                    "description": desc,
                 })
             if len(jobs) >= max_results:
                 break
@@ -6138,15 +6153,28 @@ def search_jora(query, location="Australia", max_results=500):
                 "a[class*='title'], [data-test='job-title'], h2 a, a[class*='job-link']",
                 "els => els.map(e => e.href).filter(h => h && h.startsWith('http')).slice(0, 25)"
             )
+            subtitles = _playwright_scrape(
+                page_url,
+                "[data-test='job-card'], [class*='result'], li[class*='job'], article, [class*='card']",
+                "els => els.map(e => {
+                    const titleEl = e.querySelector('a[class*=\"title\"], [data-test=\"job-title\"], h2 a');
+                    const title = titleEl ? titleEl.innerText.trim() : '';
+                    const allText = (e.innerText || '').trim();
+                    const idx = title ? allText.indexOf(title) + title.length : 0;
+                    return (allText.slice(idx) || '').trim().slice(0, 300);
+                }).filter(t => t.length > 5)"
+            )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
                     break
                 link = links[i] if i < len(links) else ""
                 if link and not link.startswith("http"):
                     link = "https://au.jora.com" + link
+                subtitle = subtitles[i] if i < len(subtitles) else ""
+                desc = f"Jora AU: {titles[i]}. {subtitle}" if subtitle else f"Jora AU: {titles[i]}"
                 jobs.append({
                     "title": titles[i], "company": companies[i] if i < len(companies) else "Jora",
-                    "location": location, "url": link, "description": f"Jora AU: {titles[i]}",
+                    "location": location, "url": link, "description": desc,
                 })
             if len(jobs) >= max_results:
                 break
