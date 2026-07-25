@@ -5654,11 +5654,25 @@ def parse_resume_pdf(path):
         profile["years_experience"] = max(int(y) + round(int(m) / 12) for y, m in year_month)
     else:
         exp_matches = re.findall(r"(\d+)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+exp|\s+owning|\s+in|\s+working|\s+of)?", raw_lower)
-        exp_matches = [int(e) for e in exp_matches if 3 <= int(e) <= 45]
+        exp_matches = [int(e) for e in exp_matches if 1 <= int(e) <= 45]
         if exp_matches:
             profile["years_experience"] = max(exp_matches)
         else:
-            dates = re.findall(r"\b(?:19|20)\d{2}\b", raw)
+            # Only extract dates from the experience section to avoid education years
+            exp_section = ""
+            in_exp = False
+            for line in raw.split("\n"):
+                stripped = line.strip().lower()
+                if any(kw in stripped for kw in ["professional experience", "work experience", "employment", "professional background"]):
+                    in_exp = True
+                    continue
+                if in_exp and any(kw in stripped for kw in ["education", "technical skills", "certifications", "projects"]):
+                    break
+                if in_exp:
+                    exp_section += line + "\n"
+            if not exp_section.strip():
+                exp_section = raw
+            dates = re.findall(r"\b(?:19|20)\d{2}\b", exp_section)
             if dates:
                 dates = sorted(int(d) for d in dates)
                 span = max(dates) - min(dates) + 1
