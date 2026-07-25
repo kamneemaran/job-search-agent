@@ -591,7 +591,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         "BulldogJob": ds.search_bulldogjob,
         "Crossover": ds.search_crossover,
         "Kelly": ds.search_kelly,
-        "Adzuna": ds.search_adzuna,
+        # "Adzuna": ds.search_adzuna,  # removed: heavy rate-limiting (10s+ delay) causes timeouts in on-demand search
         "EnglishJobSearch": ds.search_englishjobsearch,
         "Workew": ds.search_workew,
         "MonsterDE": ds.search_monsterde,
