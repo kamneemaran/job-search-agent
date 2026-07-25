@@ -1117,7 +1117,7 @@ def _enrich_job_description(job: dict) -> dict:
             ),
             "Accept": "text/html,application/xhtml+xml",
         }
-        resp = requests.get(url, timeout=10, headers=headers, allow_redirects=True)
+        resp = requests.get(url, timeout=5, headers=headers, allow_redirects=True)
         if resp.status_code != 200:
             return job
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -8015,10 +8015,11 @@ def main():
         return any(k in msg.lower() for k in kw)
 
     def _score_collect(jobs, src_name, src_url, matches):
+        # Batch-enrich thin descriptions in parallel before scoring
+        _enrich_descriptions(jobs, max_workers=6)
         for job in jobs:
             if not should_include(job):
                 continue
-            _enrich_job_description(job)
             score, rn = score_job(job["title"], job["description"], job["company"])
             score, rn = _title_only_bypass(job, score, rn, args.threshold)
             if score >= args.threshold:

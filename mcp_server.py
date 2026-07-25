@@ -48,6 +48,7 @@ from daily_scan import (
     JobTracker,
     score_job,
     _enrich_job_description,
+    _enrich_descriptions,
     pick_resume,
     company_url,
     tailoring_suggestion,
@@ -945,6 +946,7 @@ def _search_jobs(
         for q in board_queries:
             try:
                 jobs = board_fn(q, location=effective_location, max_results=max_results)
+                _enrich_descriptions(jobs, max_workers=6)
                 for job in jobs:
                     company_lower = job["company"].lower().strip()
                     if exclude_lower and any(c in company_lower for c in exclude_lower):
@@ -971,6 +973,7 @@ def _search_jobs(
         for q in board_queries:
             try:
                 jobs = pw_fn(q, location=effective_location, max_results=max_results)
+                _enrich_descriptions(jobs, max_workers=6)
                 for job in jobs:
                     company_lower = job["company"].lower().strip()
                     if exclude_lower and any(c in company_lower for c in exclude_lower):
