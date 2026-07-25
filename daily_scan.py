@@ -1135,7 +1135,9 @@ def score_job(title, description, company, location=""):
 
     # --- Experience range filter: match JD's explicit experience requirements ---
     # If resume says X years, consider jobs requiring X-4 to X+3 years
-    max_allowed = exp_years + 3
+    # For junior profiles (<5yr), use a tighter margin (X+1) to avoid matching
+    # roles asking for 4-6yr or 5+yr when candidate has only 2yr.
+    max_allowed = exp_years + (3 if exp_years >= 5 else 1)
     min_allowed = max(0, exp_years - 4)
     for pattern, ptype in _EXP_PATTERNS:
         matches = pattern.findall(text)
