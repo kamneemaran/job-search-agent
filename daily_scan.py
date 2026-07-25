@@ -1219,8 +1219,8 @@ def score_job(title, description, company, location=""):
                     return 0, f"Filtered: max {req}yr, candidate min {min_allowed}"
             elif ptype == 'range':
                 lo, hi = int(m[0]), int(m[1])
-                if lo > max_allowed or hi < min_allowed:
-                    return 0, f"Filtered: requires {lo}-{hi}yr, candidate range {min_allowed}-{max_allowed}"
+                if lo > exp_years or hi < min_allowed:
+                    return 0, f"Filtered: requires {lo}-{hi}yr, candidate has {exp_years}yr"
 
     # --- Reject roles requiring significant travel (>25%) or mandatory travel ---
     travel_pct_match = _TRAVEL_HEAVY_RE.search(text)
