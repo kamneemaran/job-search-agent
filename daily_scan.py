@@ -6180,14 +6180,13 @@ def search_seek(query, location="Australia", max_results=500):
             subtitles = _playwright_scrape(
                 page_url,
                 "[data-automation='jobCard'], article, [class*='job-card'], [class*='jobcard'], [data-testid='job-card']",
-                "els => els.map(e => {
-                    const titleEl = e.querySelector('[data-automation=\"jobTitle\"], h3, [data-testid=\"job-card-title\"]');
+                """els => els.map(e => {
+                    const titleEl = e.querySelector('[data-automation="jobTitle"], h3, [data-testid="job-card-title"]');
                     const title = titleEl ? titleEl.innerText.trim() : '';
                     const allText = (e.innerText || '').trim();
-                    // Return text after the title (subtitle/summary)
                     const idx = title ? allText.indexOf(title) + title.length : 0;
                     return (allText.slice(idx) || '').trim().slice(0, 300);
-                }).filter(t => t.length > 5)"
+                }).filter(t => t.length > 5)"""
             )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
@@ -6236,13 +6235,13 @@ def search_jora(query, location="Australia", max_results=500):
             subtitles = _playwright_scrape(
                 page_url,
                 "[data-test='job-card'], [class*='result'], li[class*='job'], article, [class*='card']",
-                "els => els.map(e => {
-                    const titleEl = e.querySelector('a[class*=\"title\"], [data-test=\"job-title\"], h2 a');
+                """els => els.map(e => {
+                    const titleEl = e.querySelector('a[class*="title"], [data-test="job-title"], h2 a');
                     const title = titleEl ? titleEl.innerText.trim() : '';
                     const allText = (e.innerText || '').trim();
                     const idx = title ? allText.indexOf(title) + title.length : 0;
                     return (allText.slice(idx) || '').trim().slice(0, 300);
-                }).filter(t => t.length > 5)"
+                }).filter(t => t.length > 5)"""
             )
             for i in range(len(titles)):
                 if len(jobs) >= max_results:
