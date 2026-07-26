@@ -622,7 +622,13 @@ export default function SettingsPage() {
               </p>
             </>
           ) : !skillsGapLoading ? (
-            <p className="text-xs text-gray-600">Click "Analyze" to scan your matched job descriptions for skill gaps.</p>
+            skillsGapAnalyzed > 0 ? (
+              <p className="text-xs text-gray-500">
+                Your previously tracked jobs do not contain detailed description text (stored before our database upgrades). Track new jobs from your search page or run a new cloud scan to populate descriptions, then click Analyze again!
+              </p>
+            ) : (
+              <p className="text-xs text-gray-600">Click "Analyze" to scan your matched job descriptions for skill gaps.</p>
+            )
           ) : null}
         </div>
 
