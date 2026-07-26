@@ -245,7 +245,7 @@ export default function SettingsPage() {
               }
             }
           })
-          .catch((err) => console.error("Failed to fetch active resume:", err)),
+          .catch((err: any) => console.error("Failed to fetch active resume:", err)),
 
         supabase
           .from("profiles")
