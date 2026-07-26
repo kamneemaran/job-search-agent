@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 @router.get("", response_model=TrackerResponse)
 def get_tracker(
     status: str = "",
-    limit: int = 50,
+    limit: int = 2000,
     authorization: Optional[str] = Header(None),
 ):
     user_id = get_user_id(authorization)
