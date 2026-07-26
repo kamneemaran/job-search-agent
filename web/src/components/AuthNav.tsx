@@ -67,7 +67,7 @@ export default function AuthNav() {
           href="/settings"
           className="hover:text-white transition-colors"
         >
-          Settings
+          Preferences
         </Link>
         <Link
           href="/guide"

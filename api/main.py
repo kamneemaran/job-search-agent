@@ -90,10 +90,11 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
         sb = get_user_client(authorization)
         resp = sb.auth.get_user()
         user = resp.user if hasattr(resp, "user") else resp
-        if not user or not getattr(user, "id", None):
+        user_id = user.id if hasattr(user, "id") else (user.get("id") if isinstance(user, dict) else getattr(user, "id", None))
+        if not user_id:
             raise HTTPException(status_code=401, detail="Session expired or invalid")
 
-        result = sb.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
+        result = sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
         if not result.data:
             raise HTTPException(status_code=404, detail="Profile not found. Please upload a resume.")
 
@@ -210,10 +211,12 @@ def update_profile(
     sb = get_user_client(authorization)
     resp = sb.auth.get_user()
     user = resp.user if hasattr(resp, "user") else resp
+    user_id = user.id if hasattr(user, "id") else (user.get("id") if isinstance(user, dict) else getattr(user, "id", None))
+    user_email = user.email if hasattr(user, "email") else (user.get("email") if isinstance(user, dict) else getattr(user, "email", ""))
 
     data = {
-        "id": user.id,
-        "email": user.email or "",
+        "id": user_id,
+        "email": user_email or "",
         "full_name": req.full_name,
         "current_role": req.current_role,
         "years_experience": req.years_experience,

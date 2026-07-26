@@ -460,9 +460,10 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
-      <h1 className="text-3xl font-bold mb-2">Settings</h1>
+      <title>Profile & Preferences — JobPilot</title>
+      <h1 className="text-3xl font-bold mb-2">Profile & Preferences</h1>
       <p className="text-gray-400 text-sm mb-8">
-        Manage your profile, resume, and email digest.
+        Manage your user profile, resume, and email digest scan preferences.
       </p>
 
       <div className="space-y-6">
