@@ -3615,12 +3615,26 @@ def search_naukri(query, location="India", max_results=500):
                 desc_snippet = job.get("jobDesc", "") or ""
                 keywords = job.get("keywords", "") or ""
                 posted_at = job.get("addDate")[:10] if job.get("addDate") else None
+
+                exp_text = ""
+                raw_exp = job.get("experience") or job.get("exp") or job.get("experienceField") or ""
+                if raw_exp:
+                    if isinstance(raw_exp, dict):
+                        min_e = raw_exp.get("minimum") or raw_exp.get("min", "")
+                        max_e = raw_exp.get("maximum") or raw_exp.get("max", "")
+                        if min_e or max_e:
+                            exp_text = f"Experience: {min_e} to {max_e} years"
+                    elif isinstance(raw_exp, str):
+                        exp_text = f"Experience: {raw_exp}"
+                    else:
+                        exp_text = f"Experience: {str(raw_exp)}"
+
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": location_str,
                     "url": job_url,
-                    "description": f"Naukri job: {title} at {company}. {desc_snippet}. Skills: {keywords}",
+                    "description": f"Naukri job: {title} at {company}. {exp_text}. {desc_snippet}. Skills: {keywords}",
                     "posted_at": posted_at,
                 })
             if len(jobs) >= max_results:

@@ -452,40 +452,68 @@ def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(
         return {"message": f"Server error: {e}", "sent": False}
 
 
-def extract_experience_requirement(text: str) -> Optional[str]:
-    """Helper to extract experience requirements from job description text."""
-    if not text:
-        return None
-    text_lower = text.lower()
+def extract_experience_requirement(text: str, title: str = "", url: str = "") -> Optional[str]:
+    """Helper to extract experience requirements from job description text, with Title & URL fallback parsing."""
+    text_lower = text.lower() if text else ""
     
     # 1. Try range patterns first (more specific)
     range_pats = [
         re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'),
         re.compile(r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience|professional|relevant|work)')
     ]
-    for pat in range_pats:
-        m = pat.search(text_lower)
-        if m:
-            return f"{m.group(1)} - {m.group(2)} yrs"
+    if text_lower:
+        for pat in range_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)} - {m.group(2)} yrs"
             
     # 2. Try minimum patterns
     min_pats = [
         re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'),
         re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?')
     ]
-    for pat in min_pats:
-        m = pat.search(text_lower)
-        if m:
-            return f"{m.group(1)}+ yrs"
+    if text_lower:
+        for pat in min_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)}+ yrs"
             
     # 3. Try maximum patterns
     max_pats = [
         re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?')
     ]
-    for pat in max_pats:
-        m = pat.search(text_lower)
+    if text_lower:
+        for pat in max_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"Up to {m.group(1)} yrs"
+
+    # 4. Try parsing from Title if not found in Description
+    if title:
+        title_lower = title.lower()
+        for pat in range_pats:
+            m = pat.search(title_lower)
+            if m:
+                return f"{m.group(1)} - {m.group(2)} yrs"
+        for pat in min_pats:
+            m = pat.search(title_lower)
+            if m:
+                return f"{m.group(1)}+ yrs"
+
+    # 5. Try parsing from URL if not found in Description/Title
+    if url:
+        url_lower = url.lower().replace("_", "-").replace(" ", "-")
+        # Match "7-to-12-years" or "7-to-12-yrs" or "7-12-years"
+        range_url_pat = re.compile(r'(\d+)-(?:to|-)(\d+)-(?:years|yrs)')
+        m = range_url_pat.search(url_lower)
         if m:
-            return f"Up to {m.group(1)} yrs"
+            return f"{m.group(1)} - {m.group(2)} yrs"
+            
+        # Match "5-years" or "5-plus-years" or "5-yrs"
+        min_url_pat = re.compile(r'(\d+)-(?:plus-|to-)?(?:years|yrs)')
+        m = min_url_pat.search(url_lower)
+        if m:
+            return f"{m.group(1)}+ yrs"
             
     return None
 
@@ -915,7 +943,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                 else:
                     posted_str = str(posted_raw)[:10]
 
-                exp_req = extract_experience_requirement(desc)
+                exp_req = extract_experience_requirement(desc, title=job.get("title", ""), url=job.get("url", ""))
 
                 all_jobs.append(JobResult(
                     title=job.get("title", ""),
