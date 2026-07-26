@@ -8797,6 +8797,7 @@ def main():
                     "score": _m.get("score", 0),
                     "location": _m.get("location", ""),
                     "salary": _format_salary(_m.get("salary_info", {})) if _m.get("salary_info") else "",
+                    "description": _m.get("description", "")[:2000],
                     "source": _m.get("source", "daily_scan"),
                     "status": "new",
                 }).execute()
