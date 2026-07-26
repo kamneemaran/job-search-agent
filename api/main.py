@@ -456,6 +456,24 @@ def extract_experience_requirement(text: str, title: str = "", url: str = "") ->
     """Helper to extract experience requirements from job description text, with Title & URL fallback parsing."""
     text_lower = text.lower() if text else ""
     
+    # 0. Try explicit prefix-based patterns first (e.g. "experience: 2 to 7 years", "experience: 5+ years")
+    prefix_range_pats = [
+        re.compile(r'exp(?:erience)?[:\s]+(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)'),
+    ]
+    prefix_min_pats = [
+        re.compile(r'exp(?:erience)?[:\s]+(\d+)\+?\s*(?:yrs?|years?)'),
+    ]
+    
+    if text_lower:
+        for pat in prefix_range_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)} - {m.group(2)} yrs"
+        for pat in prefix_min_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)}+ yrs"
+
     # 1. Try range patterns first (more specific)
     range_pats = [
         re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'),
@@ -487,10 +505,18 @@ def extract_experience_requirement(text: str, title: str = "", url: str = "") ->
             m = pat.search(text_lower)
             if m:
                 return f"Up to {m.group(1)} yrs"
-
+ 
     # 4. Try parsing from Title if not found in Description
     if title:
         title_lower = title.lower()
+        for pat in prefix_range_pats:
+            m = pat.search(title_lower)
+            if m:
+                return f"{m.group(1)} - {m.group(2)} yrs"
+        for pat in prefix_min_pats:
+            m = pat.search(title_lower)
+            if m:
+                return f"{m.group(1)}+ yrs"
         for pat in range_pats:
             m = pat.search(title_lower)
             if m:
@@ -575,7 +601,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         effective_location = "Remote"
     # Infer effective_location from board sources when location is not explicit
     if effective_location == "Remote" and req.sources:
-        _INDIA_BOARDS = {"Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"}
+        _INDIA_BOARDS = {"Naukri", "Instahyre", "FoundIt", "TimesJobs"}
         _GERMANY_BOARDS = {"Arbeitnow", "LinkedInDE", "IndeedDE", "GlassdoorDE", "JobsinGermany", "Xing", "StepStone", "Bundesagentur", "JobsCh"}
         _NL_BOARDS = {"IamExpat", "TogetherAbroad", "WelcomeToNL", "Intermediair", "NationaleVacaturebank"}
         _AUSTRIA_BOARDS = {"WorkInAustria"}
