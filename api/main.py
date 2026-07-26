@@ -6,6 +6,7 @@ import tempfile
 import logging
 import threading
 import shutil
+import re
 from glob import glob
 from pathlib import Path
 from contextlib import asynccontextmanager
