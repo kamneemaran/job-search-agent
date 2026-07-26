@@ -230,7 +230,8 @@ export default function SettingsPage() {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle()
-          .then(({ data: resumes }) => {
+          .then((res: any) => {
+            const resumes = res?.data;
             if (resumes) {
               setActiveResume(resumes.filename);
               const parsedSkills = resumes.parsed_skills;
@@ -250,7 +251,8 @@ export default function SettingsPage() {
           .from("profiles")
           .select("updated_at")
           .maybeSingle()
-          .then(({ data: profileRow }) => {
+          .then((res: any) => {
+            const profileRow = res?.data;
             if (profileRow?.updated_at) {
               setProfileUpdatedAt(new Date(profileRow.updated_at).toLocaleDateString());
             }
@@ -261,7 +263,8 @@ export default function SettingsPage() {
           .from("email_preferences")
           .select("webhook_url")
           .maybeSingle()
-          .then(({ data: prefRow }) => {
+          .then((res: any) => {
+            const prefRow = res?.data;
             if (prefRow?.webhook_url) {
               setWebhookUrl(prefRow.webhook_url);
             }
