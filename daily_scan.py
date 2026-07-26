@@ -6174,6 +6174,10 @@ def search_arcdev(query, location="Remote", max_results=500):
                 continue
             seen.add(t)
             link = links[i] if i < len(links) else url
+            if link.startswith("//"):
+                link = "https:" + link
+            elif link.startswith("/"):
+                link = "https://arc.dev" + link
             jobs.append({
                 "title": t, "company": "Arc.dev",
                 "location": "Remote", "url": link,
