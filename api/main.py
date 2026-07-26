@@ -505,6 +505,23 @@ def extract_experience_requirement(text: str, title: str = "", url: str = "") ->
             m = pat.search(text_lower)
             if m:
                 return f"Up to {m.group(1)} yrs"
+
+    # 3b. Try freestanding fallback patterns (very safe because they require years/yrs directly after the numbers)
+    freestand_range_pats = [
+        re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)')
+    ]
+    freestand_min_pats = [
+        re.compile(r'(\d+)\+?\s*(?:yrs?|years?)')
+    ]
+    if text_lower:
+        for pat in freestand_range_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)} - {m.group(2)} yrs"
+        for pat in freestand_min_pats:
+            m = pat.search(text_lower)
+            if m:
+                return f"{m.group(1)}+ yrs"
  
     # 4. Try parsing from Title if not found in Description
     if title:
