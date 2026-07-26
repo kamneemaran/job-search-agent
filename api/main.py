@@ -975,8 +975,9 @@ def get_skills_gap(authorization: Optional[str] = Header(None)):
 
     from api.supabase import get_user_client
     sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    user_id = user.id
+    resp = sb.auth.get_user()
+    user = resp.user if hasattr(resp, "user") else resp
+    user_id = user.id if hasattr(user, "id") else (user.get("id") if isinstance(user, dict) else getattr(user, "id", None))
 
     # Get user's current skills
     profile_row = sb.table("profiles").select("core_skills").eq("id", user_id).maybe_single().execute()

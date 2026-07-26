@@ -807,47 +807,6 @@ export default function SettingsPage() {
           )}
 
         </div>
-
-        {/* Webhook / Notifications Section */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
-          <h2 className="text-lg font-semibold text-white mb-1">Notifications</h2>
-          <p className="text-xs text-gray-500 mb-3">Get notified on Slack, Discord, or any webhook when scans complete.</p>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Webhook URL (optional)</label>
-            <input
-              type="url"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-              placeholder="https://hooks.slack.com/services/... or Discord webhook URL"
-            />
-            <p className="text-[10px] text-gray-600 mt-1">
-              We'll POST a JSON summary when each scan completes. Works with Slack, Discord, Zapier, n8n, etc.
-            </p>
-          </div>
-          <button
-            onClick={async () => {
-              try {
-                const supabase = getBrowserClient();
-                const { data: session } = await supabase.auth.getSession();
-                const token = session?.session?.access_token;
-                if (!token) return;
-                const res = await fetch(`${API_BASE}/api/digest/preferences`, {
-                  method: "PUT",
-                  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ webhook_url: webhookUrl, enabled: digestFrequency !== "never", frequency: digestFrequency, email: digestEmail, day_of_week: digestDayOfWeek, day_of_month: digestDayOfMonth, time_of_day: digestTimeOfDay, batches: digestBatches, posted_date_filter: postedDateFilter }),
-                });
-                if (res.ok) setSendResult("Webhook saved.");
-                else setSendResult("Failed to save webhook.");
-              } catch { setSendResult("Error saving webhook."); }
-              setSendError(false);
-              setTimeout(() => setSendResult(""), 3000);
-            }}
-            className="mt-3 rounded-lg bg-gray-800 border border-gray-700 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white"
-          >
-            Save Webhook
-          </button>
-        </div>
       </div>
 
       {/* Schedule Modal */}
