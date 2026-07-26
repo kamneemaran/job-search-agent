@@ -6159,9 +6159,9 @@ def search_arcdev(query, location="Remote", max_results=500):
         titles = re.findall(r'class="[^"]*job[^"]*title[^"]*"[^>]*>\s*([^<]+)', html)
         if not titles:
             titles = re.findall(r'<h[234][^>]*>\s*<a[^>]*>\s*([^<]{10,80})', html)
-        links = re.findall(r'href="(https?://[^"]*(?:arc\.dev|weworkremotely|remoteok)[^"]*job[^"]*)"', html)
+        links = re.findall(r'href="(https?://[^"]*(?:arc\.dev|weworkremotely|remoteok)[^"]*(?:/jobs?/|/job/)[^"/]+)"', html)
         if not links:
-            links = re.findall(r'href="([^"]+)"[^>]*>[^<]*(?:engineer|developer|architect|manager)[^<]*<', html, re.IGNORECASE)
+            links = re.findall(r'href="([^"]*(?:/jobs?/|/job/)[^"]+)"[^>]*>[^<]*(?:engineer|developer|architect|manager)[^<]*<', html, re.IGNORECASE)
         # Also try generic job card extraction
         if not titles:
             titles = re.findall(r'>([^<]*(?:Engineer|Developer|Architect|Manager|Designer|Lead|Senior|Staff|Principal)[^<]*)<', html)
@@ -6178,6 +6178,13 @@ def search_arcdev(query, location="Remote", max_results=500):
                 link = "https:" + link
             elif link.startswith("/"):
                 link = "https://arc.dev" + link
+
+            # Skip category listing pages, navigation links, and directory indexes
+            if any(kw in link.lower() for kw in ["/remote-jobs", "/remote-developers", "/categories", "/tags", "/hire-"]):
+                continue
+            if any(kw in t.lower() for kw in ["remote backend engineer jobs", "remote frontend engineer jobs", "remote developer jobs", "remote jobs", "hire remote", "find remote", "jobs in"]):
+                continue
+
             jobs.append({
                 "title": t, "company": "Arc.dev",
                 "location": "Remote", "url": link,
