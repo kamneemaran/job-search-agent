@@ -649,11 +649,11 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
             ("Indeed", ds.search_indeed),
         ]
     else:
-        # Default / Global / Europe boards
+        # Default / Global / Europe boards (extremely fast API-based sources, avoiding slow Playwright)
         target_boards = [
             ("LinkedIn", ds.search_linkedin),
             ("Indeed", ds.search_indeed),
-            ("Glassdoor", ds.search_glassdoor),
+            ("WeWorkRemotely", ds.search_weworkremotely),
         ]
 
     print(f"=== Starting On-Demand Search ===")
