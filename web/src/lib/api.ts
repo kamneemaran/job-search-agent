@@ -13,6 +13,7 @@ export interface JobResult {
   description: string;
   source: string;
   posted_date: string;
+  experience?: string | null;
 }
 
 export interface SearchResponse {

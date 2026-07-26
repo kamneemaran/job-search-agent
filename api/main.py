@@ -448,6 +448,44 @@ def send_results(req: SendResultsRequest, authorization: Optional[str] = Header(
         return {"message": f"Server error: {e}", "sent": False}
 
 
+def extract_experience_requirement(text: str) -> Optional[str]:
+    """Helper to extract experience requirements from job description text."""
+    if not text:
+        return None
+    text_lower = text.lower()
+    
+    # 1. Try range patterns first (more specific)
+    range_pats = [
+        re.compile(r'(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'),
+        re.compile(r'(\d+)\s*-\s*(\d+)\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience|professional|relevant|work)')
+    ]
+    for pat in range_pats:
+        m = pat.search(text_lower)
+        if m:
+            return f"{m.group(1)} - {m.group(2)} yrs"
+            
+    # 2. Try minimum patterns
+    min_pats = [
+        re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'),
+        re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?')
+    ]
+    for pat in min_pats:
+        m = pat.search(text_lower)
+        if m:
+            return f"{m.group(1)}+ yrs"
+            
+    # 3. Try maximum patterns
+    max_pats = [
+        re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?')
+    ]
+    for pat in max_pats:
+        m = pat.search(text_lower)
+        if m:
+            return f"Up to {m.group(1)} yrs"
+            
+    return None
+
+
 @app.post("/api/search", response_model=SearchResponse)
 def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None)):
     check_search_limit(authorization)
@@ -872,6 +910,9 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     posted_str = posted_raw.strftime("%Y-%m-%d")
                 else:
                     posted_str = str(posted_raw)[:10]
+
+                exp_req = extract_experience_requirement(desc)
+
                 all_jobs.append(JobResult(
                     title=job.get("title", ""),
                     company=job.get("company", ""),
@@ -883,6 +924,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
                     description=job.get("description", "")[:500],
                     source=src_name,
                     posted_date=posted_str,
+                    experience=exp_req,
                 ))
         finally:
             ds.PROFILE["core_skills"] = orig_skills

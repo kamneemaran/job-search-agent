@@ -14,6 +14,7 @@ class JobResult(BaseModel):
     description: str = ""
     source: str = ""
     posted_date: str = ""
+    experience: Optional[str] = None
 
 
 class ScoreRequest(BaseModel):

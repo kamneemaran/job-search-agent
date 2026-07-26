@@ -522,6 +522,11 @@ export default function SearchPage() {
                           </span>
                         )}
                         {job.salary && <span className="text-emerald-400">· {job.salary}</span>}
+                        {job.experience && (
+                          <span className="inline-block rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                            🎓 {job.experience}
+                          </span>
+                        )}
                       </div>
                       {job.note && <p className="text-xs text-gray-500 mb-2">{job.note}</p>}
                       {job.description && <p className="text-xs text-gray-500 line-clamp-2">{job.description}</p>}
