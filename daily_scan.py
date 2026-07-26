@@ -5745,7 +5745,7 @@ def parse_resume_pdf(path):
 
     profile["core_skills"] = sorted(found_skills)
 
-    # --- Extract years of experience ---
+    # --- Extract years of experience (highly robust prioritizing summary statements) ---
     raw_lower = raw.lower()
     year_month = re.findall(r"(\d+)\s*years?\s*(\d+)\s*months?", raw_lower)
     if not year_month:
@@ -5753,30 +5753,46 @@ def parse_resume_pdf(path):
     if year_month:
         profile["years_experience"] = max(int(y) + round(int(m) / 12) for y, m in year_month)
     else:
-        exp_matches = re.findall(r"(\d+)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+exp|\s+owning|\s+in|\s+working|\s+of)?", raw_lower)
-        exp_matches = [int(e) for e in exp_matches if 1 <= int(e) <= 45]
-        if exp_matches:
-            profile["years_experience"] = max(exp_matches)
+        # 1. Prioritize matches in the top section (first 1200 characters) where summary statement lives
+        top_section = raw_lower[:1200]
+        exp_matches_top = re.findall(r"\b(\d+)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+exp|\s+in|\s+working|\s+relevant)?\b", top_section)
+        exp_matches_top = [int(e) for e in exp_matches_top if 1 <= int(e) <= 45]
+        
+        if exp_matches_top:
+            # Taking the max within the profile summary statement is extremely safe
+            profile["years_experience"] = max(exp_matches_top)
         else:
-            # Only extract dates from the experience section to avoid education years
-            exp_section = ""
-            in_exp = False
-            for line in raw.split("\n"):
-                stripped = line.strip().lower()
-                if any(kw in stripped for kw in ["professional experience", "work experience", "employment", "professional background"]):
-                    in_exp = True
-                    continue
-                if in_exp and any(kw in stripped for kw in ["education", "technical skills", "certifications", "projects"]):
-                    break
-                if in_exp:
-                    exp_section += line + "\n"
-            if not exp_section.strip():
-                exp_section = raw
-            dates = re.findall(r"\b(?:19|20)\d{2}\b", exp_section)
-            if dates:
-                dates = sorted(int(d) for d in dates)
-                span = max(dates) - min(dates) + 1
-                profile["years_experience"] = max(span, 1)
+            # 2. Fallback to the rest of the text, but take the minimum non-zero match or average/median rather
+            # than blindly taking max() which picks up false positives like "10+ years legacy systems" or "4 years college"
+            exp_matches = re.findall(r"\b(\d+)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+exp|\s+owning|\s+in|\s+working|\s+of)?\b", raw_lower)
+            exp_matches = [int(e) for e in exp_matches if 1 <= int(e) <= 45]
+            if exp_matches:
+                # Exclude obvious inflated values if we have multiple matches and the lower one is reasonable
+                valid_low = [e for e in exp_matches if e < 8]
+                if len(exp_matches) > 1 and valid_low:
+                    profile["years_experience"] = min(exp_matches)
+                else:
+                    profile["years_experience"] = max(exp_matches)
+            else:
+                # 3. Fallback to experience dates span
+                exp_section = ""
+                in_exp = False
+                for line in raw.split("\n"):
+                    stripped = line.strip().lower()
+                    if any(kw in stripped for kw in ["professional experience", "work experience", "employment", "professional background"]):
+                        in_exp = True
+                        continue
+                    if in_exp and any(kw in stripped for kw in ["education", "technical skills", "certifications", "projects"]):
+                        break
+                    if in_exp:
+                        exp_section += line + "\n"
+                if not exp_section.strip():
+                    exp_section = raw
+                dates = re.findall(r"\b(?:19|20)\d{2}\b", exp_section)
+                if dates:
+                    dates = sorted(int(d) for d in dates)
+                    span = max(dates) - min(dates) + 1
+                    profile["years_experience"] = max(span, 1)
 
     # --- Validate required fields ---
     missing = []
