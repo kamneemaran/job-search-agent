@@ -1006,7 +1006,7 @@ def get_skills_gap(authorization: Optional[str] = Header(None)):
         pass
 
     # Get recent matched jobs with descriptions
-    jobs_result = sb.table("jobs").select("description").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
+    jobs_result = sb.table("jobs").select("description").eq("user_id", user_id).order("updated_at", desc=True).limit(50).execute()
     if not jobs_result.data:
         return {"skills_gap": [], "total_jobs_analyzed": 0}
 
