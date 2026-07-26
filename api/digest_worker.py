@@ -165,6 +165,19 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
         results = []
         seen = set()
 
+        # Fetch already applied or rejected jobs in the last 3 months to filter out duplicates
+        excluded_jobs = set()
+        if sb and user_id:
+            try:
+                three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+                job_query = sb.table("jobs").select("title, company").eq("user_id", user_id).in_("status", ["applied", "rejected"]).gte("updated_at", three_months_ago).execute()
+                if job_query and job_query.data:
+                    for j in job_query.data:
+                        excluded_jobs.add((j.get("title", "").lower().strip(), j.get("company", "").lower().strip()))
+                logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} already applied/rejected jobs in the last 3 months to exclude from this digest.")
+            except Exception as ex_db:
+                logger.warning(f"[DIGEST-BG-WORKER] Warning: Failed to fetch excluded jobs from DB: {ex_db}")
+
         for idx, source in enumerate(all_sources, 1):
             if sb and user_id and scan_id and idx % 2 == 0:  # Check database every 2 sources
                 try:
@@ -185,9 +198,12 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
             except Exception:
                 continue
 
-            for job in jobs:
-                key = (job.get("title", "").lower(), job.get("company", "").lower())
+             for job in jobs:
+                key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                 if key in seen:
+                    continue
+                if key in excluded_jobs:
+                    logger.info(f"Skipping job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
                     continue
                     
                 # Apply posted date filter
@@ -212,6 +228,12 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                         job.get("description", ""),
                     )
                     salary_str = ds._format_salary(salary_info) if salary_info else ""
+                    from api.main import extract_experience_requirement
+                    exp_req = extract_experience_requirement(
+                        job.get("description", ""),
+                        title=job.get("title", ""),
+                        url=job.get("url", "")
+                    )
 
                     results.append({
                         "title": job.get("title", ""),
@@ -220,6 +242,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                         "location": job.get("location", ""),
                         "salary": salary_str,
                         "url": job.get("url", ""),
+                        "experience": exp_req or "—",
                     })
 
         # 2. Run Europe Job Boards directly if "europe_boards" is requested!
@@ -260,9 +283,12 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                             if not board_jobs:
                                 continue
                                 
-                            for job in board_jobs:
+                             for job in board_jobs:
                                 key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                                 if key in seen:
+                                    continue
+                                if key in excluded_jobs:
+                                    logger.info(f"[DIGEST-BG-WORKER] Skipping Europe Board job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
                                     continue
                                     
                                 # Apply posted date filter
@@ -288,6 +314,12 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                                         job.get("description", ""),
                                     )
                                     salary_str = ds._format_salary(salary_info) if salary_info else ""
+                                    from api.main import extract_experience_requirement
+                                    exp_req = extract_experience_requirement(
+                                        job.get("description", ""),
+                                        title=job.get("title", ""),
+                                        url=job.get("url", "")
+                                    )
                                     results.append({
                                         "title": job.get("title", ""),
                                         "company": job.get("company", ""),
@@ -295,6 +327,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                                         "location": job.get("location", ""),
                                         "salary": salary_str,
                                         "url": job.get("url", ""),
+                                        "experience": exp_req or "—",
                                     })
                         except Exception as be:
                             logger.error(f"[DIGEST-BG-WORKER] Board {board_name} failed for query='{query}': {be}")
@@ -344,6 +377,7 @@ def _build_table_rows(jobs):
             <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;">{job.get("score", 0)}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("location", "")}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #374151;">{job.get("salary", "") or "—"}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;color:#fbbf24;font-weight:600;">{job.get("experience", "—")}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #374151;text-align:center;">{link}</td>
         </tr>"""
     return rows
@@ -358,6 +392,7 @@ def _build_section_table(jobs):
           <th style="padding:12px;text-align:center;color:#d1d5db;font-size:13px;">Score</th>
           <th style="padding:12px;text-align:left;color:#d1d5db;font-size:13px;">Location</th>
           <th style="padding:12px;text-align:left;color:#d1d5db;font-size:13px;">Salary</th>
+          <th style="padding:12px;text-align:center;color:#d1d5db;font-size:13px;">Experience</th>
           <th style="padding:12px;text-align:center;color:#d1d5db;font-size:13px;">Link</th>
         </tr>
       </thead>

@@ -5303,6 +5303,21 @@ def _card_rows(matches):
         jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
         ea = _easy_apply_ats(m.get("company", ""))
         ea_html = f"""<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ Easy Apply ({ea})</span>""" if ea and ea in EASY_APPLY_ATS else ""
+        
+        # Extract experience requirement dynamically
+        exp_req = m.get("experience")
+        if not exp_req:
+            try:
+                from api.main import extract_experience_requirement
+                exp_req = extract_experience_requirement(
+                    m.get("description", ""),
+                    title=m.get("title", ""),
+                    url=m.get("url", "")
+                )
+            except Exception:
+                exp_req = None
+        exp_html = f"""<span style="display:inline-block;background:#fff8e1;color:#b78103;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:bold;">🎓 Exp: {exp_req}</span>""" if exp_req else ""
+
         tr_status = m.get("tracker_status")
         tr_html = ""
         if tr_status:
@@ -5335,7 +5350,7 @@ def _card_rows(matches):
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
             <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
             <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
-            {jt_html}{ea_html}
+            {jt_html}{ea_html}{exp_html}
             <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}{date_html}
           </p>
         </div>

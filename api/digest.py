@@ -156,6 +156,19 @@ def run_background_digest_scan(
         results = list(initial_matches) if initial_matches else []
         seen = {(j.get("title", "").lower().strip(), j.get("company", "").lower().strip()) for j in results}
 
+        # Fetch already applied or rejected jobs in the last 3 months to filter out duplicates
+        excluded_jobs = set()
+        try:
+            from datetime import timedelta
+            three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+            job_query = sb.table("jobs").select("title, company").eq("user_id", user_id).in_("status", ["applied", "rejected"]).gte("updated_at", three_months_ago).execute()
+            if job_query and job_query.data:
+                for j in job_query.data:
+                    excluded_jobs.add((j.get("title", "").lower().strip(), j.get("company", "").lower().strip()))
+            logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} already applied/rejected jobs in the last 3 months to exclude from this digest.")
+        except Exception as ex_db:
+            logger.warning(f"[DIGEST-BG-WORKER] Warning: Failed to fetch excluded jobs from DB: {ex_db}")
+
         aborted = False
         for idx, source in enumerate(all_sources, 1):
             if idx < start_index:
@@ -203,6 +216,9 @@ def run_background_digest_scan(
                 key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                 if key in seen:
                     continue
+                if key in excluded_jobs:
+                    logger.info(f"[DIGEST-BG-WORKER] Skipping job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
+                    continue
                 seen.add(key)
                 # Profile already swapped at outer scope (lines 116-118) — just score directly
                 score, note = ds.score_job(
@@ -215,6 +231,12 @@ def run_background_digest_scan(
                     salary_info = ds.get_salary_info(
                         job.get("company", ""), job.get("title", ""), job.get("description", ""),
                     )
+                    from api.main import extract_experience_requirement
+                    exp_req = extract_experience_requirement(
+                        job.get("description", ""),
+                        title=job.get("title", ""),
+                        url=job.get("url", "")
+                    )
                     job_match = {
                         "title": job.get("title", ""),
                         "company": job.get("company", ""),
@@ -222,6 +244,7 @@ def run_background_digest_scan(
                         "location": job.get("location", ""),
                         "salary": ds._format_salary(salary_info) if salary_info else "",
                         "url": job.get("url", ""),
+                        "experience": exp_req or "—",
                     }
                     results.append(job_match)
 
