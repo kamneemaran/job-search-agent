@@ -256,8 +256,9 @@ def upload_resume(
         if authorization:
             try:
                 sb = get_user_client(authorization)
-                user = sb.auth.get_user().user
-                user_id = user.id
+                resp = sb.auth.get_user()
+                user = resp.user if hasattr(resp, "user") else resp
+                user_id = user.id if hasattr(user, "id") else (user.get("id") if isinstance(user, dict) else getattr(user, "id", None))
                 filename = file.filename
                 storage_path = f"{user_id}/{filename}"
 

@@ -5579,7 +5579,9 @@ def extract_text_from_pdf(path):
     with open(path, "rb") as f:
         reader = PyPDF2.PdfReader(f)
         for page in reader.pages:
-            text += page.extract_text() + "\n"
+            val = page.extract_text()
+            if val:
+                text += val + "\n"
     return text
 
 _REQUIRED_RESUME_FIELDS = {
