@@ -51,10 +51,10 @@ export default function SearchPage() {
   }, []);
 
   const CATEGORY_MAP: Record<string, string[]> = {
-    "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas", "Xing", "WorkAtStartup", "ArcDev", "WorkingNomads"],
-    "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "Indeed", "LinkedIn", "Glassdoor"],
-    "Europe": ["Arbeitnow", "IamExpat", "TogetherAbroad", "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WelcomeToNL", "WorkInFinland", "WorkInLux", "Xing", "WorkInAustria", "JobsCh", "JobsinGermany", "LinkedInUK", "LinkedInDE", "IndeedUK", "IndeedDE", "GlassdoorUK", "GlassdoorDE"],
-    "APAC": ["Seek", "Jora", "Adzuna", "LinkedInAU", "LinkedInSG", "LinkedInNZ", "IndeedAU", "IndeedSG", "GlassdoorAU", "GlassdoorSG"],
+    "Remote": ["WeWorkRemotely", "Remotive", "LinkedIn", "RemoteOK", "Himalayas"],
+    "India": ["Naukri", "Instahyre", "FoundIt", "TimesJobs", "LinkedIn"],
+    "Europe": ["Arbeitnow", "TogetherAbroad", "WelcomeToNL", "WorkInAustria", "LinkedInUK", "LinkedInDE"],
+    "APAC": ["LinkedInAU", "LinkedInSG", "LinkedInNZ"],
   };
 
   const handleSelectCategory = (catName: string) => {
