@@ -68,6 +68,42 @@ from api.rate_limit import check_search_limit, increment_search_count, check_tra
 
 _ds = None
 _profile_lock = threading.Lock()
+_playwright_lock = threading.Lock()
+
+PLAYWRIGHT_BOARDS = {
+    # Indeed variants
+    "Indeed", "IndeedAU", "IndeedNZ", "IndeedSG", "IndeedJP", "IndeedKR", "IndeedHK", "IndeedUK", "IndeedDE", "IndeedNL",
+    # Glassdoor variants
+    "Glassdoor", "GlassdoorAU", "GlassdoorSG", "GlassdoorUK", "GlassdoorDE",
+    # European/Regional Playwright-based
+    "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WorkInFinland", "WorkInLux",
+    "SAPOEmprego", "NetEmpregos", "JobsCh", "JobsinGermany", "MonsterDE", "Reed", "Jobsite",
+    "Freelancermap", "Intermediair", "NationaleVacaturebank", "IamExpat",
+    # Remote/Tech Playwright-based
+    "WorkingNomads", "Jobspresso", "WorkAtStartup", "ArcDev", "NoDesk", "Crossover", "Kelly", "Workew",
+    # APAC Playwright-based
+    "Seek", "Jora", "VisaSponsor", "VisaSponsor.Jobs"
+}
+
+
+def _run_board_safe(name, fn, query, location, fetch_limit):
+    """Executes a scraper safely. If the scraper is Playwright-based, uses a global lock to prevent concurrent runs."""
+    if name in PLAYWRIGHT_BOARDS:
+        logger.info(f"Board '{name}' is Playwright-based. Waiting for Playwright lock...")
+        with _playwright_lock:
+            logger.info(f"Acquired Playwright lock for board '{name}'. Running...")
+            try:
+                return fn(query, location, fetch_limit)
+            except Exception as e:
+                logger.error(f"Error running Playwright scraper {name}: {e}")
+                return []
+    else:
+        logger.info(f"Board '{name}' is HTTP-based. Running concurrently...")
+        try:
+            return fn(query, location, fetch_limit)
+        except Exception as e:
+            logger.error(f"Error running HTTP scraper {name}: {e}")
+            return []
 
 
 def _get_ds():
@@ -788,7 +824,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
 
     with ThreadPoolExecutor(max_workers=min(len(target_boards), 3)) as executor:
         future_to_board = {
-            executor.submit(fn, search_query, effective_location, fetch_per_board): name
+            executor.submit(_run_board_safe, name, fn, search_query, effective_location, fetch_per_board): name
             for name, fn in target_boards
         }
 
