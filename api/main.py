@@ -87,16 +87,10 @@ PLAYWRIGHT_BOARDS = {
 
 
 def _run_board_safe(name, fn, query, location, fetch_limit):
-    """Executes a scraper safely. If the scraper is Playwright-based, uses a global lock to prevent concurrent runs."""
+    """Executes a scraper safely. Skips Playwright-based scrapers on-demand to prevent Out-Of-Memory container crashes on Railway/Vercel."""
     if name in PLAYWRIGHT_BOARDS:
-        logger.info(f"Board '{name}' is Playwright-based. Waiting for Playwright lock...")
-        with _playwright_lock:
-            logger.info(f"Acquired Playwright lock for board '{name}'. Running...")
-            try:
-                return fn(query, location, fetch_limit)
-            except Exception as e:
-                logger.error(f"Error running Playwright scraper {name}: {e}")
-                return []
+        logger.warning(f"Board '{name}' is Playwright-based. Skipped on-demand to prevent OOM server restart. Please use scheduled scans/digests for this board.")
+        return []
     else:
         logger.info(f"Board '{name}' is HTTP-based. Running concurrently...")
         try:
