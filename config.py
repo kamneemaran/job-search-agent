@@ -14,18 +14,18 @@ class Config:
     SMTP_SERVER = os.getenv('SMTP_SERVER')
     SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
     SMTP_USERNAME = os.getenv('SMTP_USERNAME')
-    SMTP_PASSWORD = ***'SMTP_PASSWORD')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
     EMAIL_FROM = os.getenv('EMAIL_FROM')
     EMAIL_TO = os.getenv('EMAIL_TO', '').split(',')
 
     # WhatsApp notification settings (using Twilio as an example)
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
-    TWILIO_AUTH_TOKEN = ***'TWILIO_AUTH_TOKEN')
+    TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
     WHATSAPP_TO = os.getenv('WHATSAPP_TO', '').split(',')
 
     # OpenAI API (optional, for advanced matching/summarization)
-    OPENAI_API_KEY = ***'OPENAI_API_KEY')
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Instantiate config
 config = Config()

@@ -198,7 +198,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
             except Exception:
                 continue
 
-             for job in jobs:
+            for job in jobs:
                 key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                 if key in seen:
                     continue
@@ -283,7 +283,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                             if not board_jobs:
                                 continue
                                 
-                             for job in board_jobs:
+                            for job in board_jobs:
                                 key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
                                 if key in seen:
                                     continue
