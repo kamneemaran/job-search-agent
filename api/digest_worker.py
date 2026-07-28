@@ -604,7 +604,7 @@ def run():
                     "score": job.get("score", 0),
                     "location": job.get("location", ""),
                     "salary": job.get("salary", ""),
-                    "description": job.get("description", "")[:2000],
+                    "description": job.get("description", "")[:10000],
                     "source": "email_digest",
                     "status": "new",
                 }).execute()
@@ -823,7 +823,7 @@ def run_one_user(user_id: str, scan_id: str = None):
                 "score": job.get("score", 0),
                 "location": job.get("location", ""),
                 "salary": job.get("salary", ""),
-                "description": job.get("description", "")[:2000],
+                "description": job.get("description", "")[:10000],
                 "source": "email_digest",
                 "status": "new",
             }).execute()

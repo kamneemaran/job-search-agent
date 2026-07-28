@@ -329,7 +329,7 @@ def run_background_digest_scan(
                     "score": job.get("score", 0),
                     "location": job.get("location", ""),
                     "salary": job.get("salary", ""),
-                    "description": job.get("description", "")[:2000],
+                    "description": job.get("description", "")[:10000],
                     "source": "email_digest",
                     "status": "new",
                 }).execute()

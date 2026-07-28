@@ -1139,7 +1139,7 @@ def _enrich_job_description(job: dict) -> dict:
                 tag.decompose()
             text = soup.get_text(separator=" ", strip=True)
             text = re.sub(r"\s+", " ", text)
-        text = text[:3000]
+        text = text[:10000]
         if len(text) > len(desc):
             job["description"] = text
     except Exception:
@@ -3230,17 +3230,17 @@ def search_linkedin(query, location="India", max_results=500):
                                     if isinstance(data, dict):
                                         d = data.get("description", "")
                                         if d:
-                                            full_desc = re.sub(r"<[^>]+>", " ", d)[:2000]
+                                            full_desc = re.sub(r"<[^>]+>", " ", d)[:10000]
                                 except Exception:
                                     pass
                             if not full_desc:
                                 desc_match = re.search(r'<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</div>', jd_html, re.DOTALL)
                                 if desc_match:
-                                    full_desc = strip_html(desc_match.group(1))[:2000]
+                                    full_desc = strip_html(desc_match.group(1))[:10000]
                                 if not full_desc:
                                     desc_match2 = re.search(r'"description":\s*"([^"]+)"', jd_html)
                                     if desc_match2:
-                                        full_desc = desc_match2.group(1)[:2000]
+                                        full_desc = desc_match2.group(1)[:10000]
                     except Exception:
                         pass
                 return idx, full_desc or f"LinkedIn job: {titles[idx]} at {companies[idx]} in {locations[idx]}"
@@ -8839,7 +8839,7 @@ def main():
                     "score": _m.get("score", 0),
                     "location": _m.get("location", ""),
                     "salary": _format_salary(_m.get("salary_info", {})) if _m.get("salary_info") else "",
-                    "description": _m.get("description", "")[:2000],
+                    "description": _m.get("description", "")[:10000],
                     "source": _m.get("source", "daily_scan"),
                     "status": "new",
                 }).execute()

@@ -70,7 +70,7 @@ def log_jobs_to_tracker(matches: list[dict], user_email: str = "") -> int:
                 "company": company,
                 "url": match.get("url", ""),
                 "score": match.get("score", 0),
-                "description": (match.get("description", "") or "")[:2000],
+                "description": (match.get("description", "") or "")[:10000],
                 "salary": match.get("salary", "") or "",
                 "location": match.get("location", "") or "",
                 "source": match.get("source", "") or "",
