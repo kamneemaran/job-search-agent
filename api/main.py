@@ -126,7 +126,7 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
             raise HTTPException(status_code=401, detail="Session expired or invalid")
 
         result = sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
-        if not result.data:
+        if not result:
             raise HTTPException(status_code=404, detail="Profile not found. Please upload a resume.")
 
         row = result.data

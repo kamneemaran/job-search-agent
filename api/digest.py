@@ -30,7 +30,7 @@ def get_digest_preferences(authorization: Optional[str] = Header(None)):
     user = sb.auth.get_user().user
     result = sb.table("email_preferences").select("*").eq("user_id", user.id).maybe_single().execute()
 
-    if not result.data:
+    if not result:
         return DigestPreferences()
 
     row = result.data
