@@ -6041,7 +6041,7 @@ class JobTracker:
 
                 if not title or not company:
                     continue
-                if status not in ("new", "applied", "rejected", "offer"):
+                if status not in ("new", "applied", "rejected", "offer", "expired", "na"):
                     status = "new"
 
                 key = self.job_key(title, company)

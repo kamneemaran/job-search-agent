@@ -352,8 +352,8 @@ def main():
 
         if any(kw in full_clean for kw in ["offer letter", "congratulations", "we are pleased to inform"]):
             status = "offer"
-        elif any(kw in full_clean for kw in ["not moving forward", "regret to inform",
-                                              "not selected", "position has been filled"]):
+        elif any(kw in full_clean for kw in ["not moving forward", "not to move forward",
+                                              "regret to inform", "not selected", "position has been filled"]):
             status = "rejected"
         elif any(kw in full_clean for kw in ["application received", "thank you for applying",
                                               "thank you for your application",
@@ -473,57 +473,69 @@ def main():
             sheet = service.spreadsheets()
 
             try:
-                existing = sheet.values().get(spreadsheetId=GSHEET_ID, range="'job_matches'!A:L").execute()
+                existing = sheet.values().get(spreadsheetId=GSHEET_ID, range="'Job Tracker'!A:L").execute()
                 existing_rows = existing.get("values", [])
-                existing_keys = set()
-                for row in existing_rows[1:]:
-                    if len(row) >= 3:
-                        existing_keys.add((row[2].strip().lower(), row[1].strip().lower()))
+                existing_by_key = {}
+                for i, row in enumerate(existing_rows[1:], start=2):
+                    if len(row) >= 2:
+                        key = (row[1].strip().lower(), row[0].strip().lower())
+                        existing_by_key[key] = i
             except:
                 existing_rows = []
-                existing_keys = set()
+                existing_by_key = {}
 
-            header = ["Score", "Title", "Company", "Location", "URL", "Company Link",
-                       "Status", "Date Found", "Applied Date", "Rejection Date", "Offer Date", "Notes"]
+            header = ["Title", "Company", "Location", "Score", "Status", "URL", "Notes", "Last Updated"]
             new_rows = []
+            updated_count_sheet = 0
             seen = set()
             for entry in tracker["jobs"].values():
                 s = entry.get("status", "new")
                 if s not in ("applied", "rejected", "offer"):
                     continue
                 dedup = (entry["company"].lower(), entry.get("title", "").lower())
-                if dedup in seen or dedup in existing_keys:
+                if dedup in seen:
                     continue
                 seen.add(dedup)
-                new_rows.append([
-                    entry.get("score", ""),
+
+                row_data = [
                     entry.get("title", ""),
                     entry.get("company", ""),
                     "",
-                    entry.get("url", ""),
-                    "",
+                    entry.get("score", ""),
                     s,
-                    (entry.get("date_found") or "")[:10],
-                    (entry.get("date_applied") or "")[:10],
-                    (entry.get("date_rejected") or "")[:10],
-                    (entry.get("date_offer") or "")[:10],
+                    entry.get("url", ""),
                     (entry.get("notes") or "")[:80],
-                ])
+                    (entry.get("date_found") or "")[:10],
+                ]
+
+                if dedup in existing_by_key:
+                    row_num = existing_by_key[dedup]
+                    sheet.values().update(
+                        spreadsheetId=GSHEET_ID,
+                        range=f"'Job Tracker'!A{row_num}:H{row_num}",
+                        valueInputOption="RAW",
+                        body={"values": [row_data]}
+                    ).execute()
+                    updated_count_sheet += 1
+                else:
+                    new_rows.append(row_data)
 
             if not existing_rows:
                 sheet.values().update(
-                    spreadsheetId=GSHEET_ID, range="'job_matches'!A1",
+                    spreadsheetId=GSHEET_ID, range="'Job Tracker'!A1",
                     valueInputOption="RAW", body={"values": [header]}
                 ).execute()
 
+            if updated_count_sheet:
+                print(f"  [gsheet] Updated {updated_count_sheet} existing rows", flush=True)
             if new_rows:
                 sheet.values().append(
-                    spreadsheetId=GSHEET_ID, range="'job_matches'!A:L",
+                    spreadsheetId=GSHEET_ID, range="'Job Tracker'!A:H",
                     valueInputOption="RAW", body={"values": new_rows}
                 ).execute()
-                print(f"  [gsheet] Added {len(new_rows)} rows", flush=True)
-            else:
-                print(f"  [gsheet] No new rows", flush=True)
+                print(f"  [gsheet] Added {len(new_rows)} new rows", flush=True)
+            if not updated_count_sheet and not new_rows:
+                print(f"  [gsheet] No changes", flush=True)
         except Exception as e:
             print(f"  [gsheet] Error: {e}", flush=True)
     else:

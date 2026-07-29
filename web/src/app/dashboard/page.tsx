@@ -14,9 +14,11 @@ const STATUS_COLORS: Record<string, string> = {
   applied: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
   rejected: "bg-red-500/10 text-red-400 border-red-500/30",
   offer: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  expired: "bg-gray-500/10 text-gray-400 border-gray-500/30",
+  na: "bg-purple-500/10 text-purple-400 border-purple-500/30",
 };
 
-const STATUS_OPTIONS = ["new", "applied", "rejected", "offer"];
+const STATUS_OPTIONS = ["new", "applied", "rejected", "offer", "expired", "na"];
 
 export default function DashboardPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
@@ -308,6 +310,8 @@ export default function DashboardPage() {
     applied: jobs.filter((j) => j.status === "applied").length,
     rejected: jobs.filter((j) => j.status === "rejected").length,
     offer: jobs.filter((j) => j.status === "offer").length,
+    expired: jobs.filter((j) => j.status === "expired").length,
+    na: jobs.filter((j) => j.status === "na").length,
   };
 
   const filteredJobs = filter ? jobs.filter((j) => j.status === filter) : jobs;
@@ -449,7 +453,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-gray-800 pb-4">
         {/* Filter Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto">
-          {(["", "new", "applied", "rejected", "offer"] as const).map((s) => (
+          {(["", "new", "applied", "rejected", "offer", "expired", "na"] as const).map((s) => (
             <button
               key={s || "all"}
               onClick={() => setFilter(s)}
@@ -671,19 +675,34 @@ export default function DashboardPage() {
               </button>
               
               <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                      currentPage === page
-                        ? "bg-indigo-600 text-white"
-                        : "bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {(() => {
+                  const pages: (number | "...")[] = [];
+                  const range = 2;
+                  pages.push(1);
+                  if (currentPage - range > 2) pages.push("...");
+                  for (let i = Math.max(2, currentPage - range); i <= Math.min(totalPages - 1, currentPage + range); i++) {
+                    pages.push(i);
+                  }
+                  if (currentPage + range < totalPages - 1) pages.push("...");
+                  if (totalPages > 1) pages.push(totalPages);
+                  return pages.map((page, idx) =>
+                    page === "..." ? (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-gray-500">...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                          currentPage === page
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  );
+                })()}
               </div>
 
               <button

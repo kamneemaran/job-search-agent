@@ -397,8 +397,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "company": {"type": "string", "description": "Company name"},
                     "status": {
                         "type": "string",
-                        "description": "New status: 'applied', 'rejected', 'offer'",
-                        "enum": ["applied", "rejected", "offer"],
+                        "description": "New status: 'applied', 'rejected', 'offer', 'expired', 'na'",
+                        "enum": ["applied", "rejected", "offer", "expired", "na"],
                     },
                     "notes": {"type": "string", "description": "Optional notes"},
                     "resume": {"type": "string", "description": "Optional resume version used (e.g. 'Kamnee_Maran_Resume_FAANG.pdf'). Creates a separate sheet tab per resume."},
@@ -1136,7 +1136,7 @@ def _tracker_status(status: str = "", limit: int = 20) -> str:
     lines = [f"## Job Tracker — {summary}", f"Showing {len(filtered)} of {len(jobs)} tracked jobs.\n"]
 
     for j in filtered:
-        status_icon = {"new": "🆕", "applied": "✅", "rejected": "❌", "offer": "🎉"}
+        status_icon = {"new": "🆕", "applied": "✅", "rejected": "❌", "offer": "🎉", "expired": "⏳", "na": "🚫"}
         icon = status_icon.get(j.get("status", "new"), "❓")
         lines.append(
             f"{icon} **{j['title']}** @ {j['company']} "
