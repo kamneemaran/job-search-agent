@@ -5717,9 +5717,11 @@ def parse_resume_pdf(path):
     in_skills = False
     for line in lines:
         stripped = line.strip().lower()
-        if any(kw in stripped for kw in ["technical skills", "technologies", "tech stack",
+        if (stripped in ["skills", "key skills", "core skills", "professional skills"] or 
+            any(kw in stripped for kw in ["technical skills", "technologies", "tech stack",
                                            "skills &", "skills:", "core competencies",
-                                           "programming languages", "tools &"]):
+                                           "programming languages", "tools &", "core skills",
+                                           "professional skills", "primary skills"])):
             in_skills = True
             continue
         if in_skills:

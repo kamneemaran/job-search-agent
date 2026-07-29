@@ -1,4 +1,5 @@
 import { getBrowserClient } from "@/lib/supabase/client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -54,8 +55,28 @@ export interface Profile {
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
     const supabase = getBrowserClient();
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    const res = await supabase.auth.getSession();
+    let session = res?.data?.session;
+    
+    // If no session is found immediately on mount, wait briefly for Supabase to restore/initialize the session
+    if (!session) {
+      const promise = new Promise<Session | null>((resolve) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, currentSession: Session | null) => {
+          if (currentSession) {
+            resolve(currentSession);
+          }
+        });
+        
+        // Timeout after 1.5 seconds if no session is initialized
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(null);
+        }, 1500);
+      });
+      session = await promise;
+    }
+
+    const token = session?.access_token;
     if (token) {
       return { Authorization: `Bearer ${token}` };
     }
@@ -74,10 +95,13 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
   if (res.status === 401) {
-    try {
-      const supabase = getBrowserClient();
-      await supabase.auth.signOut();
-    } catch {}
+    // Only call signOut if we actually sent an Authorization header (meaning an active session token was rejected as invalid/expired)
+    if (authHeaders.Authorization) {
+      try {
+        const supabase = getBrowserClient();
+        await supabase.auth.signOut();
+      } catch {}
+    }
     if (typeof window !== "undefined") {
       window.location.href = "/auth/signin";
     }
