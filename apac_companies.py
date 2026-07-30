@@ -49,7 +49,7 @@ APAC_JOB_SOURCES = [
     {"name": "Rakuten", "url": "https://japan-job-en.rakuten.careers/engineering-en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Mercari", "url": "https://careers.mercari.com/jobs/?job_category=jc-engineering+engineering+corporate-engineering+security-engineering", "region": "APAC", "type": "company", "playwright": True},
     {"name": "LINE (Yahoo Japan)", "url": "https://www.lycorp.co.jp/en/recruit/career/job-categories/#all", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Fujitsu", "url": "https://www.fujitsu.com/global/about/careers/", "region": "APAC", "type": "company", "playwright": True},
+
     {"name": "NTT Data", "url": "https://www.nttdata.com/global/en/careers", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Panasonic", "url": "https://careers.na.panasonic.com/jobs?categories=Engineering%7CIT&page=1", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Samsung", "url": "https://www.samsungcareers.com/?lang=en", "region": "APAC", "type": "company", "playwright": True},
