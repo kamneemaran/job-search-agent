@@ -202,7 +202,8 @@ export default function SettingsPage() {
       setSkillsInput((profile.core_skills || []).join(", "));
       const hasSa = profile.google_sa_json || "";
       setGoogleSaJson(hasSa);
-      setShowSaSetup(!hasSa);
+      const saDismissed = profile.google_sa_dismissed || false;
+      setShowSaSetup(!hasSa && !saDismissed);
 
       setDigestFrequency(digest.frequency || "weekly");
       setDigestDayOfWeek(digest.day_of_week || "monday");
@@ -608,6 +609,29 @@ export default function SettingsPage() {
                 className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving..." : "Save Service Account Key"}
+              </button>
+              <button
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await updateProfile({
+                      name,
+                      current_role: currentRole,
+                      core_skills: skills,
+                      years_experience: yearsExperience,
+                      google_sa_dismissed: true,
+                    });
+                    setShowSaSetup(false);
+                  } catch (err) {
+                    console.error("Failed to dismiss:", err);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-50"
+              >
+                I don't want to share — hide permanently
               </button>
             </div>
           </div>
