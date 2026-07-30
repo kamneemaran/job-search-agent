@@ -242,6 +242,7 @@ export interface DigestPreferences {
   sent_history: string[];
   batches?: string[];
   posted_date_filter?: string;
+  gmail_label?: string;
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -257,6 +258,7 @@ export async function updateDigestPreferences(params: {
   time_of_day: string;
   batches?: string[];
   posted_date_filter?: string;
+  gmail_label?: string;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",

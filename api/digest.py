@@ -54,6 +54,7 @@ def get_digest_preferences(authorization: Optional[str] = Header(None)):
         batches=batches_data,
         posted_date_filter=row.get("posted_date_filter", "any"),
         webhook_url=row.get("webhook_url", ""),
+        gmail_label=row.get("gmail_label", ""),
     )
 
 
@@ -80,6 +81,7 @@ def update_digest_preferences(
         "batches": prefs.batches,
         "posted_date_filter": prefs.posted_date_filter,
         "webhook_url": prefs.webhook_url,
+        "gmail_label": prefs.gmail_label,
     }
 
     try:

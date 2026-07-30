@@ -159,3 +159,4 @@ class DigestPreferences(BaseModel):
     batches: list[str] = ["all"]
     posted_date_filter: str = "any"
     webhook_url: str = ""
+    gmail_label: str = ""

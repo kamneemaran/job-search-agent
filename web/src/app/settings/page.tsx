@@ -64,6 +64,9 @@ export default function SettingsPage() {
   // Webhook state
   const [webhookUrl, setWebhookUrl] = useState("");
 
+  // Gmail label state
+  const [gmailLabel, setGmailLabel] = useState("");
+
   interface ActiveScan {
     scan_id: string;
     run_id: string;
@@ -185,7 +188,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [] })),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any" })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "" })),
       ]);
 
       setName(profile.name || "");
@@ -202,6 +205,7 @@ export default function SettingsPage() {
       setDigestBatches(digest.batches || ["all"]);
       setPostedDateFilter(digest.posted_date_filter || "any");
       setSentHistory(digest.sent_history || []);
+      setGmailLabel(digest.gmail_label || "");
 
       // Extract last scan job count from sent_history
       const completedEntries = (digest.sent_history || []).filter(
@@ -367,6 +371,7 @@ export default function SettingsPage() {
         time_of_day: digestTimeOfDay,
         batches: digestBatches,
         posted_date_filter: postedDateFilter,
+        gmail_label: gmailLabel,
       });
       setShowScheduleModal(false);
       setSendResult("Schedule saved successfully.");
@@ -950,9 +955,23 @@ export default function SettingsPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Job Boards / Regions</label>
+          <div>
+                <label className="block text-sm text-gray-400 mb-1">Job Boards / Regions</label>
                 <BatchSelector batches={sendNowBatches} setBatches={setSendNowBatches} showEst />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Gmail Label for Email Scanning</label>
+                <input
+                  type="text"
+                  value={gmailLabel}
+                  onChange={(e) => setGmailLabel(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  placeholder="e.g. Interview"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Emails with this Gmail label will be scanned for application status updates (applied, interview, rejected, offer). Leave empty to disable.
+                </p>
               </div>
 
               <p className="text-xs text-gray-500">
