@@ -48,7 +48,7 @@ APAC_JOB_SOURCES = [
     {"name": "Alibaba (AIDC)", "url": "https://aidc-jobs.alibaba.com/home?lang=en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Rakuten", "url": "https://japan-job-en.rakuten.careers/engineering-en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Sony", "url": "https://www.sony.com/en/SonyInfo/careers/", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Mercari", "url": "https://careers.mercari.com/", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Mercari", "url": "https://careers.mercari.com/jobs/?job_category=jc-engineering+engineering+corporate-engineering+security-engineering", "region": "APAC", "type": "company", "playwright": True},
     {"name": "LINE (Yahoo Japan)", "url": "https://careers.lycorp.co.jp/en/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Preferred Networks", "url": "https://www.preferred-networks.jp/en/careers", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Sansan", "url": "https://jp.careers.sansan.com/en/", "region": "APAC", "type": "company", "playwright": True},
