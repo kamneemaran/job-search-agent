@@ -170,11 +170,11 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
         if sb and user_id:
             try:
                 three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-                job_query = sb.table("jobs").select("title, company").eq("user_id", user_id).in_("status", ["applied", "rejected"]).gte("updated_at", three_months_ago).execute()
+                job_query = sb.table("jobs").select("title, company").eq("user_id", user_id).in_("status", ["applied", "rejected", "offer"]).gte("updated_at", three_months_ago).execute()
                 if job_query and job_query.data:
                     for j in job_query.data:
                         excluded_jobs.add((j.get("title", "").lower().strip(), j.get("company", "").lower().strip()))
-                logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} already applied/rejected jobs in the last 3 months to exclude from this digest.")
+                logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} already applied/rejected/offer jobs in the last 3 months to exclude from this digest.")
             except Exception as ex_db:
                 logger.warning(f"[DIGEST-BG-WORKER] Warning: Failed to fetch excluded jobs from DB: {ex_db}")
 
