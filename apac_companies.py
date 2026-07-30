@@ -50,8 +50,6 @@ APAC_JOB_SOURCES = [
     {"name": "Sony", "url": "https://www.sony.com/en/SonyInfo/careers/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Mercari", "url": "https://careers.mercari.com/jobs/?job_category=jc-engineering+engineering+corporate-engineering+security-engineering", "region": "APAC", "type": "company", "playwright": True},
     {"name": "LINE (Yahoo Japan)", "url": "https://www.lycorp.co.jp/en/recruit/career/job-categories/#all", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Preferred Networks", "url": "https://www.preferred-networks.jp/en/careers", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Sansan", "url": "https://jp.careers.sansan.com/en/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "SmartHR", "url": "https://hrmos.co/pages/smarthr/jobs", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Money Forward", "url": "https://jobs.moneyforward.com/en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Freee", "url": "https://jobs.freee.co.jp/en", "region": "APAC", "type": "company", "playwright": True},
