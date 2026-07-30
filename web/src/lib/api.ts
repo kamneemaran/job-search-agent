@@ -50,6 +50,7 @@ export interface Profile {
   core_skills: string[];
   years_experience: number;
   seniority_keywords: string[];
+  google_sa_json?: string;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -220,6 +221,7 @@ export async function updateProfile(params: {
   current_role: string;
   core_skills: string[];
   years_experience: number;
+  google_sa_json?: string;
 }): Promise<Profile> {
   return apiFetch("/api/profile", {
     method: "PUT",

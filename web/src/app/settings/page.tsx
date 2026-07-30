@@ -64,6 +64,10 @@ export default function SettingsPage() {
   // Webhook state
   const [webhookUrl, setWebhookUrl] = useState("");
 
+  // Google SA JSON state (for Google Sheets sync — onetime setup)
+  const [googleSaJson, setGoogleSaJson] = useState("");
+  const [showSaSetup, setShowSaSetup] = useState(false);
+
   // Gmail label state
   const [gmailLabel, setGmailLabel] = useState("");
 
@@ -196,6 +200,9 @@ export default function SettingsPage() {
       setYearsExperience(profile.years_experience || 0);
       setSkills(profile.core_skills || []);
       setSkillsInput((profile.core_skills || []).join(", "));
+      const hasSa = profile.google_sa_json || "";
+      setGoogleSaJson(hasSa);
+      setShowSaSetup(!hasSa);
 
       setDigestFrequency(digest.frequency || "weekly");
       setDigestDayOfWeek(digest.day_of_week || "monday");
@@ -554,6 +561,57 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        {/* Google Service Account (onetime setup — hides after saved) */}
+        {showSaSetup && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
+            <h2 className="text-lg font-semibold text-white mb-3">🔑 Google Sheets Setup</h2>
+            <p className="text-xs text-gray-400 mb-3">
+              To sync jobs to <strong>your own</strong> Google Sheet, generate a service account key and paste it below. Do this once and it's stored securely.
+            </p>
+            <ol className="text-xs text-gray-400 space-y-1 mb-4 list-decimal list-inside">
+              <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">Google Cloud Console → Credentials</a></li>
+              <li>Create a <strong>Service Account</strong> (or use an existing one)</li>
+              <li>Click the service account → <strong>Keys</strong> tab → <strong>Add Key</strong> → <strong>Create New Key</strong> → <strong>JSON</strong></li>
+              <li>Open the downloaded JSON file, copy the entire contents, and paste below</li>
+              <li>Share your Google Sheet with the service account email as <strong>Editor</strong></li>
+            </ol>
+            <textarea
+              value={googleSaJson}
+              onChange={(e) => setGoogleSaJson(e.target.value)}
+              rows={6}
+              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none"
+              placeholder='{"type": "service_account", ...}'
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await updateProfile({
+                      name,
+                      current_role: currentRole,
+                      core_skills: skills,
+                      years_experience: yearsExperience,
+                      google_sa_json: googleSaJson,
+                    });
+                    setShowSaSetup(false);
+                    setMessage("Google service account saved.");
+                  } catch (err) {
+                    setMessage(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
+                  } finally {
+                    setSaving(false);
+                    setTimeout(() => setMessage(""), 3000);
+                  }
+                }}
+                disabled={saving || !googleSaJson.trim()}
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Saving..." : "Save Service Account Key"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Resume Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
