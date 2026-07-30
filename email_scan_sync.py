@@ -352,6 +352,12 @@ def main():
 
         if any(kw in full_clean for kw in ["offer letter", "congratulations", "we are pleased to inform"]):
             status = "offer"
+        elif any(kw in full_clean for kw in ["interview", "phone screen", "technical screen",
+                                              "schedule a time", "schedule an interview",
+                                              "interview invitation", "invite you to interview",
+                                              "next round", "onsite interview", "on-site interview",
+                                              "video interview", "coding interview"]):
+            status = "interview"
         elif any(kw in full_clean for kw in ["not moving forward", "not to move forward",
                                               "regret to inform", "not selected", "position has been filled"]):
             status = "rejected"
@@ -392,17 +398,21 @@ def main():
 
         new_status = new_info["status"]
         old_status = entry.get("status", "new")
-        if new_status == "applied" and old_status in ("applied", "rejected", "offer"):
+        if new_status == "applied" and old_status in ("applied", "rejected", "offer", "interview"):
             continue
         if new_status == "rejected" and old_status == "rejected":
             continue
         if new_status == "offer" and old_status == "offer":
+            continue
+        if new_status == "interview" and old_status in ("interview", "rejected", "offer"):
             continue
 
         entry["status"] = new_status
         entry["date_updated"] = now
         if new_status == "applied" and "date_applied" not in entry:
             entry["date_applied"] = now
+        elif new_status == "interview" and "date_interview" not in entry:
+            entry["date_interview"] = now
         elif new_status == "rejected":
             entry["date_rejected"] = now
         elif new_status == "offer":
@@ -437,6 +447,8 @@ def main():
         }
         if status == "applied":
             tracker["jobs"][key]["date_applied"] = now
+        elif status == "interview":
+            tracker["jobs"][key]["date_interview"] = now
         elif status == "rejected":
             tracker["jobs"][key]["date_rejected"] = now
         elif status == "offer":
@@ -490,7 +502,7 @@ def main():
             seen = set()
             for entry in tracker["jobs"].values():
                 s = entry.get("status", "new")
-                if s not in ("applied", "rejected", "offer"):
+                if s not in ("applied", "rejected", "offer", "interview"):
                     continue
                 dedup = (entry["company"].lower(), entry.get("title", "").lower())
                 if dedup in seen:
@@ -553,10 +565,10 @@ def main():
             if user_res.data:
                 user_id = user_res.data[0]["id"]
                 synced = 0
-                for entry in tracker["jobs"].values():
-                    s = entry.get("status", "new")
-                    if s not in ("applied", "rejected", "offer"):
-                        continue
+            for entry in tracker["jobs"].values():
+                s = entry.get("status", "new")
+                if s not in ("applied", "rejected", "offer", "interview"):
+                    continue
                     # Check if already exists in Supabase
                     existing = sb.table("jobs").select("id").eq("user_id", user_id)\
                         .eq("title", entry.get("title", ""))\

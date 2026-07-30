@@ -14,11 +14,12 @@ const STATUS_COLORS: Record<string, string> = {
   applied: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
   rejected: "bg-red-500/10 text-red-400 border-red-500/30",
   offer: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  interview: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
   expired: "bg-gray-500/10 text-gray-400 border-gray-500/30",
   na: "bg-purple-500/10 text-purple-400 border-purple-500/30",
 };
 
-const STATUS_OPTIONS = ["new", "applied", "rejected", "offer", "expired", "na"];
+const STATUS_OPTIONS = ["new", "applied", "rejected", "offer", "interview", "expired", "na"];
 
 export default function DashboardPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
@@ -310,6 +311,7 @@ export default function DashboardPage() {
     applied: jobs.filter((j) => j.status === "applied").length,
     rejected: jobs.filter((j) => j.status === "rejected").length,
     offer: jobs.filter((j) => j.status === "offer").length,
+    interview: jobs.filter((j) => j.status === "interview").length,
     expired: jobs.filter((j) => j.status === "expired").length,
     na: jobs.filter((j) => j.status === "na").length,
   };
@@ -453,7 +455,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-gray-800 pb-4">
         {/* Filter Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto">
-          {(["", "new", "applied", "rejected", "offer", "expired", "na"] as const).map((s) => (
+          {(["", "new", "applied", "rejected", "offer", "interview", "expired", "na"] as const).map((s) => (
             <button
               key={s || "all"}
               onClick={() => setFilter(s)}

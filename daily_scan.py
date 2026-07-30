@@ -5857,7 +5857,7 @@ class JobTracker:
     def is_known(self, title, company):
         key = self.job_key(title, company)
         entry = self.data["jobs"].get(key)
-        return entry and entry.get("status") in ("applied", "rejected", "offer")
+        return entry and entry.get("status") in ("applied", "rejected", "offer", "interview")
 
     def get_status(self, title, company):
         key = self.job_key(title, company)
@@ -5868,7 +5868,7 @@ class JobTracker:
         """Return (status, date_updated) if this exact (title, company) is tracked, else (None, None)."""
         key = self.job_key(title, company)
         entry = self.data["jobs"].get(key)
-        if entry and entry.get("status") in ("applied", "rejected", "offer"):
+        if entry and entry.get("status") in ("applied", "rejected", "offer", "interview"):
             return entry["status"], entry.get("date_updated", "") or entry.get("date_found", "")
         return None, None
 
@@ -5881,7 +5881,7 @@ class JobTracker:
             if entry.get("company", "").lower() != company.lower():
                 continue
             status = entry.get("status", "")
-            if status not in ("applied", "rejected", "offer"):
+            if status not in ("applied", "rejected", "offer", "interview"):
                 continue
             date_str = entry.get("date_updated", "") or entry.get("date_found", "")
             if date_str:
@@ -6041,7 +6041,7 @@ class JobTracker:
 
                 if not title or not company:
                     continue
-                if status not in ("new", "applied", "rejected", "offer", "expired", "na"):
+                if status not in ("new", "applied", "rejected", "offer", "interview", "expired", "na"):
                     status = "new"
 
                 key = self.job_key(title, company)

@@ -111,7 +111,7 @@ class TrackerJob(BaseModel):
 class TrackerUpdateRequest(BaseModel):
     title: str
     company: str
-    status: str = Field(..., pattern="^(new|applied|rejected|offer|expired|na)$")
+    status: str = Field(..., pattern="^(new|applied|rejected|offer|interview|expired|na)$")
     notes: str = ""
     new_title: Optional[str] = None
     new_company: Optional[str] = None

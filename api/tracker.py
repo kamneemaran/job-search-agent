@@ -261,7 +261,7 @@ def pull_sheet(authorization: Optional[str] = Header(None)):
         seen_in_sheet.add(key)
 
         status = sj.get("status", "new").strip().lower()
-        if status not in ("new", "applied", "rejected", "offer", "expired", "na"):
+        if status not in ("new", "applied", "rejected", "offer", "interview", "expired", "na"):
             status = "new"
 
         job_data = {
@@ -378,7 +378,7 @@ def import_tracker(
         status = row[cols["status"]].strip().lower() if cols["status"] is not None and cols["status"] < len(row) else "new"
         notes = row[cols["notes"]].strip() if cols["notes"] is not None and cols["notes"] < len(row) else ""
 
-        if status not in ("new", "applied", "rejected", "offer", "expired", "na"):
+        if status not in ("new", "applied", "rejected", "offer", "interview", "expired", "na"):
             status = "new"
 
         # Check duplicate
