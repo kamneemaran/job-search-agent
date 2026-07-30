@@ -3915,7 +3915,8 @@ def search_glassdoor(query, location="India", max_results=500):
     jobs = []
     loc_map = {"India": "113", "Remote": "0", "Germany": "96", "Netherlands": "178",
                "UK": "243", "United Kingdom": "243", "USA": "1", "United States": "1",
-               "Canada": "3", "Australia": "16", "Switzerland": "215", "Singapore": "200"}
+               "Canada": "3", "Australia": "16", "Switzerland": "215", "Singapore": "200",
+               "Japan": "102"}
     loc_id = loc_map.get(location, "113")
     query_param = query.replace(" ", "+")
     max_pages = 3
@@ -3974,6 +3975,9 @@ def search_glassdoor_uk(query, location="United Kingdom", max_results=500):
 
 def search_glassdoor_de(query, location="Germany", max_results=500):
     return search_glassdoor(query, "Germany", max_results)
+
+def search_glassdoor_jp(query, location="Japan", max_results=500):
+    return search_glassdoor(query, "Japan", max_results)
 
 
 def _playwright_scrape(url, selector, extract_fn, wait_selector=None):
@@ -8185,9 +8189,12 @@ def main():
         ("JobsinGermany", search_jobsingermany),
         ("WorkinFinland", search_workinfinland),
         ("EURES", search_eures),
+        ("LinkedInJP", search_linkedin_jp),
+        ("IndeedJP", search_indeed_jp),
+        ("GlassdoorJP", search_glassdoor_jp),
     ]
     # Split boards: boards-major = global/major boards, boards-AU-NZ = niche/regional boards
-    _split = 9
+    _split = 12
     if args.batch == "boards-major":
         board_scrapers = board_scrapers[:_split]
     elif args.batch == "boards-AU-NZ":

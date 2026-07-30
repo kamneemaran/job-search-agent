@@ -275,16 +275,18 @@ def extract_company(subject, sender, full_text, tracker_companies):
 
     return None
 
-def main():
+def main(label: str = ""):
     full_scan = "--full" in sys.argv
+
+    active_labels = [label] if label else LABELS
 
     tracker = load_json(TRACKER_FILE, {"jobs": {}})
     state = load_json(STATE_FILE, {"last_scan": None})
 
     days = 90 if (full_scan or state.get("last_scan") is None) else max(1, (datetime.now() - datetime.fromisoformat(state["last_scan"])).days + 2)
-    print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {LABELS} label(s) ===", flush=True)
+    print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {active_labels} label(s) ===", flush=True)
 
-    if not LABELS:
+    if not active_labels:
         print("  [!] No GMAIL_LABEL set — skipping label scan", flush=True)
         print("=== Done ===", flush=True)
         return
@@ -298,7 +300,7 @@ def main():
     mail.login(GMAIL_USER, GMAIL_PASS)
 
     results = []
-    for label in LABELS:
+    for label in active_labels:
         try:
             # Quote if containing spaces to satisfy IMAP parser
             imap_label = f'"{label}"' if " " in label else label

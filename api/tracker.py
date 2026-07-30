@@ -1,7 +1,8 @@
 """Tracker API endpoints — manage job applications in Supabase."""
 import csv
 import io
-from fastapi import APIRouter, HTTPException, Header, UploadFile, File
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, Header, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from typing import Optional
 
@@ -312,6 +313,44 @@ def pull_sheet(authorization: Optional[str] = Header(None)):
         "inserted": inserted_count,
         "updated": updated_count,
         "total": len(sheet_jobs)
+    }
+
+
+@router.post("/email-scan")
+def email_scan(
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
+    sb, user = _require_user(authorization)
+
+    # Get user's gmail_label preference
+    pref = sb.table("email_preferences").select("gmail_label").eq("user_id", user.id).maybe_single().execute()
+    label = (pref.data.get("gmail_label") or "") if pref.data else ""
+
+    if not label:
+        raise HTTPException(400, "No Gmail label configured. Set it in Settings → Email Digest → Gmail Label.")
+
+    # Ensure GMAIL_ADDRESS and GMAIL_APP_PASSWORD are available
+    import os
+    if not os.environ.get("GMAIL_ADDRESS") or not os.environ.get("GMAIL_APP_PASSWORD"):
+        raise HTTPException(500, "Gmail credentials not configured on server. Set GMAIL_ADDRESS and GMAIL_APP_PASSWORD.")
+
+    user_id_str = str(user.id)[:8]
+    profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
+    tracker_file = f"job_tracker_{profile_slug}.json"
+
+    def _run_scan():
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        import email_scan_sync as ess
+        ess.TRACKER_FILE = tracker_file
+        ess.main(label=label)
+
+    background_tasks.add_task(_run_scan)
+
+    return {
+        "status": "scan_started",
+        "message": f"Email scan started for label '{label}'. Results will sync to Supabase and your sheet.",
     }
 
 

@@ -74,7 +74,7 @@ PLAYWRIGHT_BOARDS = {
     # Indeed variants
     "Indeed", "IndeedAU", "IndeedNZ", "IndeedSG", "IndeedJP", "IndeedKR", "IndeedHK", "IndeedUK", "IndeedDE", "IndeedNL",
     # Glassdoor variants
-    "Glassdoor", "GlassdoorAU", "GlassdoorSG", "GlassdoorUK", "GlassdoorDE",
+    "Glassdoor", "GlassdoorAU", "GlassdoorSG", "GlassdoorUK", "GlassdoorDE", "GlassdoorJP",
     # European/Regional Playwright-based
     "EURES", "StepStone", "InfoJobs", "Bundesagentur", "WorkInFinland", "WorkInLux",
     "SAPOEmprego", "NetEmpregos", "JobsCh", "JobsinGermany", "MonsterDE", "Reed", "Jobsite",
@@ -687,6 +687,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
     is_germany_search = "germany" in loc_lower or "berlin" in loc_lower or "munich" in loc_lower or "frankfurt" in loc_lower
     # Bug 4 fix: removed "nl" substring check which matches "online", "only", etc.
     is_netherlands_search = "netherlands" in loc_lower or "holland" in loc_lower or any(city in loc_lower for city in ["amsterdam", "rotterdam", "utrecht", "hague", "eindhoven"])
+    is_japan_search = "japan" in loc_lower or any(city in loc_lower for city in ["tokyo", "osaka", "kyoto", "yokohama", "nagoya", "sapporo", "kobe", "fukuoka"])
 
     target_boards = []
     BOARD_MAP = {
@@ -722,6 +723,7 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         "GlassdoorSG": ds.search_glassdoor_sg,
         "GlassdoorUK": ds.search_glassdoor_uk,
         "GlassdoorDE": ds.search_glassdoor_de,
+        "GlassdoorJP": ds.search_glassdoor_jp,
         "VisaSponsor": ds.search_visasponsor,
         "VisaSponsor.Jobs": ds.search_visasponsor,
         "EURES": ds.search_eures,
@@ -805,6 +807,15 @@ def search_jobs(req: SearchRequest, authorization: Optional[str] = Header(None))
         target_boards = [
             ("IamExpat", ds.search_iamexpat),
             ("TogetherAbroad", ds.search_togetherabroad),
+            ("LinkedIn", ds.search_linkedin),
+            ("Indeed", ds.search_indeed),
+        ]
+    elif is_japan_search:
+        # Japan-specific job boards
+        target_boards = [
+            ("LinkedInJP", ds.search_linkedin_jp),
+            ("IndeedJP", ds.search_indeed_jp),
+            ("GlassdoorJP", ds.search_glassdoor_jp),
             ("LinkedIn", ds.search_linkedin),
             ("Indeed", ds.search_indeed),
         ]

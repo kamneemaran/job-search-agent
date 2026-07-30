@@ -726,6 +726,7 @@ def _search_jobs(
         ("GlassdoorSG", search_glassdoor_sg),
         ("GlassdoorUK", search_glassdoor_uk),
         ("GlassdoorDE", search_glassdoor_de),
+        ("GlassdoorJP", search_glassdoor_jp),
         ("SimplyHired", search_simplyhired),
         ("WeWorkRemotely", search_weworkremotely),
         ("WomenInTech", search_womenintech),

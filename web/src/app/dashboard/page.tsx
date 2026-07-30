@@ -50,6 +50,10 @@ export default function DashboardPage() {
   const [pulling, setPulling] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
 
+  // Email scan state
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
+
   // Import/export state
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
@@ -250,6 +254,32 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 5000);
   };
 
+  const handleEmailScan = async () => {
+    setScanning(true);
+    setSheetMsg("");
+    try {
+      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/api/tracker/email-scan`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScanMsg(data.message || "Email scan started!");
+      } else {
+        const err = await res.json();
+        setScanMsg(err.detail || "Email scan failed");
+      }
+    } catch {
+      setScanMsg("Email scan failed");
+    }
+    setScanning(false);
+    setTimeout(() => setScanMsg(""), 5000);
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -397,7 +427,19 @@ export default function DashboardPage() {
           >
             {pulling ? "Importing..." : "Import from Sheet"}
           </button>
+          <button
+            onClick={handleEmailScan}
+            disabled={scanning}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {scanning ? "Scanning..." : "Scan Email & Sync"}
+          </button>
         </div>
+        {scanMsg && (
+          <p className={`text-xs mt-2 ${scanMsg.includes("Failed") ? "text-red-400" : "text-amber-400"}`}>
+            {scanMsg}
+          </p>
+        )}
         {sheetMsg && (
           <p className={`text-xs mt-2 ${sheetMsg.includes("Failed") ? "text-red-400" : "text-emerald-400"}`}>
             {sheetMsg}
