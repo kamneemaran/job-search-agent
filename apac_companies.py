@@ -61,7 +61,6 @@ APAC_JOB_SOURCES = [
     {"name": "Toshiba", "url": "https://www.global.toshiba/jp/careers.html", "region": "APAC", "type": "company", "playwright": True},
     {"name": "NTT Data", "url": "https://www.nttdata.com/global/en/careers", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Denso", "url": "https://www.denso.com/global/en/careers/", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Yamaha", "url": "https://www.yamaha.com/en/careers/", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Panasonic", "url": "https://careers.na.panasonic.com/jobs?categories=Engineering%7CIT&page=1", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Samsung", "url": "https://www.samsungcareers.com/?lang=en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Wipro", "url": "https://careers.wipro.com/go/Engineering/9369255/", "region": "APAC", "type": "company", "playwright": True},
