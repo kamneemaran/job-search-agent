@@ -191,7 +191,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const [profile, digest] = await Promise.all([
-        getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [] })),
+        getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [], google_sa_json: "", google_sa_dismissed: false })),
         getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "" })),
       ]);
 
