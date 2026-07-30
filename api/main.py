@@ -264,7 +264,7 @@ def update_profile(
         "years_experience": req.years_experience,
         "core_skills": req.core_skills,
     }
-    if req.google_sa_json:
+    if req.google_sa_json is not None:
         data["google_sa_json"] = req.google_sa_json
     if req.google_sa_dismissed:
         data["google_sa_dismissed"] = True
