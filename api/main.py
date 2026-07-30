@@ -277,7 +277,7 @@ def update_profile(
         core_skills=req.core_skills,
         years_experience=req.years_experience,
         seniority_keywords=ds.PROFILE.get("seniority_keywords", []),
-        google_sa_json=req.google_sa_json,
+        google_sa_json=req.google_sa_json or "",
         google_sa_dismissed=req.google_sa_dismissed,
     )
 
