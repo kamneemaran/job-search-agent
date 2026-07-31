@@ -8,7 +8,7 @@ APAC_JOB_SOURCES = [
     {"name": "Unisoft", "url": "https://unisoft.sg", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Grab", "url": "https://www.grab.careers/en/jobs", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Skill Quotient Group", "url": "https://skillquotientgroup.com/career", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "NCS Group", "url": "https://www.ncs.co/careers", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "NCS Group", "url": "https://www.ncs.co/careers?function=Information%20Technology", "region": "APAC", "type": "company", "playwright": True},
     {"name": "E Financial Careers", "url": "https://www.efinancialcareers.sg", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Mujin", "url": "https://mujin-corp.com/company/careers", "region": "APAC", "type": "company", "playwright": True},
     {"name": "PayPay", "url": "https://about.paypay.ne.jp/career/en/job-category/product-development/#sec-02", "region": "APAC", "type": "company", "playwright": True},
@@ -44,8 +44,8 @@ APAC_JOB_SOURCES = [
 
     # APAC tech companies
     {"name": "Tencent", "url": "https://careers.tencent.com/en-us/search.html?query=ot_40001002,ot_40001001,ot_40001003,ot_40001004,ot_40001005,ot_40001006,at_1", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Sea Limited", "url": "https://career.sea.com/jobs?&keyword=&job_categories=6&teams=107458", "region": "APAC", "type": "company", "playwright": True},
-    {"name": "Alibaba (AIDC)", "url": "https://aidc-jobs.alibaba.com/home?lang=en", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Sea Limited", "url": "https://career.sea.com/jobs?job_categories=6", "region": "APAC", "type": "company", "playwright": True},
+    {"name": "Alibaba (AIDC)", "url": "https://aidc-jobs.alibaba.com/en/off-campus/position-list?lang=en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Rakuten", "url": "https://japan-job-en.rakuten.careers/engineering-en", "region": "APAC", "type": "company", "playwright": True},
     {"name": "Mercari", "url": "https://careers.mercari.com/jobs/?job_category=jc-engineering+engineering+corporate-engineering+security-engineering", "region": "APAC", "type": "company", "playwright": True},
     {"name": "LINE (Yahoo Japan)", "url": "https://www.lycorp.co.jp/en/recruit/career/job-categories/#all", "region": "APAC", "type": "company", "playwright": True},
