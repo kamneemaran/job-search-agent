@@ -12,6 +12,7 @@ from api.models import (
 )
 from api.supabase import get_user_client, get_user_id
 from api.rate_limit import check_tracker_limit
+from api.crypto import decrypt_text
 
 router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 
@@ -328,7 +329,8 @@ def email_scan(
         pref = sb.table("email_preferences").select("gmail_label, gmail_app_password").eq("user_id", user.id).maybe_single().execute()
         if pref.data:
             label = pref.data.get("gmail_label") or ""
-            app_password = pref.data.get("gmail_app_password") or ""
+            stored_pw = pref.data.get("gmail_app_password") or ""
+            app_password = decrypt_text(stored_pw)
     except Exception:
         pass
 

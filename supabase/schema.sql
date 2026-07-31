@@ -60,7 +60,7 @@ create table public.jobs (
   score_note text default '',
   salary text default '',
   source text default '',
-  status text default 'new' check (status in ('new', 'applied', 'rejected', 'offer')),
+  status text default 'new' check (status in ('new', 'applied', 'rejected', 'offer', 'interview', 'expired', 'na')),
   notes text default '',
   found_at timestamptz default now(),
   updated_at timestamptz default now(),

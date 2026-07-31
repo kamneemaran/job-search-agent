@@ -12,6 +12,7 @@ logger = logging.getLogger("jobpilot.digest")
 
 from api.models import DigestPreferences, DigestSendRequest
 from api.supabase import get_user_client
+from api.crypto import encrypt_text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -112,7 +113,7 @@ def update_digest_preferences(
     # Save gmail fields independently so they persist even if schedule columns are missing
     gmail_fields = {"user_id": user.id, "gmail_label": prefs.gmail_label, "gmail_configured": prefs.gmail_configured}
     if prefs.gmail_app_password:
-        gmail_fields["gmail_app_password"] = _normalize_app_password(prefs.gmail_app_password)
+        gmail_fields["gmail_app_password"] = encrypt_text(_normalize_app_password(prefs.gmail_app_password))
     _upsert(gmail_fields)
 
     return prefs
