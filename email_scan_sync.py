@@ -275,7 +275,7 @@ def extract_company(subject, sender, full_text, tracker_companies):
 
     return None
 
-def main(label: str = ""):
+def main(label: str = "", supabase_user_email: str = ""):
     full_scan = "--full" in sys.argv
 
     active_labels = [label] if label else LABELS
@@ -565,15 +565,16 @@ def main(label: str = ""):
         try:
             from supabase import create_client
             sb = create_client(supabase_url, supabase_key)
-            # Look up the user by GMAIL_ADDRESS
-            user_res = sb.table("profiles").select("id").eq("email", GMAIL_USER).execute()
+            lookup_email = supabase_user_email or GMAIL_USER
+            # Look up the user by email
+            user_res = sb.table("profiles").select("id").eq("email", lookup_email).execute()
             if user_res.data:
                 user_id = user_res.data[0]["id"]
                 synced = 0
-            for entry in tracker["jobs"].values():
-                s = entry.get("status", "new")
-                if s not in ("applied", "rejected", "offer", "interview"):
-                    continue
+                for entry in tracker["jobs"].values():
+                    s = entry.get("status", "new")
+                    if s not in ("applied", "rejected", "offer", "interview"):
+                        continue
                     # Check if already exists in Supabase
                     existing = sb.table("jobs").select("id").eq("user_id", user_id)\
                         .eq("title", entry.get("title", ""))\
@@ -599,7 +600,7 @@ def main(label: str = ""):
                     synced += 1
                 print(f"  [supabase] Synced {synced} entries to tracker", flush=True)
             else:
-                print(f"  [supabase] User '{GMAIL_USER}' not found", flush=True)
+                print(f"  [supabase] User '{lookup_email}' not found", flush=True)
         except Exception as e:
             print(f"  [supabase] Error: {e}", flush=True)
     else:

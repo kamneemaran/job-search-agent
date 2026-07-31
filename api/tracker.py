@@ -348,7 +348,8 @@ def email_scan(
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
         import email_scan_sync as ess
         ess.TRACKER_FILE = tracker_file
-        ess.main(label=label)
+        user_email = user.email if hasattr(user, "email") else (user.get("email") if isinstance(user, dict) else "")
+        ess.main(label=label, supabase_user_email=user_email or "")
 
     background_tasks.add_task(_run_scan)
 
