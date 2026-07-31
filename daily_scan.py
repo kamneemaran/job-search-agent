@@ -5835,6 +5835,42 @@ def parse_resume_pdf(path):
 # 6. JOB TRACKER - persistent status tracking + email rejection detection
 # ---------------------------------------------------------------------------
 
+def _get_gsheet_creds(scopes):
+    """Robustly load Google Service Account credentials from env vars or local file."""
+    from google.oauth2 import service_account
+    import base64
+    
+    # Try base64 env
+    b64_json = os.environ.get("GOOGLE_SA_JSON")
+    if b64_json:
+        try:
+            decoded = base64.b64decode(b64_json).decode("utf-8")
+            return service_account.Credentials.from_service_account_info(
+                json.loads(decoded), scopes=scopes
+            )
+        except Exception:
+            pass
+
+    # Try raw JSON env
+    env_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") or os.environ.get("GSHEET_SERVICE_ACCOUNT_JSON")
+    if env_json:
+        try:
+            return service_account.Credentials.from_service_account_info(
+                json.loads(env_json), scopes=scopes
+            )
+        except Exception:
+            pass
+
+    # Try file path
+    sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+    if os.path.exists(sa_path):
+        try:
+            return service_account.Credentials.from_service_account_file(sa_path, scopes=scopes)
+        except Exception:
+            pass
+        
+    return None
+
 TRACKER_FILE = "job_tracker.json"
 
 class JobTracker:
@@ -6009,15 +6045,15 @@ class JobTracker:
         """Load tracked jobs from Google Sheets 'All Jobs' tab.
         Falls back to local file if sheets unavailable."""
         gsheet_id = os.environ.get("GSHEET_ID")
-        gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
-        if not gsheet_id or not os.path.exists(gsheet_sa_path):
+        if not gsheet_id:
             return False
         try:
-            from google.oauth2 import service_account
             from googleapiclient.discovery import build
 
             SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-            creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
+            creds = _get_gsheet_creds(SCOPES)
+            if not creds:
+                return False
             service = build("sheets", "v4", credentials=creds)
             sheet = service.spreadsheets()
 
@@ -8772,39 +8808,38 @@ def main():
 
     # --- Push to Google Sheets if service account exists ---
     gsheet_id = os.environ.get("GSHEET_ID")
-    gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
-    if gsheet_id and os.path.exists(gsheet_sa_path):
+    if gsheet_id:
         try:
-            from google.oauth2 import service_account
             from googleapiclient.discovery import build
 
             SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-            creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
-            service = build("sheets", "v4", credentials=creds)
-            sheet = service.spreadsheets()
+            creds = _get_gsheet_creds(SCOPES)
+            if creds:
+                service = build("sheets", "v4", credentials=creds)
+                sheet = service.spreadsheets()
 
-            # Build rows: header + data
-            rows = [["Score", "Title", "Company", "Location", "Salary", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"]]
-            for m in all_matches:
-                suggestions = "; ".join(m.get("suggestions", []))
-                status = tracker.get_status(m["title"], m["company"])
-                salary_str = _format_salary(m.get("salary_info", {})) if m.get("salary_info") else ""
-                rows.append([
-                    m["score"], m["title"], m["company"], m.get("location", ""),
-                    salary_str,
-                    m.get("url", ""), m.get("company_url", company_url(m["company"])),
-                    m.get("relocation_note", ""), suggestions, status
-                ])
+                # Build rows: header + data
+                rows = [["Score", "Title", "Company", "Location", "Salary", "URL", "Company Link", "Relocation Note", "Suggestions", "Status"]]
+                for m in all_matches:
+                    suggestions = "; ".join(m.get("suggestions", []))
+                    status = tracker.get_status(m["title"], m["company"])
+                    salary_str = _format_salary(m.get("salary_info", {})) if m.get("salary_info") else ""
+                    rows.append([
+                        m["score"], m["title"], m["company"], m.get("location", ""),
+                        salary_str,
+                        m.get("url", ""), m.get("company_url", company_url(m["company"])),
+                        m.get("relocation_note", ""), suggestions, status
+                    ])
 
-            # First clear existing data, then write
-            sheet.values().clear(spreadsheetId=gsheet_id, range="Sheet1!A:Z").execute()
-            sheet.values().update(
-                spreadsheetId=gsheet_id,
-                range="Sheet1!A1",
-                valueInputOption="RAW",
-                body={"values": rows}
-            ).execute()
-            print(f"  [gsheet] Synced {len(all_matches)} matches to Google Sheet")
+                # First clear existing data, then write
+                sheet.values().clear(spreadsheetId=gsheet_id, range="Sheet1!A:Z").execute()
+                sheet.values().update(
+                    spreadsheetId=gsheet_id,
+                    range="Sheet1!A1",
+                    valueInputOption="RAW",
+                    body={"values": rows}
+                ).execute()
+                print(f"  [gsheet] Synced {len(all_matches)} matches to Google Sheet")
         except Exception as e:
             print(f"  [gsheet] Error: {e}")
 
@@ -8904,18 +8939,18 @@ def sync_tracker_to_gsheet(tracker_instance=None):
     Returns True on success, False otherwise.
     """
     gsheet_id = os.environ.get("GSHEET_ID")
-    gsheet_sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
-    if not gsheet_id or not os.path.exists(gsheet_sa_path):
+    if not gsheet_id:
         return False
     try:
-        from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
         if tracker_instance is None:
             tracker_instance = JobTracker()
 
         SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = service_account.Credentials.from_service_account_file(gsheet_sa_path, scopes=SCOPES)
+        creds = _get_gsheet_creds(SCOPES)
+        if not creds:
+            return False
         service = build("sheets", "v4", credentials=creds)
         sheet = service.spreadsheets()
 

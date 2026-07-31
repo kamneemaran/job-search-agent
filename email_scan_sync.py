@@ -521,11 +521,38 @@ def main(label: str = "", supabase_user_email: str = ""):
         try:
             from google.oauth2 import service_account
             from googleapiclient.discovery import build
+            import base64
 
-            creds = service_account.Credentials.from_service_account_file(
-                "gsheet_service_account.json",
-                scopes=["https://www.googleapis.com/auth/spreadsheets"]
-            )
+            creds = None
+            b64_json = os.environ.get("GOOGLE_SA_JSON")
+            if b64_json:
+                try:
+                    decoded = base64.b64decode(b64_json).decode("utf-8")
+                    creds = service_account.Credentials.from_service_account_info(
+                        json.loads(decoded),
+                        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+                    )
+                except Exception:
+                    pass
+
+            if not creds:
+                env_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+                if env_json:
+                    try:
+                        creds = service_account.Credentials.from_service_account_info(
+                            json.loads(env_json),
+                            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+                        )
+                    except Exception:
+                        pass
+
+            if not creds:
+                sa_path = os.environ.get("GSHEET_SERVICE_ACCOUNT") or "gsheet_service_account.json"
+                creds = service_account.Credentials.from_service_account_file(
+                    sa_path,
+                    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+                )
+
             service = build("sheets", "v4", credentials=creds)
             sheet = service.spreadsheets()
 
@@ -642,7 +669,12 @@ def main(label: str = "", supabase_user_email: str = ""):
             else:
                 print(f"  [supabase] User '{lookup_email}' not found", flush=True)
         except Exception as e:
-            print(f"  [supabase] Error: {e}", flush=True)
+            err_str = str(e)
+            if "jobs_status_check" in err_str or "violates check constraint" in err_str:
+                print("  [supabase] Error: Your Supabase 'jobs' table lacks the updated status constraint.", flush=True)
+                print("             Please run the SQL statements in 'supabase/migration_007_widen_jobs_status.sql' in your Supabase SQL Editor.", flush=True)
+            else:
+                print(f"  [supabase] Error: {e}", flush=True)
     else:
         print("  [!] No SUPABASE_SERVICE_ROLE_KEY set — skipping Supabase sync", flush=True)
 
