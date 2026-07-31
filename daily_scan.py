@@ -858,6 +858,11 @@ _JUNIOR_RE = []
 _TITLE_RED_FLAG_RE = []
 _SKILL_RE = []
 _EXP_PATTERNS = [
+    # Explicit prefix patterns
+    (re.compile(r'exp(?:erience)?[:\s]+(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:yrs?|years?)'), 'range'),
+    (re.compile(r'exp(?:erience)?[:\s]+(\d+)\+?\s*(?:yrs?|years?)'), 'min'),
+    
+    # Existing suffix patterns
     (re.compile(r'(\d+)\+?\s*(?:yrs?|years?)\s*(?:of\s+)?(?:\S+\s+)*?(?:exp|experience)'), 'min'),
     (re.compile(r'(?:min|minimum|at least|≥)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?'), 'min'),
     (re.compile(r'(?:max|maximum|up to|≤)\s*(\d+)\s*\+?\s*(?:yrs?|years?)(?:\s+(?:of\s+)?(?:\S+\s+)*?(?:exp|experience))?'), 'max'),
