@@ -349,6 +349,8 @@ def email_scan(
         import email_scan_sync as ess
         ess.TRACKER_FILE = tracker_file
         user_email = user.email if hasattr(user, "email") else (user.get("email") if isinstance(user, dict) else "")
+        if user_email:
+            ess.GMAIL_USER = user_email
         ess.main(label=label, supabase_user_email=user_email or "")
 
     background_tasks.add_task(_run_scan)
