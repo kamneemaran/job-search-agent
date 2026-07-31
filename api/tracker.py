@@ -324,8 +324,12 @@ def email_scan(
     sb, user = _require_user(authorization)
 
     # Get user's gmail_label preference
-    pref = sb.table("email_preferences").select("gmail_label").eq("user_id", user.id).maybe_single().execute()
-    label = (pref.data.get("gmail_label") or "") if pref.data else ""
+    label = ""
+    try:
+        pref = sb.table("email_preferences").select("gmail_label").eq("user_id", user.id).maybe_single().execute()
+        label = (pref.data.get("gmail_label") or "") if pref.data else ""
+    except Exception:
+        pass
 
     if not label:
         raise HTTPException(400, "No Gmail label configured. Set it in Settings → Email Digest → Gmail Label.")

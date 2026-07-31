@@ -268,7 +268,25 @@ def update_profile(
         data["google_sa_json"] = req.google_sa_json
     if req.google_sa_dismissed:
         data["google_sa_dismissed"] = True
-    sb.table("profiles").upsert(data, on_conflict="id").execute()
+    logger = logging.getLogger("jobpilot")
+    logger.info(f"Upserting profile data keys: {list(data.keys())}")
+    has_sa = "google_sa_json" in data
+    logger.info(f"google_sa_json in data: {has_sa}, value length: {len(str(data.get('google_sa_json', '')))}")
+
+    try:
+        result = sb.table("profiles").upsert(data, on_conflict="id").execute()
+        logger.info(f"Upsert response: {result}")
+    except Exception as e:
+        logger.error(f"Profile upsert failed: {e}", exc_info=True)
+        raise HTTPException(500, detail=f"Database save failed: {e}")
+
+    # Read back to verify
+    try:
+        verify = sb.table("profiles").select("google_sa_json").eq("id", user_id).maybe_single().execute()
+        saved_val = (verify.data or {}).get("google_sa_json", "")
+        logger.info(f"Verified google_sa_json in DB: length={len(str(saved_val))}, empty={not saved_val}")
+    except Exception as e:
+        logger.error(f"Verify read failed: {e}")
 
     ds = _get_ds()
     return ProfileResponse(

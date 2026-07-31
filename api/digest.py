@@ -91,6 +91,7 @@ def update_digest_preferences(
         data.pop("batches", None)
         data.pop("posted_date_filter", None)
         data.pop("webhook_url", None)
+        data.pop("gmail_label", None)
         try:
             sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
         except Exception:
