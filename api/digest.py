@@ -72,7 +72,23 @@ def update_digest_preferences(
     sb = get_user_client(authorization)
     user = sb.auth.get_user().user
 
-    data = {
+    def _upsert(payload: dict) -> None:
+        try:
+            sb.table("email_preferences").upsert(payload, on_conflict="user_id").execute()
+        except Exception:
+            # Remove newer columns that may not exist yet in the database
+            payload.pop("batches", None)
+            payload.pop("posted_date_filter", None)
+            payload.pop("webhook_url", None)
+            payload.pop("gmail_label", None)
+            payload.pop("gmail_configured", None)
+            payload.pop("gmail_app_password", None)
+            try:
+                sb.table("email_preferences").upsert(payload, on_conflict="user_id").execute()
+            except Exception:
+                pass
+
+    base = {
         "user_id": user.id,
         "enabled": prefs.enabled,
         "frequency": prefs.frequency,
@@ -87,24 +103,12 @@ def update_digest_preferences(
         "gmail_label": prefs.gmail_label,
         "gmail_configured": prefs.gmail_configured,
     }
-    # Only update the app password when a new non-empty value is provided
+    _upsert(dict(base))
+    # Save gmail fields independently so they persist even if schedule columns are missing
+    gmail_fields = {"user_id": user.id, "gmail_label": prefs.gmail_label, "gmail_configured": prefs.gmail_configured}
     if prefs.gmail_app_password:
-        data["gmail_app_password"] = prefs.gmail_app_password
-
-    try:
-        sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
-    except Exception as e:
-        # Remove newer columns that may not exist yet in the database
-        data.pop("batches", None)
-        data.pop("posted_date_filter", None)
-        data.pop("webhook_url", None)
-        data.pop("gmail_label", None)
-        data.pop("gmail_configured", None)
-        data.pop("gmail_app_password", None)
-        try:
-            sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
-        except Exception:
-            pass
+        gmail_fields["gmail_app_password"] = prefs.gmail_app_password
+    _upsert(gmail_fields)
 
     return prefs
 
