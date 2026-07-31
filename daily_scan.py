@@ -7107,6 +7107,14 @@ def search_bundesagentur(query, location="Germany", max_results=500):
     return []
 
 
+def search_careercross(query=None, location=None, max_results=None):
+    """Placeholder for CareerCross which is heavily protected by Cloudflare.
+    Provides direct manual search link instead."""
+    print("  [careercross] Cloudflare anti-bot active. Please check your custom search manually: "
+          "https://www.careercross.com/en/job-search/result/76171185")
+    return []
+
+
 def scrape_tokyodev():
     """Scrapes job listings from Tokyo Dev."""
     jobs = []
@@ -8367,6 +8375,7 @@ def main():
         ("LinkedInJP", search_linkedin_jp),
         ("IndeedJP", search_indeed_jp),
         ("GlassdoorJP", search_glassdoor_jp),
+        ("CareerCross", search_careercross),
     ]
     # Split boards: boards-major = global/major boards, boards-AU-NZ = niche/regional boards
     _split = 12
