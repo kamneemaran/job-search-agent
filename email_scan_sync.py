@@ -297,7 +297,12 @@ def main(label: str = "", supabase_user_email: str = ""):
         return
 
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
-    mail.login(GMAIL_USER, GMAIL_PASS)
+    try:
+        mail.login(GMAIL_USER, GMAIL_PASS)
+    except imaplib.IMAP4.error as e:
+        print(f"  [!] Gmail login failed for {GMAIL_USER}: {e}", flush=True)
+        print("=== Done ===", flush=True)
+        return
 
     results = []
     for label in active_labels:
