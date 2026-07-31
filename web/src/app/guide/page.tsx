@@ -106,8 +106,7 @@ export default function GuidePage() {
               </p>
               <ul className="list-disc pl-5 text-gray-400 text-sm space-y-1">
                 <li><strong className="text-white">Sheet URL:</strong> Create a Google Sheet, paste its URL, and click "Save URL".</li>
-                <li><strong className="text-white">Service Account Key (optional):</strong> Paste your own Google service account JSON to sync to your sheet using your own credentials. Leave it empty to use the shared service account.</li>
-                <li><strong className="text-white">Share the sheet:</strong> If using your own key, share the sheet as <strong className="text-white">Editor</strong> with the <code className="text-indigo-400">client_email</code> inside your JSON. Otherwise share with <code className="text-indigo-400">kminterviewer@jobpilot-449312.iam.gserviceaccount.com</code>.</li>
+                <li><strong className="text-white">Share the sheet:</strong> Share it as <strong className="text-white">Editor</strong> with <code className="text-indigo-400">kminterviewer@jobpilot-449312.iam.gserviceaccount.com</code>.</li>
                 <li><strong className="text-white">Export to Sheet / Import from Sheet:</strong> Push your tracked jobs to the sheet, or pull sheet changes back into the dashboard.</li>
               </ul>
               <p className="text-gray-400 text-sm leading-relaxed mt-3">

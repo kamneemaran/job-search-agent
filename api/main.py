@@ -138,19 +138,12 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
             except Exception:
                 core_skills = []
 
-        google_sa_json = row.get("google_sa_json", "") or ""
-        google_sa_dismissed = row.get("google_sa_dismissed", False) or False
-        if isinstance(google_sa_dismissed, str):
-            google_sa_dismissed = google_sa_dismissed.lower() in ("true", "1", "yes")
-
         if not core_skills or not isinstance(core_skills, list) or len(core_skills) == 0:
             return {
                 "name": row.get("full_name", "") or "",
                 "current_role": row.get("current_role", "") or "",
                 "core_skills": [],
                 "years_experience": row.get("years_experience", 0) or 0,
-                "google_sa_json": google_sa_json,
-                "google_sa_dismissed": google_sa_dismissed,
             }
 
         return {
@@ -158,8 +151,6 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
             "current_role": row.get("current_role", "") or "",
             "core_skills": core_skills,
             "years_experience": row.get("years_experience", 0) or 0,
-            "google_sa_json": google_sa_json,
-            "google_sa_dismissed": google_sa_dismissed,
         }
     except HTTPException:
         raise
@@ -237,8 +228,6 @@ def get_profile(authorization: Optional[str] = Header(None)):
         core_skills=profile.get("core_skills", []) or [],
         years_experience=profile["years_experience"],
         seniority_keywords=p.get("seniority_keywords", []),
-        google_sa_json=profile.get("google_sa_json", ""),
-        google_sa_dismissed=profile.get("google_sa_dismissed", False),
     )
 
 
@@ -264,29 +253,11 @@ def update_profile(
         "years_experience": req.years_experience,
         "core_skills": req.core_skills,
     }
-    if req.google_sa_json is not None:
-        data["google_sa_json"] = req.google_sa_json
-    if req.google_sa_dismissed:
-        data["google_sa_dismissed"] = True
-    logger = logging.getLogger("jobpilot")
-    logger.info(f"Upserting profile data keys: {list(data.keys())}")
-    has_sa = "google_sa_json" in data
-    logger.info(f"google_sa_json in data: {has_sa}, value length: {len(str(data.get('google_sa_json', '')))}")
-
     try:
         result = sb.table("profiles").upsert(data, on_conflict="id").execute()
-        logger.info(f"Upsert response: {result}")
     except Exception as e:
         logger.error(f"Profile upsert failed: {e}", exc_info=True)
         raise HTTPException(500, detail=f"Database save failed: {e}")
-
-    # Read back to verify
-    try:
-        verify = sb.table("profiles").select("google_sa_json").eq("id", user_id).maybe_single().execute()
-        saved_val = (verify.data or {}).get("google_sa_json", "")
-        logger.info(f"Verified google_sa_json in DB: length={len(str(saved_val))}, empty={not saved_val}")
-    except Exception as e:
-        logger.error(f"Verify read failed: {e}")
 
     ds = _get_ds()
     return ProfileResponse(
@@ -295,8 +266,6 @@ def update_profile(
         core_skills=req.core_skills,
         years_experience=req.years_experience,
         seniority_keywords=ds.PROFILE.get("seniority_keywords", []),
-        google_sa_json=req.google_sa_json or "",
-        google_sa_dismissed=req.google_sa_dismissed,
     )
 
 

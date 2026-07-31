@@ -92,8 +92,6 @@ class ProfileResponse(BaseModel):
     core_skills: list[str]
     years_experience: int
     seniority_keywords: list[str]
-    google_sa_json: str = ""
-    google_sa_dismissed: bool = False
 
 
 class TrackerJob(BaseModel):
@@ -143,8 +141,6 @@ class ProfileUpdateRequest(BaseModel):
     current_role: str = ""
     years_experience: int = 0
     core_skills: list[str] = []
-    google_sa_json: Optional[str] = None
-    google_sa_dismissed: bool = False
 
 
 class SendResultsRequest(BaseModel):

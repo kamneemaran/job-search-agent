@@ -10,22 +10,17 @@ logger = logging.getLogger("jobpilot.gsheet")
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 
-def _get_gsheet_service(sa_json: str | None = None):
+def _get_gsheet_service():
     """Get a Google Sheets service instance.
 
     Tries in order:
-    1. User-provided sa_json
-    2. GOOGLE_SA_JSON env var (base64 encoded)
-    3. GOOGLE_SERVICE_ACCOUNT_JSON env var (raw JSON, fallback)
-    4. GSHEET_SERVICE_ACCOUNT env var (file path)
-    5. gsheet_service_account.json (local file)
+    1. GOOGLE_SA_JSON env var (base64 encoded)
+    2. GOOGLE_SERVICE_ACCOUNT_JSON env var (raw JSON, fallback)
+    3. GSHEET_SERVICE_ACCOUNT env var (file path)
+    4. gsheet_service_account.json (local file)
     """
     from google.oauth2.service_account import Credentials
     from googleapiclient.discovery import build
-
-    if sa_json:
-        creds = Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
-        return build("sheets", "v4", credentials=creds)
 
     # Check base64 env var
     b64_json = os.environ.get("GOOGLE_SA_JSON")
@@ -68,7 +63,6 @@ def parse_sheet_url(url: str) -> str | None:
 def sync_jobs_to_sheet(
     jobs: list[dict],
     sheet_url: str,
-    sa_json: str | None = None,
 ) -> bool:
     """Write tracked jobs to a Google Sheet.
 
@@ -81,7 +75,7 @@ def sync_jobs_to_sheet(
         return False
 
     try:
-        service = _get_gsheet_service(sa_json)
+        service = _get_gsheet_service()
         sheets_api = service.spreadsheets()
 
         # Ensure "Job Tracker" tab exists (or "All Jobs" if preferred)
@@ -140,7 +134,6 @@ def sync_jobs_to_sheet(
 
 def read_jobs_from_sheet(
     sheet_url: str,
-    sa_json: str | None = None,
 ) -> list[dict]:
     """Read tracked jobs from a Google Sheet.
 
@@ -151,7 +144,7 @@ def read_jobs_from_sheet(
         return []
 
     try:
-        service = _get_gsheet_service(sa_json)
+        service = _get_gsheet_service()
         spreadsheet = service.spreadsheets().get(spreadsheetId=sheet_id).execute()
         existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
 

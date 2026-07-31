@@ -46,10 +46,8 @@ export default function DashboardPage() {
   // Sheet state
   const [sheetUrl, setSheetUrl] = useState("");
   const [sheetInput, setSheetInput] = useState("");
-  const [saInput, setSaInput] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [pulling, setPulling] = useState(false);
-  const [savingSa, setSavingSa] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
 
   // Email scan state
@@ -87,7 +85,6 @@ export default function DashboardPage() {
         const data = await res.json();
         setSheetUrl(data.url || "");
         setSheetInput(data.url || "");
-        setSaInput(data.sa_json || "");
       }
     } catch {}
   };
@@ -182,7 +179,6 @@ export default function DashboardPage() {
   };
 
   const handleSaveSheet = async () => {
-    setSavingSa(true);
     try {
       const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
       const { data: session } = await supabase.auth.getSession();
@@ -191,7 +187,7 @@ export default function DashboardPage() {
       const res = await fetch(`${API_BASE}/api/tracker/sheet`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ url: sheetInput, sa_json: saInput }),
+        body: JSON.stringify({ url: sheetInput }),
       });
       if (res.ok) {
         setSheetUrl(sheetInput);
@@ -202,7 +198,6 @@ export default function DashboardPage() {
     } catch {
       setSheetMsg("Failed to save");
     }
-    setSavingSa(false);
     setTimeout(() => setSheetMsg(""), 3000);
   };
 
@@ -402,8 +397,7 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold text-white mb-2">📊 Google Sheet Sync</h2>
         <p className="text-xs text-gray-500 mb-4">
           Connect your own Google Sheet to export your tracked jobs. Paste the sheet URL below and
-          share it as Editor with your service account email. If you leave the service account key empty,
-          the shared account <code className="text-indigo-400">kminterviewer@jobpilot-449312.iam.gserviceaccount.com</code> is used instead.
+          share it as Editor with <code className="text-indigo-400">kminterviewer@jobpilot-449312.iam.gserviceaccount.com</code>.
         </p>
         <div className="flex items-center gap-3 mb-3">
           <input
@@ -415,29 +409,9 @@ export default function DashboardPage() {
           />
           <button
             onClick={handleSaveSheet}
-            disabled={savingSa}
             className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 transition-colors"
           >
             Save URL
-          </button>
-        </div>
-        <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-1">
-            Service Account Key (optional) — use your own Google account to sync
-          </label>
-          <textarea
-            value={saInput}
-            onChange={(e) => setSaInput(e.target.value)}
-            rows={4}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs text-white font-mono placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-            placeholder='{"type": "service_account", ...}'
-          />
-          <button
-            onClick={handleSaveSheet}
-            disabled={savingSa}
-            className="mt-1 rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {savingSa ? "Saving..." : "Save Service Account Key"}
           </button>
         </div>
         <div className="flex items-center gap-3">

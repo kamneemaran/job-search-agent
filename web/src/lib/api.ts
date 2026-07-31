@@ -50,8 +50,6 @@ export interface Profile {
   core_skills: string[];
   years_experience: number;
   seniority_keywords: string[];
-  google_sa_json?: string;
-  google_sa_dismissed?: boolean;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -222,8 +220,6 @@ export async function updateProfile(params: {
   current_role: string;
   core_skills: string[];
   years_experience: number;
-  google_sa_json?: string;
-  google_sa_dismissed?: boolean;
 }): Promise<Profile> {
   return apiFetch("/api/profile", {
     method: "PUT",
@@ -232,8 +228,6 @@ export async function updateProfile(params: {
       current_role: params.current_role,
       core_skills: params.core_skills,
       years_experience: params.years_experience,
-      google_sa_json: params.google_sa_json ?? null,
-      google_sa_dismissed: params.google_sa_dismissed ?? false,
     }),
   });
 }

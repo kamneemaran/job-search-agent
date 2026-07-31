@@ -183,10 +183,9 @@ def _require_user(authorization):
 @router.get("/sheet")
 def get_tracker_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
-    result = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
+    result = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
     url = result.data.get("tracker_sheet_url", "") if result.data else ""
-    sa_json = (result.data.get("google_sa_json") or "") if result.data else ""
-    return {"url": url, "sa_json": sa_json}
+    return {"url": url}
 
 
 @router.put("/sheet")
@@ -196,11 +195,7 @@ def set_tracker_sheet(
 ):
     sb, user = _require_user(authorization)
     url = body.get("url", "")
-    sa_json = body.get("sa_json", "")
-    data = {"tracker_sheet_url": url}
-    if sa_json:
-        data["google_sa_json"] = sa_json
-    sb.table("profiles").update(data).eq("id", user.id).execute()
+    sb.table("profiles").update({"tracker_sheet_url": url}).eq("id", user.id).execute()
     return {"status": "saved", "url": url}
 
 
@@ -209,18 +204,17 @@ def sync_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
 
     # Get user's sheet URL
-    profile = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
+    profile = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
     if not profile.data or not profile.data.get("tracker_sheet_url"):
         raise HTTPException(400, "No tracker sheet configured. Save a sheet URL first.")
 
     sheet_url = profile.data["tracker_sheet_url"]
-    sa_json = profile.data.get("google_sa_json", "") or None
 
     # Get all tracked jobs
     jobs_result = sb.table("jobs").select("*").eq("user_id", user.id).order("updated_at", desc=True).execute()
 
     from api.gsheet_sync import sync_jobs_to_sheet
-    ok = sync_jobs_to_sheet(jobs_result.data, sheet_url, sa_json)
+    ok = sync_jobs_to_sheet(jobs_result.data, sheet_url)
 
     if not ok:
         raise HTTPException(500, "Failed to sync to sheet. Check the URL and make sure your sheet is shared with the service account.")
@@ -233,15 +227,14 @@ def pull_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
 
     # Get user's sheet URL
-    profile = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
+    profile = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
     if not profile.data or not profile.data.get("tracker_sheet_url"):
         raise HTTPException(400, "No tracker sheet configured. Save a sheet URL first.")
 
     sheet_url = profile.data["tracker_sheet_url"]
-    sa_json = profile.data.get("google_sa_json", "") or None
 
     from api.gsheet_sync import read_jobs_from_sheet
-    sheet_jobs = read_jobs_from_sheet(sheet_url, sa_json)
+    sheet_jobs = read_jobs_from_sheet(sheet_url)
 
     if not sheet_jobs:
         return {"status": "no_changes", "count": 0, "message": "No jobs found in sheet or failed to read."}
