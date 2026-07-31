@@ -325,19 +325,27 @@ def email_scan(
 
     # Get user's gmail_label preference
     label = ""
+    app_password = ""
     try:
-        pref = sb.table("email_preferences").select("gmail_label").eq("user_id", user.id).maybe_single().execute()
-        label = (pref.data.get("gmail_label") or "") if pref.data else ""
+        pref = sb.table("email_preferences").select("gmail_label, gmail_app_password").eq("user_id", user.id).maybe_single().execute()
+        if pref.data:
+            label = pref.data.get("gmail_label") or ""
+            app_password = pref.data.get("gmail_app_password") or ""
     except Exception:
         pass
 
     if not label:
         raise HTTPException(400, "No Gmail label configured. Set it in Settings → Email Digest → Gmail Label.")
 
-    # Ensure GMAIL_ADDRESS and GMAIL_APP_PASSWORD are available
     import os
-    if not os.environ.get("GMAIL_ADDRESS") or not os.environ.get("GMAIL_APP_PASSWORD"):
-        raise HTTPException(500, "Gmail credentials not configured on server. Set GMAIL_ADDRESS and GMAIL_APP_PASSWORD.")
+    user_email = user.email if hasattr(user, "email") else (user.get("email") if isinstance(user, dict) else "")
+    if not user_email:
+        raise HTTPException(401, "Could not determine user email for email scan.")
+    # Per-user app password from DB, falling back to shared env for backward compat
+    if not app_password:
+        app_password = os.environ.get("GMAIL_APP_PASSWORD", "")
+    if not app_password:
+        raise HTTPException(500, "No Gmail app password configured. Set it in Settings → Email Digest → Gmail App Password.")
 
     user_id_str = str(user.id)[:8]
     profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
@@ -348,9 +356,10 @@ def email_scan(
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
         import email_scan_sync as ess
         ess.TRACKER_FILE = tracker_file
-        user_email = user.email if hasattr(user, "email") else (user.get("email") if isinstance(user, dict) else "")
         if user_email:
             ess.GMAIL_USER = user_email
+        if app_password:
+            ess.GMAIL_PASS = app_password
         ess.main(label=label, supabase_user_email=user_email or "")
 
     background_tasks.add_task(_run_scan)

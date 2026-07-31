@@ -249,6 +249,7 @@ export interface DigestPreferences {
   batches?: string[];
   posted_date_filter?: string;
   gmail_label?: string;
+  gmail_app_password?: string;
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -265,6 +266,7 @@ export async function updateDigestPreferences(params: {
   batches?: string[];
   posted_date_filter?: string;
   gmail_label?: string;
+  gmail_app_password?: string;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",

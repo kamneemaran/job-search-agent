@@ -164,3 +164,4 @@ class DigestPreferences(BaseModel):
     posted_date_filter: str = "any"
     webhook_url: str = ""
     gmail_label: str = ""
+    gmail_app_password: str = ""

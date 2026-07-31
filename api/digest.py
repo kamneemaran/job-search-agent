@@ -55,6 +55,7 @@ def get_digest_preferences(authorization: Optional[str] = Header(None)):
         posted_date_filter=row.get("posted_date_filter", "any"),
         webhook_url=row.get("webhook_url", ""),
         gmail_label=row.get("gmail_label", ""),
+        gmail_app_password=row.get("gmail_app_password", ""),
     )
 
 
@@ -82,6 +83,7 @@ def update_digest_preferences(
         "posted_date_filter": prefs.posted_date_filter,
         "webhook_url": prefs.webhook_url,
         "gmail_label": prefs.gmail_label,
+        "gmail_app_password": prefs.gmail_app_password,
     }
 
     try:
@@ -92,6 +94,7 @@ def update_digest_preferences(
         data.pop("posted_date_filter", None)
         data.pop("webhook_url", None)
         data.pop("gmail_label", None)
+        data.pop("gmail_app_password", None)
         try:
             sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()
         except Exception:

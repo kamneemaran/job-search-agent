@@ -70,6 +70,7 @@ export default function SettingsPage() {
 
   // Gmail label state
   const [gmailLabel, setGmailLabel] = useState("");
+  const [gmailAppPassword, setGmailAppPassword] = useState("");
 
   interface ActiveScan {
     scan_id: string;
@@ -192,7 +193,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [], google_sa_json: "", google_sa_dismissed: false })),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "" })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "", gmail_app_password: "" })),
       ]);
 
       setName(profile.name || "");
@@ -214,6 +215,7 @@ export default function SettingsPage() {
       setPostedDateFilter(digest.posted_date_filter || "any");
       setSentHistory(digest.sent_history || []);
       setGmailLabel(digest.gmail_label || "");
+      setGmailAppPassword(digest.gmail_app_password || "");
 
       // Extract last scan job count from sent_history
       const completedEntries = (digest.sent_history || []).filter(
@@ -380,6 +382,7 @@ export default function SettingsPage() {
         batches: digestBatches,
         posted_date_filter: postedDateFilter,
         gmail_label: gmailLabel,
+        gmail_app_password: gmailAppPassword,
       });
       setShowScheduleModal(false);
       setSendResult("Schedule saved successfully.");
@@ -817,6 +820,22 @@ export default function SettingsPage() {
             />
             <p className="text-[10px] text-gray-500 mt-1">
               Emails with this Gmail label will be scanned for status updates (applied, interview, rejected, offer). Leave empty to disable.
+            </p>
+          </div>
+
+          {/* Gmail App Password */}
+          <div className="mb-4 rounded-lg border border-gray-800/40 bg-gray-900/30 p-4">
+            <label className="block text-sm text-gray-400 mb-1">Gmail App Password for Email Scanning</label>
+            <input
+              type="password"
+              value={gmailAppPassword}
+              onChange={(e) => setGmailAppPassword(e.target.value)}
+              onBlur={handleSaveSchedule}
+              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              placeholder="16-character app password"
+            />
+            <p className="text-[10px] text-gray-500 mt-1">
+              Create one at Google Account → Security → App passwords (requires 2-Step Verification). Used to scan your own Gmail. Stored per-user.
             </p>
           </div>
 
