@@ -94,12 +94,41 @@ export default function GuidePage() {
             </div>
           </div>
         </section>
+
+        {/* Section 5 */}
+        <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-8">
+          <div className="flex items-start gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-xl text-indigo-400 font-bold border border-indigo-500/20">5</span>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">Google Sheet Sync &amp; Email Scan</h2>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                The <Link href="/dashboard" className="text-indigo-400 hover:underline">Dashboard</Link> has a <strong className="text-white">Google Sheet Sync</strong> panel that keeps your tracker in sync with your own spreadsheet:
+              </p>
+              <ul className="list-disc pl-5 text-gray-400 text-sm space-y-1">
+                <li><strong className="text-white">Sheet URL:</strong> Create a Google Sheet, paste its URL, and click "Save URL".</li>
+                <li><strong className="text-white">Service Account Key (optional):</strong> Paste your own Google service account JSON to sync to your sheet using your own credentials. Leave it empty to use the shared service account.</li>
+                <li><strong className="text-white">Share the sheet:</strong> If using your own key, share the sheet as <strong className="text-white">Editor</strong> with the <code className="text-indigo-400">client_email</code> inside your JSON. Otherwise share with <code className="text-indigo-400">kminterviewer@jobpilot-449312.iam.gserviceaccount.com</code>.</li>
+                <li><strong className="text-white">Export to Sheet / Import from Sheet:</strong> Push your tracked jobs to the sheet, or pull sheet changes back into the dashboard.</li>
+              </ul>
+              <p className="text-gray-400 text-sm leading-relaxed mt-3">
+                <strong className="text-white">Scan Email &amp; Sync</strong> reads your Gmail for status emails (applied, interview, rejected, offer) and updates your tracker automatically:
+              </p>
+              <ul className="list-disc pl-5 text-gray-400 text-sm space-y-1">
+                <li><strong className="text-white">Gmail Label:</strong> Create a label in Gmail (e.g. "Interview") and apply it to your status emails. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Profile</Link>.</li>
+                <li><strong className="text-white">Gmail App Password:</strong> A 16-character app password (Google Account → Security → App passwords) that lets the server securely read your Gmail. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Profile</Link>.</li>
+              </ul>
+              <p className="text-gray-500 text-xs mt-2 italic">
+                Both the label and app password are stored per-user. Your password is never shown again after you save it.
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
 
-      {/* Section 5 */}
+      {/* Section 6 */}
       <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-8">
         <div className="flex items-start gap-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-xl text-indigo-400 font-bold border border-indigo-500/20">5</span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-xl text-indigo-400 font-bold border border-indigo-500/20">6</span>
           <div className="space-y-2 w-full">
             <h2 className="text-xl font-semibold text-white">Job Sources We Cover</h2>
             <p className="text-gray-400 text-sm leading-relaxed">

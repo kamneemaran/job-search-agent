@@ -183,9 +183,10 @@ def _require_user(authorization):
 @router.get("/sheet")
 def get_tracker_sheet(authorization: Optional[str] = Header(None)):
     sb, user = _require_user(authorization)
-    result = sb.table("profiles").select("tracker_sheet_url").eq("id", user.id).maybe_single().execute()
+    result = sb.table("profiles").select("tracker_sheet_url, google_sa_json").eq("id", user.id).maybe_single().execute()
     url = result.data.get("tracker_sheet_url", "") if result.data else ""
-    return {"url": url}
+    sa_json = (result.data.get("google_sa_json") or "") if result.data else ""
+    return {"url": url, "sa_json": sa_json}
 
 
 @router.put("/sheet")
@@ -195,7 +196,11 @@ def set_tracker_sheet(
 ):
     sb, user = _require_user(authorization)
     url = body.get("url", "")
-    sb.table("profiles").update({"tracker_sheet_url": url}).eq("id", user.id).execute()
+    sa_json = body.get("sa_json", "")
+    data = {"tracker_sheet_url": url}
+    if sa_json:
+        data["google_sa_json"] = sa_json
+    sb.table("profiles").update(data).eq("id", user.id).execute()
     return {"status": "saved", "url": url}
 
 

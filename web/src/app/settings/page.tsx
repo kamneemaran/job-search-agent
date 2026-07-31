@@ -64,10 +64,6 @@ export default function SettingsPage() {
   // Webhook state
   const [webhookUrl, setWebhookUrl] = useState("");
 
-  // Google SA JSON state (for Google Sheets sync — onetime setup)
-  const [googleSaJson, setGoogleSaJson] = useState("");
-  const [showSaSetup, setShowSaSetup] = useState(false);
-
   // Gmail label state
   const [gmailLabel, setGmailLabel] = useState("");
   const [gmailAppPassword, setGmailAppPassword] = useState("");
@@ -201,10 +197,6 @@ export default function SettingsPage() {
       setYearsExperience(profile.years_experience || 0);
       setSkills(profile.core_skills || []);
       setSkillsInput((profile.core_skills || []).join(", "));
-      const hasSa = profile.google_sa_json || "";
-      setGoogleSaJson(hasSa);
-      const saDismissed = profile.google_sa_dismissed || false;
-      setShowSaSetup(!hasSa && !saDismissed);
 
       setDigestFrequency(digest.frequency || "weekly");
       setDigestDayOfWeek(digest.day_of_week || "monday");
@@ -215,7 +207,8 @@ export default function SettingsPage() {
       setPostedDateFilter(digest.posted_date_filter || "any");
       setSentHistory(digest.sent_history || []);
       setGmailLabel(digest.gmail_label || "");
-      setGmailAppPassword(digest.gmail_app_password || "");
+      // App password is intentionally not populated — it's never echoed back
+      setGmailAppPassword("");
 
       // Extract last scan job count from sent_history
       const completedEntries = (digest.sent_history || []).filter(
@@ -385,6 +378,7 @@ export default function SettingsPage() {
         gmail_app_password: gmailAppPassword,
       });
       setShowScheduleModal(false);
+      setGmailAppPassword("");
       setSendResult("Schedule saved successfully.");
       setSendError(false);
     } catch (err) {
@@ -550,6 +544,20 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+          <div className="mt-4">
+            <label className="block text-sm text-gray-400 mb-1">Gmail App Password (for email scanning)</label>
+            <input
+              type="password"
+              value={gmailAppPassword}
+              onChange={(e) => setGmailAppPassword(e.target.value)}
+              onBlur={handleSaveSchedule}
+              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              placeholder="16-character app password"
+            />
+            <p className="text-[10px] text-gray-500 mt-1">
+              Create one at Google Account → Security → App passwords (requires 2-Step Verification). Used to scan your own Gmail for status updates. Stored per-user.
+            </p>
+          </div>
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleUpdateProfile}
@@ -565,80 +573,6 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
-
-        {/* Google Service Account (onetime setup — hides after saved) */}
-        {showSaSetup && (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
-            <h2 className="text-lg font-semibold text-white mb-3">🔑 Google Sheets Setup</h2>
-            <p className="text-xs text-gray-400 mb-3">
-              To sync jobs to <strong>your own</strong> Google Sheet, generate a service account key and paste it below. Do this once and it's stored securely.
-            </p>
-            <ol className="text-xs text-gray-400 space-y-1 mb-4 list-decimal list-inside">
-              <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">Google Cloud Console → Credentials</a></li>
-              <li>Create a <strong>Service Account</strong> (or use an existing one)</li>
-              <li>Click the service account → <strong>Keys</strong> tab → <strong>Add Key</strong> → <strong>Create New Key</strong> → <strong>JSON</strong></li>
-              <li>Open the downloaded JSON file, copy the entire contents, and paste below</li>
-              <li>Share your Google Sheet with the service account email as <strong>Editor</strong></li>
-            </ol>
-            <textarea
-              value={googleSaJson}
-              onChange={(e) => setGoogleSaJson(e.target.value)}
-              rows={6}
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none"
-              placeholder='{"type": "service_account", ...}'
-            />
-            <div className="mt-3 flex items-center gap-3">
-              <button
-                onClick={async () => {
-                  setSaving(true);
-                  try {
-                    await updateProfile({
-                      name,
-                      current_role: currentRole,
-                      core_skills: skills,
-                      years_experience: yearsExperience,
-                      google_sa_json: googleSaJson,
-                    });
-                    setShowSaSetup(false);
-                    setMessage("Google service account saved.");
-                  } catch (err) {
-                    setMessage(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
-                  } finally {
-                    setSaving(false);
-                    setTimeout(() => setMessage(""), 3000);
-                  }
-                }}
-                disabled={saving || !googleSaJson.trim()}
-                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? "Saving..." : "Save Service Account Key"}
-              </button>
-              <button
-                onClick={async () => {
-                  setSaving(true);
-                  try {
-                    await updateProfile({
-                      name,
-                      current_role: currentRole,
-                      core_skills: skills,
-                      years_experience: yearsExperience,
-                      google_sa_dismissed: true,
-                    });
-                    setShowSaSetup(false);
-                  } catch (err) {
-                    console.error("Failed to dismiss:", err);
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-                disabled={saving}
-                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-50"
-              >
-                I don't want to share — hide permanently
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Resume Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
@@ -820,22 +754,6 @@ export default function SettingsPage() {
             />
             <p className="text-[10px] text-gray-500 mt-1">
               Emails with this Gmail label will be scanned for status updates (applied, interview, rejected, offer). Leave empty to disable.
-            </p>
-          </div>
-
-          {/* Gmail App Password */}
-          <div className="mb-4 rounded-lg border border-gray-800/40 bg-gray-900/30 p-4">
-            <label className="block text-sm text-gray-400 mb-1">Gmail App Password for Email Scanning</label>
-            <input
-              type="password"
-              value={gmailAppPassword}
-              onChange={(e) => setGmailAppPassword(e.target.value)}
-              onBlur={handleSaveSchedule}
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-              placeholder="16-character app password"
-            />
-            <p className="text-[10px] text-gray-500 mt-1">
-              Create one at Google Account → Security → App passwords (requires 2-Step Verification). Used to scan your own Gmail. Stored per-user.
             </p>
           </div>
 
