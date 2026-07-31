@@ -57,6 +57,7 @@ def get_digest_preferences(authorization: Optional[str] = Header(None)):
         gmail_label=row.get("gmail_label", ""),
         # Never echo the stored app password back to the client
         gmail_app_password="",
+        gmail_configured=bool(row.get("gmail_configured") or row.get("gmail_label")),
     )
 
 
@@ -84,6 +85,7 @@ def update_digest_preferences(
         "posted_date_filter": prefs.posted_date_filter,
         "webhook_url": prefs.webhook_url,
         "gmail_label": prefs.gmail_label,
+        "gmail_configured": prefs.gmail_configured,
     }
     # Only update the app password when a new non-empty value is provided
     if prefs.gmail_app_password:
@@ -97,6 +99,7 @@ def update_digest_preferences(
         data.pop("posted_date_filter", None)
         data.pop("webhook_url", None)
         data.pop("gmail_label", None)
+        data.pop("gmail_configured", None)
         data.pop("gmail_app_password", None)
         try:
             sb.table("email_preferences").upsert(data, on_conflict="user_id").execute()

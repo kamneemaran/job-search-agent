@@ -67,6 +67,10 @@ export default function SettingsPage() {
   // Gmail label state
   const [gmailLabel, setGmailLabel] = useState("");
   const [gmailAppPassword, setGmailAppPassword] = useState("");
+  const [gmailConfigured, setGmailConfigured] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailMsg, setEmailMsg] = useState("");
+  const [emailErr, setEmailErr] = useState(false);
 
   interface ActiveScan {
     scan_id: string;
@@ -189,7 +193,7 @@ export default function SettingsPage() {
     try {
       const [profile, digest] = await Promise.all([
         getProfile().catch(() => ({ name: "", current_role: "", core_skills: [], years_experience: 0, seniority_keywords: [], google_sa_json: "", google_sa_dismissed: false })),
-        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "", gmail_app_password: "" })),
+        getDigestPreferences().catch(() => ({ enabled: false, frequency: "weekly", email: "", day_of_week: "monday", day_of_month: 1, time_of_day: "09:00", sent_history: [], batches: ["all"], posted_date_filter: "any", gmail_label: "", gmail_app_password: "", gmail_configured: false })),
       ]);
 
       setName(profile.name || "");
@@ -209,6 +213,7 @@ export default function SettingsPage() {
       setGmailLabel(digest.gmail_label || "");
       // App password is intentionally not populated — it's never echoed back
       setGmailAppPassword("");
+      setGmailConfigured(!!digest.gmail_configured);
 
       // Extract last scan job count from sent_history
       const completedEntries = (digest.sent_history || []).filter(
@@ -374,11 +379,8 @@ export default function SettingsPage() {
         time_of_day: digestTimeOfDay,
         batches: digestBatches,
         posted_date_filter: postedDateFilter,
-        gmail_label: gmailLabel,
-        gmail_app_password: gmailAppPassword,
       });
       setShowScheduleModal(false);
-      setGmailAppPassword("");
       setSendResult("Schedule saved successfully.");
       setSendError(false);
     } catch (err) {
@@ -387,6 +389,36 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
       setTimeout(() => setSendResult(""), 4000);
+    }
+  };
+
+  const handleSaveEmailSettings = async () => {
+    setSavingEmail(true);
+    setEmailMsg("");
+    setEmailErr(false);
+    try {
+      await updateDigestPreferences({
+        enabled: digestFrequency !== "never",
+        frequency: digestFrequency,
+        email: digestEmail,
+        day_of_week: digestDayOfWeek,
+        day_of_month: digestDayOfMonth,
+        time_of_day: digestTimeOfDay,
+        batches: digestBatches,
+        posted_date_filter: postedDateFilter,
+        gmail_label: gmailLabel,
+        gmail_app_password: gmailAppPassword,
+        gmail_configured: true,
+      });
+      setGmailConfigured(true);
+      setGmailAppPassword("");
+      setEmailMsg("Email settings saved. The setup box is now hidden — they are stored in the database.");
+    } catch (err) {
+      setEmailMsg(`Error: ${err instanceof Error ? err.message : "Save failed"}`);
+      setEmailErr(true);
+    } finally {
+      setSavingEmail(false);
+      setTimeout(() => setEmailMsg(""), 5000);
     }
   };
 
@@ -544,20 +576,6 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
-          <div className="mt-4">
-            <label className="block text-sm text-gray-400 mb-1">Gmail App Password (for email scanning)</label>
-            <input
-              type="password"
-              value={gmailAppPassword}
-              onChange={(e) => setGmailAppPassword(e.target.value)}
-              onBlur={handleSaveSchedule}
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-              placeholder="16-character app password"
-            />
-            <p className="text-[10px] text-gray-500 mt-1">
-              Create one at Google Account → Security → App passwords (requires 2-Step Verification). Used to scan your own Gmail for status updates. Stored per-user.
-            </p>
-          </div>
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleUpdateProfile}
@@ -573,6 +591,58 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        {/* Email Settings Section */}
+        {!gmailConfigured && (
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+            <h2 className="text-lg font-semibold text-white mb-1">Email Settings</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Configure how the server scans your Gmail for status updates. Once saved, this setup is stored in the database and this box is removed.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Gmail Label</label>
+                <input
+                  type="text"
+                  value={gmailLabel}
+                  onChange={(e) => setGmailLabel(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                  placeholder="e.g. Interview"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Create this label in Gmail and apply it to your status emails (applied, interview, rejected, offer).
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Gmail App Password</label>
+                <input
+                  type="password"
+                  value={gmailAppPassword}
+                  onChange={(e) => setGmailAppPassword(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                  placeholder="16-character app password"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Create at Google Account → Security → App passwords (requires 2-Step Verification). Never shown again after saving.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={handleSaveEmailSettings}
+                disabled={savingEmail}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingEmail ? "Saving..." : "Save Email Settings"}
+              </button>
+              {emailMsg && (
+                <p className={`text-sm ${emailErr ? "text-red-400" : "text-emerald-400"}`}>
+                  {emailMsg}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Resume Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
@@ -740,22 +810,6 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
-
-          {/* Gmail Label */}
-          <div className="mb-4 rounded-lg border border-gray-800/40 bg-gray-900/30 p-4">
-            <label className="block text-sm text-gray-400 mb-1">Gmail Label for Email Scanning</label>
-            <input
-              type="text"
-              value={gmailLabel}
-              onChange={(e) => setGmailLabel(e.target.value)}
-              onBlur={handleSaveSchedule}
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-              placeholder="e.g. Interview"
-            />
-            <p className="text-[10px] text-gray-500 mt-1">
-              Emails with this Gmail label will be scanned for status updates (applied, interview, rejected, offer). Leave empty to disable.
-            </p>
-          </div>
 
           {sendResult && (
             <p className={`mb-4 text-xs font-semibold ${sendError ? "text-red-400" : "text-emerald-400"}`}>

@@ -165,3 +165,4 @@ class DigestPreferences(BaseModel):
     webhook_url: str = ""
     gmail_label: str = ""
     gmail_app_password: str = ""
+    gmail_configured: bool = False

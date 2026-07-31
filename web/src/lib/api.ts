@@ -250,6 +250,7 @@ export interface DigestPreferences {
   posted_date_filter?: string;
   gmail_label?: string;
   gmail_app_password?: string;
+  gmail_configured?: boolean;
 }
 
 export async function getDigestPreferences(): Promise<DigestPreferences> {
@@ -267,6 +268,7 @@ export async function updateDigestPreferences(params: {
   posted_date_filter?: string;
   gmail_label?: string;
   gmail_app_password?: string;
+  gmail_configured?: boolean;
 }): Promise<DigestPreferences> {
   return apiFetch("/api/digest/preferences", {
     method: "PUT",

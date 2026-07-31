@@ -114,8 +114,8 @@ export default function GuidePage() {
                 <strong className="text-white">Scan Email &amp; Sync</strong> reads your Gmail for status emails (applied, interview, rejected, offer) and updates your tracker automatically:
               </p>
               <ul className="list-disc pl-5 text-gray-400 text-sm space-y-1">
-                <li><strong className="text-white">Gmail Label:</strong> Create a label in Gmail (e.g. "Interview") and apply it to your status emails. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Profile</Link>.</li>
-                <li><strong className="text-white">Gmail App Password:</strong> A 16-character app password (Google Account → Security → App passwords) that lets the server securely read your Gmail. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Profile</Link>.</li>
+                <li><strong className="text-white">Gmail Label:</strong> Create a label in Gmail (e.g. "Interview") and apply it to your status emails. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Email Settings</Link>.</li>
+                <li><strong className="text-white">Gmail App Password:</strong> A 16-character app password (Google Account → Security → App passwords) that lets the server securely read your Gmail. Configure it in <Link href="/settings" className="text-indigo-400 hover:underline">Settings → Email Settings</Link>.</li>
               </ul>
               <p className="text-gray-500 text-xs mt-2 italic">
                 Both the label and app password are stored per-user. Your password is never shown again after you save it.
