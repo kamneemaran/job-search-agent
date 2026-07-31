@@ -7107,6 +7107,135 @@ def search_bundesagentur(query, location="Germany", max_results=500):
     return []
 
 
+def scrape_tokyodev():
+    """Scrapes job listings from Tokyo Dev."""
+    jobs = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    try:
+        from bs4 import BeautifulSoup
+        resp = requests.get("https://www.tokyodev.com/jobs", headers=headers, timeout=15)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                # Match /companies/{company}/jobs/{job_id}
+                if "/companies/" in href and "/jobs/" in href:
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 3:
+                        continue
+                    # Extract company from path
+                    try:
+                        comp_slug = href.split("/companies/")[1].split("/")[0]
+                        company = comp_slug.replace("-", " ").title()
+                    except Exception:
+                        company = "Unknown"
+                    
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": "Japan",
+                        "url": f"https://www.tokyodev.com{href}",
+                        "description": f"Tokyo Dev job: {title} at {company}. English-friendly software development role in Japan. Visa sponsorship and relocation support available.",
+                        "posted_at": None,
+                    })
+    except Exception as e:
+        print(f"  [tokyodev] Scrape error: {e}")
+    return jobs
+
+
+def scrape_japandev():
+    """Scrapes job listings from Japan Dev."""
+    jobs = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    try:
+        from bs4 import BeautifulSoup
+        resp = requests.get("https://japan-dev.com/jobs-in-japan-for-english-speakers", headers=headers, timeout=15)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                # Match /jobs/{company}/{job-slug-id}
+                if href.startswith("/jobs/") and len(href.split("/")) >= 4:
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 3:
+                        continue
+                    try:
+                        comp_slug = href.split("/jobs/")[1].split("/")[0]
+                        company = comp_slug.replace("-", " ").title()
+                    except Exception:
+                        company = "Unknown"
+                    
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": "Japan",
+                        "url": f"https://japan-dev.com{href}",
+                        "description": f"Japan Dev job: {title} at {company}. Vetted English-friendly role with visa sponsorship in Japan. Visa sponsorship and relocation support available.",
+                        "posted_at": None,
+                    })
+    except Exception as e:
+        print(f"  [japandev] Scrape error: {e}")
+    return jobs
+
+
+def scrape_daijob():
+    """Scrapes job listings from Daijob using the pre-filtered English-friendly URL."""
+    jobs = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    url = (
+        "https://www.daijob.com/en/jobs/search_result?job_types[]=301&job_types[]=302&job_types[]=303&job_types[]=304"
+        "&job_types[]=305&job_types[]=306&job_types[]=307&job_types[]=308&job_types[]=309&job_types[]=310&job_types[]=311"
+        "&job_types[]=312&job_types[]=313&job_types[]=314&job_types[]=315&job_types[]=316&job_types[]=401&job_types[]=402"
+        "&job_types[]=403&job_types[]=404&job_types[]=405&job_types[]=501&job_types[]=502&job_types[]=503&job_types[]=504"
+        "&job_types[]=505&job_types[]=506&job_types[]=507&job_types[]=508&job_types[]=509&job_types[]=510&job_types[]=511"
+        "&job_types[]=601&job_types[]=603&job_types[]=604&job_types[]=605&job_types[]=606&job_types[]=607&job_types[]=608"
+        "&job_types[]=609&job_types[]=610&job_types[]=611&job_types[]=612&job_types[]=613&job_types[]=614&job_types[]=615"
+        "&job_types[]=4001&job_types[]=4002&job_types[]=4003&job_types[]=300&job_types[]=400&job_types[]=500&job_types[]=4000"
+        "&job_types[]=600&ability_of_language=23&levels_of_language[]=6&levels_of_language[]=5&levels_of_language[]=4"
+        "&levels_of_language[]=3&levels_of_language[]=2&jt[]=300&jt[]=400&jt[]=500&jt[]=4000&jt[]=600&job_search_form_hidden=1"
+    )
+    try:
+        from bs4 import BeautifulSoup
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            seen_hrefs = {}
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if "/en/jobs/detail/" in href:
+                    text = a.get_text(strip=True)
+                    if text and text != "View Full Listing":
+                        seen_hrefs.setdefault(href, []).append(text)
+            
+            for href, texts in seen_hrefs.items():
+                if len(texts) >= 2:
+                    company = texts[0]
+                    title = texts[1]
+                elif len(texts) == 1:
+                    company = "Bilingual Employer"
+                    title = texts[0]
+                else:
+                    continue
+                
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": "Japan",
+                    "url": f"https://www.daijob.com{href}",
+                    "description": f"Daijob job: {title} at {company}. English-friendly bilingual position in Japan. Visa sponsorship and relocation support available.",
+                    "posted_at": None,
+                })
+    except Exception as e:
+        print(f"  [daijob] Scrape error: {e}")
+    return jobs
+
+
 def search_iamexpat(query, location="Netherlands", max_results=500):
     """Search IamExpat (Netherlands) for English-friendly jobs with pagination."""
     from bs4 import BeautifulSoup
@@ -8549,6 +8678,29 @@ def main():
             elapsed = (datetime.now() - t0).total_seconds()
             print(f"  Done - {source['name']} ({elapsed:.1f}s, {len(jobs)} jobs)")
         _retry_empty(empty, fetch_jobs_from_source, "APAC sources")
+
+        # --- Custom Japan Job Boards (Tokyo Dev, Japan Dev, Daijob) ---
+        print("Scanning Custom Japan Job Boards (Tokyo Dev, Japan Dev, Daijob)...", flush=True)
+        try:
+            tokyo_jobs = scrape_tokyodev()
+            _score_collect(tokyo_jobs, "Tokyo Dev", "https://www.tokyodev.com/jobs", all_matches)
+            print(f"  Done - Tokyo Dev ({len(tokyo_jobs)} jobs found)", flush=True)
+        except Exception as e:
+            print(f"  [error] Tokyo Dev scrape failed: {e}", flush=True)
+
+        try:
+            japan_dev_jobs = scrape_japandev()
+            _score_collect(japan_dev_jobs, "Japan Dev", "https://japan-dev.com/jobs-in-japan-for-english-speakers", all_matches)
+            print(f"  Done - Japan Dev ({len(japan_dev_jobs)} jobs found)", flush=True)
+        except Exception as e:
+            print(f"  [error] Japan Dev scrape failed: {e}", flush=True)
+
+        try:
+            daijob_jobs = scrape_daijob()
+            _score_collect(daijob_jobs, "Daijob", "https://www.daijob.com/en/", all_matches)
+            print(f"  Done - Daijob ({len(daijob_jobs)} jobs found)", flush=True)
+        except Exception as e:
+            print(f"  [error] Daijob scrape failed: {e}", flush=True)
 
     # --- US/Canada companies (batch: us-canada) ---
     if args.batch == "us-canada":
