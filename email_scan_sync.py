@@ -304,9 +304,12 @@ def main(label: str = ""):
         try:
             # Quote if containing spaces to satisfy IMAP parser
             imap_label = f'"{label}"' if " " in label else label
-            mail.select(imap_label)
-        except:
-            print(f"  [!] Cannot select '{label}'", flush=True)
+            typ, _ = mail.select(imap_label)
+            if typ != "OK":
+                print(f"  [!] Cannot select '{label}'", flush=True)
+                continue
+        except Exception as e:
+            print(f"  [!] Cannot select '{label}': {e}", flush=True)
             continue
         since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
         r, d = mail.search(None, f"(SINCE {since})")
