@@ -473,8 +473,13 @@ def send_email(to_email: str, jobs: list[dict]):
     html = build_email_html(jobs)
     msg.attach(MIMEText(html, "html"))
 
+    norm_pass = GMAIL_APP_PASSWORD.replace("\xa0", " ").replace("\u2009", " ").strip() if GMAIL_APP_PASSWORD else ""
+    if norm_pass.startswith("enc:"):
+        logger.error("GMAIL_APP_PASSWORD is encrypted but decryption failed. Ensure APP_PASSWORD_ENCRYPTION_KEY is set correctly.")
+        return
+
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+        server.login(GMAIL_ADDRESS, norm_pass)
         server.sendmail(GMAIL_ADDRESS, to_email, msg.as_string())
 
     logger.info(f"Sent digest to {to_email} with {count} jobs")

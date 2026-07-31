@@ -145,10 +145,31 @@ def parse_indeed_email(body):
 
 DIGEST_LABEL = os.environ.get("GMAIL_DIGEST_LABEL")
 
+def _normalize_pw(pw: str) -> str:
+    return pw.replace("\xa0", " ").replace("\u2009", " ").strip() if pw else pw
+
+def _login_imap(user, pw):
+    if not user or not pw:
+        raise ValueError("GMAIL_ADDRESS or GMAIL_APP_PASSWORD is not set.")
+    
+    norm_pw = _normalize_pw(pw)
+    if norm_pw.startswith("enc:"):
+        raise ValueError(
+            "The App Password is encrypted but decryption failed. "
+            "Please ensure APP_PASSWORD_ENCRYPTION_KEY is set in your environment, or re-save your Gmail App Password."
+        )
+    
+    mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
+    mail.login(user, norm_pw)
+    return mail
+
 def fetch_glassdoor_emails(days=7, label=None):
     """Fetch Glassdoor digest emails and parse jobs."""
-    mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
-    mail.login(GMAIL_USER, GMAIL_PASS)
+    try:
+        mail = _login_imap(GMAIL_USER, GMAIL_PASS)
+    except Exception as e:
+        print(f"  [!] Glassdoor email fetch failed on Gmail login: {e}", flush=True)
+        return []
     mail.select(label or DIGEST_LABEL)
 
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
@@ -180,8 +201,11 @@ def fetch_glassdoor_emails(days=7, label=None):
 
 def fetch_indeed_emails(days=7, label=None):
     """Fetch Indeed job recommendation emails and parse jobs."""
-    mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
-    mail.login(GMAIL_USER, GMAIL_PASS)
+    try:
+        mail = _login_imap(GMAIL_USER, GMAIL_PASS)
+    except Exception as e:
+        print(f"  [!] Indeed email fetch failed on Gmail login: {e}", flush=True)
+        return []
     mail.select(label or DIGEST_LABEL)
 
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")

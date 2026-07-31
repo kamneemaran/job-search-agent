@@ -346,6 +346,14 @@ def email_scan(
         app_password = os.environ.get("GMAIL_APP_PASSWORD", "")
     if not app_password:
         raise HTTPException(500, "No Gmail app password configured. Set it in Settings → Email Digest → Gmail App Password.")
+    
+    if app_password.startswith("enc:"):
+        raise HTTPException(
+            500,
+            "Your stored Gmail App Password is encrypted, but decryption failed. "
+            "This happens if the backend encryption key (APP_PASSWORD_ENCRYPTION_KEY) is missing, was changed, or is incorrect. "
+            "Please ensure the backend configuration has the correct encryption key, or re-save your App Password under Settings → Email Digest."
+        )
 
     user_id_str = str(user.id)[:8]
     profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()

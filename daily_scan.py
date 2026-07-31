@@ -5932,8 +5932,13 @@ class JobTracker:
         def _run():
             result_list = []
             try:
+                # Normalize and check for encryption key failures
+                norm_pass = gmail_pass.replace("\xa0", " ").replace("\u2009", " ").strip() if gmail_pass else ""
+                if norm_pass.startswith("enc:"):
+                    print("  [!] Gmail login skipped for rejection scan: The App Password is encrypted but decryption failed. Ensure APP_PASSWORD_ENCRYPTION_KEY is set correctly.")
+                    return result_list
                 mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=15)
-                mail.login(gmail_user, gmail_pass)
+                mail.login(gmail_user, norm_pass)
                 mail.select("inbox")
 
                 from datetime import timedelta

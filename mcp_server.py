@@ -148,6 +148,11 @@ def _send_exception_email(skipped: list[dict], batch_label: str = "MCP Search"):
         print("Exception email not sent - GMAIL_APP_PASSWORD not set.")
         return
 
+    gmail_app_password = gmail_app_password.replace("\xa0", " ").replace("\u2009", " ").strip()
+    if gmail_app_password.startswith("enc:"):
+        print("Exception email not sent - GMAIL_APP_PASSWORD is encrypted but decryption failed.")
+        return
+
     rows = []
     for entry in skipped:
         rows.append(f"""

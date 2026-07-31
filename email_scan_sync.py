@@ -320,9 +320,19 @@ def main(label: str = "", supabase_user_email: str = ""):
         print("=== Done ===", flush=True)
         return
 
+    # Normalize the password right before use, in case it was passed un-normalized from another file
+    normalized_pass = _normalize_pw(GMAIL_PASS)
+
+    print(f"  [*] Attempting Gmail login for {GMAIL_USER} (Password length: {len(normalized_pass) if normalized_pass else 0})", flush=True)
+    if normalized_pass.startswith("enc:"):
+        print("  [!] Gmail login failed: The App Password is encrypted but decryption failed.", flush=True)
+        print("      Please make sure APP_PASSWORD_ENCRYPTION_KEY is set in your environment with the correct secret, or re-save your Gmail App Password in your settings.", flush=True)
+        print("=== Done ===", flush=True)
+        return
+
     mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=30)
     try:
-        mail.login(GMAIL_USER, GMAIL_PASS)
+        mail.login(GMAIL_USER, normalized_pass)
     except imaplib.IMAP4.error as e:
         print(f"  [!] Gmail login failed for {GMAIL_USER}: {e}", flush=True)
         print("=== Done ===", flush=True)
