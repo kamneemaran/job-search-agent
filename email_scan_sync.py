@@ -279,6 +279,26 @@ def extract_company(subject, sender, full_text, tracker_companies):
 
     return None
 
+def _resolve_gsheet_id(supabase_user_email: str = "") -> str:
+    """Get the user's tracker sheet ID from the DB, falling back to env."""
+    if supabase_user_email:
+        supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+        supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if supabase_url and supabase_key:
+            try:
+                from supabase import create_client
+                sb = create_client(supabase_url, supabase_key)
+                user_res = sb.table("profiles").select("id, tracker_sheet_url").eq("email", supabase_user_email).execute()
+                if user_res.data and user_res.data[0].get("tracker_sheet_url"):
+                    import re
+                    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", user_res.data[0]["tracker_sheet_url"])
+                    if m:
+                        return m.group(1)
+            except Exception as e:
+                print(f"  [gsheet] Failed to resolve sheet from DB: {e}", flush=True)
+    return os.environ.get("GSHEET_ID", "")
+
+
 def main(label: str = "", supabase_user_email: str = ""):
     full_scan = "--full" in sys.argv
 
@@ -485,8 +505,9 @@ def main(label: str = "", supabase_user_email: str = ""):
     save_json(STATE_FILE, state)
 
     # Sync to sheet
+    gsheet_id = _resolve_gsheet_id(supabase_user_email) or GSHEET_ID
     print("  Syncing to Google Sheet...", flush=True)
-    if GSHEET_ID:
+    if gsheet_id:
         try:
             from google.oauth2 import service_account
             from googleapiclient.discovery import build
@@ -499,7 +520,7 @@ def main(label: str = "", supabase_user_email: str = ""):
             sheet = service.spreadsheets()
 
             try:
-                existing = sheet.values().get(spreadsheetId=GSHEET_ID, range="'Job Tracker'!A:L").execute()
+                existing = sheet.values().get(spreadsheetId=gsheet_id, range="'Job Tracker'!A:L").execute()
                 existing_rows = existing.get("values", [])
                 existing_by_key = {}
                 for i, row in enumerate(existing_rows[1:], start=2):
@@ -537,7 +558,7 @@ def main(label: str = "", supabase_user_email: str = ""):
                 if dedup in existing_by_key:
                     row_num = existing_by_key[dedup]
                     sheet.values().update(
-                        spreadsheetId=GSHEET_ID,
+                        spreadsheetId=gsheet_id,
                         range=f"'Job Tracker'!A{row_num}:H{row_num}",
                         valueInputOption="RAW",
                         body={"values": [row_data]}
@@ -548,7 +569,7 @@ def main(label: str = "", supabase_user_email: str = ""):
 
             if not existing_rows:
                 sheet.values().update(
-                    spreadsheetId=GSHEET_ID, range="'Job Tracker'!A1",
+                    spreadsheetId=gsheet_id, range="'Job Tracker'!A1",
                     valueInputOption="RAW", body={"values": [header]}
                 ).execute()
 
@@ -556,7 +577,7 @@ def main(label: str = "", supabase_user_email: str = ""):
                 print(f"  [gsheet] Updated {updated_count_sheet} existing rows", flush=True)
             if new_rows:
                 sheet.values().append(
-                    spreadsheetId=GSHEET_ID, range="'Job Tracker'!A:H",
+                    spreadsheetId=gsheet_id, range="'Job Tracker'!A:H",
                     valueInputOption="RAW", body={"values": new_rows}
                 ).execute()
                 print(f"  [gsheet] Added {len(new_rows)} new rows", flush=True)
@@ -565,7 +586,7 @@ def main(label: str = "", supabase_user_email: str = ""):
         except Exception as e:
             print(f"  [gsheet] Error: {e}", flush=True)
     else:
-        print("  [!] No GSHEET_ID set — skipping sheet sync", flush=True)
+        print("  [!] No sheet configured — skipping sheet sync", flush=True)
 
     # Sync to Supabase so results appear in web dashboard's Job Tracker tab
     supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
