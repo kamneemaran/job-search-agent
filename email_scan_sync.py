@@ -2,8 +2,12 @@
 import imaplib, email, json, re, sys, os
 from datetime import datetime, timedelta
 
+def _normalize_pw(pw: str) -> str:
+    return pw.replace("\xa0", " ").replace("\u2009", " ").strip() if pw else pw
+
+
 GMAIL_USER = os.environ.get("GMAIL_ADDRESS", "")
-GMAIL_PASS = os.environ.get("GMAIL_APP_PASSWORD", "")
+GMAIL_PASS = _normalize_pw(os.environ.get("GMAIL_APP_PASSWORD", ""))
 GSHEET_ID = os.environ.get("GSHEET_ID")
 profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
 TRACKER_FILE = os.environ.get("TRACKER_FILE", f"job_tracker_{profile_slug}.json")

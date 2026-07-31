@@ -22,6 +22,11 @@ _profile_lock = threading.Lock()
 
 
 @router.get("/preferences", response_model=DigestPreferences)
+def _normalize_app_password(pw: str) -> str:
+    # Copy-pasting from Google's app-password dialog can insert non-breaking spaces (\\xa0)
+    return pw.replace("\xa0", " ").replace("\u2009", " ").strip() if pw else pw
+
+
 def get_digest_preferences(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(401, "Authorization required")
@@ -107,7 +112,7 @@ def update_digest_preferences(
     # Save gmail fields independently so they persist even if schedule columns are missing
     gmail_fields = {"user_id": user.id, "gmail_label": prefs.gmail_label, "gmail_configured": prefs.gmail_configured}
     if prefs.gmail_app_password:
-        gmail_fields["gmail_app_password"] = prefs.gmail_app_password
+        gmail_fields["gmail_app_password"] = _normalize_app_password(prefs.gmail_app_password)
     _upsert(gmail_fields)
 
     return prefs
