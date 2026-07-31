@@ -593,59 +593,73 @@ export default function SettingsPage() {
         </div>
 
         {/* Email Settings Section */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold text-white">Email Settings</h2>
-            {gmailConfigured && (
-              <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20">Configured</span>
-            )}
-          </div>
-          <p className="text-sm text-gray-400 mb-4">
-            Configure how the server scans your Gmail for status updates. The app password is stored in the database and never shown again.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Gmail Label</label>
-              <input
-                type="text"
-                value={gmailLabel}
-                onChange={(e) => setGmailLabel(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                placeholder="e.g. Interview"
-              />
-              <p className="text-[10px] text-gray-500 mt-1">
-                Create this label in Gmail and apply it to your status emails (applied, interview, rejected, offer).
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Gmail App Password</label>
-              <input
-                type="password"
-                value={gmailAppPassword}
-                onChange={(e) => setGmailAppPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-                placeholder="16-character app password"
-              />
-              <p className="text-[10px] text-gray-500 mt-1">
-                Create at Google Account → Security → App passwords (requires 2-Step Verification). Leave empty to keep the stored one.
-              </p>
+        {gmailConfigured ? (
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Email Settings</h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  Email scan is configured with label <strong className="text-white">"{gmailLabel || "Interview"}"</strong>. The app password is stored in the database.
+                </p>
+              </div>
+              <button
+                onClick={() => setGmailConfigured(false)}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+              >
+                Edit
+              </button>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={handleSaveEmailSettings}
-              disabled={savingEmail}
-              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {savingEmail ? "Saving..." : "Save Email Settings"}
-            </button>
-            {emailMsg && (
-              <p className={`text-sm ${emailErr ? "text-red-400" : "text-emerald-400"}`}>
-                {emailMsg}
-              </p>
-            )}
+        ) : (
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+            <h2 className="text-lg font-semibold text-white mb-1">Email Settings</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Configure how the server scans your Gmail for status updates. The app password is stored in the database and never shown again.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Gmail Label</label>
+                <input
+                  type="text"
+                  value={gmailLabel}
+                  onChange={(e) => setGmailLabel(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                  placeholder="e.g. Interview"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Create this label in Gmail and apply it to your status emails (applied, interview, rejected, offer).
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Gmail App Password</label>
+                <input
+                  type="password"
+                  value={gmailAppPassword}
+                  onChange={(e) => setGmailAppPassword(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                  placeholder="16-character app password"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Create at Google Account → Security → App passwords (requires 2-Step Verification). Leave empty to keep the stored one.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={handleSaveEmailSettings}
+                disabled={savingEmail}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingEmail ? "Saving..." : "Save Email Settings"}
+              </button>
+              {emailMsg && (
+                <p className={`text-sm ${emailErr ? "text-red-400" : "text-emerald-400"}`}>
+                  {emailMsg}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Resume Section */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
