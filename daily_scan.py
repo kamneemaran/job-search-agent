@@ -5902,7 +5902,7 @@ class JobTracker:
     def is_known(self, title, company):
         key = self.job_key(title, company)
         entry = self.data["jobs"].get(key)
-        return entry and entry.get("status") in ("applied", "rejected", "offer", "interview")
+        return entry and entry.get("status") in ("applied", "rejected", "offer", "interview", "expired")
 
     def get_status(self, title, company):
         key = self.job_key(title, company)
@@ -8249,6 +8249,13 @@ def main():
 
     # Helper to check tracker before adding a match
     def should_include(job):
+        title = job.get("title", "")
+        company = job.get("company", "")
+        if tracker.is_known(title, company):
+            status = tracker.get_status(title, company)
+            print(f"  [tracker-skip] Already '{status}': {title[:40]}... @ {company}", flush=True)
+            return False
+
         # Skip jobs posted more than 6 months ago
         posted = job.get("posted_at")
         if posted is not None and not _is_within_months(posted, 6):
