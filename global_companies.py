@@ -50,4 +50,5 @@ GLOBAL_JOB_SOURCES = [
     {"name": "Palantir", "url": "https://www.palantir.com/careers/open-positions/?business-area=Product+Development", "region": "Global", "type": "company", "ats": "lever", "ats_slug": "palantir"},
     {"name": "Fujitsu", "url": "https://www.jobs.global.fujitsu.com/search/?q=&locationsearch=&searchResultView=LIST&markerViewed=&carouselIndex=&facetFilters=%7B%22filter4%22%3A%5B%22Software+Development+%2F+Engineering%22%2C%22Consulting%22%2C%22Architecture%22%5D%7D&pageNumber=0", "region": "Global", "type": "company", "playwright": True},
     {"name": "Hitachi", "url": "https://careers.hitachi.com/search/engineering-it-telecom-and-internet-english/jobs", "region": "Global", "type": "company", "playwright": True},
+    {"name": "XE", "url": "https://careers.xe.com/search/jobs?q=&location=", "region": "Global", "type": "company", "playwright": True},
 ]
