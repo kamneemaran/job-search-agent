@@ -2287,7 +2287,7 @@ def _scrape_company_career_page(source):
                         const cardHasKw = c.includes('engineer') || c.includes('developer')
                             || c.includes('senior') || c.includes('software') || c.includes('backend');
                         const urlIsJob = h.includes('/vacancies/') || h.includes('/jobs/')
-                            || h.includes('/position/') || h.includes('/opening/')
+                            || h.includes('/job/') || h.includes('/position/') || h.includes('/opening/')
                             || h.includes('jobId=') || h.includes('job-id=') || h.includes('reqId=')
                             || h.includes('smartrecruiters.com/') || h.includes('workable.com/')
                             || h.includes('bamboohr.com/');
@@ -2354,13 +2354,13 @@ def _scrape_company_career_page(source):
     
             page.evaluate("""
                 () => {
-                    const overlays = document.querySelectorAll(
+                    const overlays = Array.from(document.querySelectorAll(
                         '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
                         '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
                         '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
                         '[class*="modal"], [class*="banner"], ' +
                         '[role="dialog"], [aria-modal="true"]'
-                    );
+                    )).filter(el => !/^(BODY|HTML)$/i.test(el.tagName));
                     overlays.forEach(el => el.remove());
                 }
             """)
@@ -2404,13 +2404,13 @@ def _scrape_company_career_page(source):
                         show_more.scroll_into_view_if_needed()
                         page.evaluate("""
                             () => {
-                                const overlays = document.querySelectorAll(
+                                const overlays = Array.from(document.querySelectorAll(
                                     '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
                                     '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
                                     '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
                                     '[class*="modal"], [class*="banner"], ' +
                                     '[role="dialog"], [aria-modal="true"]'
-                                );
+                                )).filter(el => !/^(BODY|HTML)$/i.test(el.tagName));
                                 overlays.forEach(el => el.remove());
                             }
                         """)
@@ -2449,13 +2449,13 @@ def _scrape_company_career_page(source):
                             break
                         page.evaluate("""
                             () => {
-                                const overlays = document.querySelectorAll(
+                                const overlays = Array.from(document.querySelectorAll(
                                     '#gdpr, #cookie, .cookie-banner, #igdpr-alert, ' +
                                     '[class*="cookie"], [class*="gdpr"], [class*="consent"], ' +
                                     '[id*="cookie"], [id*="gdpr"], [class*="overlay"], ' +
                                     '[class*="modal"], [class*="banner"], ' +
                                     '[role="dialog"], [aria-modal="true"]'
-                                );
+                                )).filter(el => !/^(BODY|HTML)$/i.test(el.tagName));
                                 overlays.forEach(el => el.remove());
                             }
                         """)

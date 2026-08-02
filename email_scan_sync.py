@@ -299,13 +299,19 @@ def _resolve_gsheet_id(supabase_user_email: str = "") -> str:
     return os.environ.get("GSHEET_ID", "")
 
 
-def main(label: str = "", supabase_user_email: str = ""):
+def main(label: str = "", supabase_user_email: str = "", last_scan_override: str = ""):
     full_scan = "--full" in sys.argv
 
     active_labels = [label] if label else LABELS
 
     tracker = load_json(TRACKER_FILE, {"jobs": {}})
     state = load_json(STATE_FILE, {"last_scan": None})
+
+    # last_scan_override lets the dashboard pass the user's last scan date from
+    # Supabase (persisted per-user) so incremental scans only check emails after
+    # that date, even though the local STATE_FILE may not exist on the server.
+    if last_scan_override and not full_scan:
+        state["last_scan"] = last_scan_override
 
     days = 90 if (full_scan or state.get("last_scan") is None) else max(1, (datetime.now() - datetime.fromisoformat(state["last_scan"])).days + 2)
     print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {active_labels} label(s) ===", flush=True)
@@ -561,14 +567,14 @@ def main(label: str = "", supabase_user_email: str = ""):
                 existing_rows = existing.get("values", [])
                 existing_by_key = {}
                 for i, row in enumerate(existing_rows[1:], start=2):
-                    if len(row) >= 2:
-                        key = (row[1].strip().lower(), row[0].strip().lower())
+                    if len(row) >= 3:
+                        key = (row[2].strip().lower(), row[1].strip().lower())
                         existing_by_key[key] = i
             except:
                 existing_rows = []
                 existing_by_key = {}
 
-            header = ["Title", "Company", "Location", "Score", "Status", "URL", "Notes", "Last Updated"]
+            header = ["Score", "Title", "Company", "Location", "URL", "Company Link", "Status", "Date Found"]
             new_rows = []
             updated_count_sheet = 0
             seen = set()
@@ -581,14 +587,19 @@ def main(label: str = "", supabase_user_email: str = ""):
                     continue
                 seen.add(dedup)
 
+                company = entry.get("company", "")
+                comp_link = entry.get("company_link") or entry.get("company_url") or ""
+                if not comp_link and company:
+                    comp_link = f"https://www.linkedin.com/company/{company.lower().replace(' ', '')}"
+
                 row_data = [
-                    entry.get("title", ""),
-                    entry.get("company", ""),
-                    "",
                     entry.get("score", ""),
-                    s,
+                    entry.get("title", ""),
+                    company,
+                    "",
                     entry.get("url", ""),
-                    (entry.get("notes") or "")[:80],
+                    comp_link,
+                    s,
                     (entry.get("date_found") or "")[:10],
                 ]
 

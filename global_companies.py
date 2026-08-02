@@ -21,6 +21,7 @@ GLOBAL_JOB_SOURCES = [
     {"name": "Percona", "url": "https://www.percona.com/about/careers", "region": "Global", "type": "company", "playwright": True},
     {"name": "Runna", "url": "https://public.runna.com", "region": "Global", "type": "company", "playwright": True},
     {"name": "Scopely", "url": "https://www.scopely.com/en/careers?jobviteiframe=search%3Fc", "region": "Global", "type": "company", "playwright": True},
+    {"name": "Sezzle", "url": "https://job-boards.greenhouse.io/sezzle?departments%5B%5D=4007834003", "region": "Global", "type": "company", "ats": "greenhouse", "ats_slug": "sezzle"},
     {"name": "Softenger", "url": "https://softenger.com", "region": "Global", "type": "company", "playwright": True},
     {"name": "Swisscom", "url": "https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers?timeType=0456b10b2e5410177c3c3914f8a70000", "region": "Global", "type": "company", "playwright": True},
     {"name": "Techno", "url": "https://technologyadvice.com/careers/opportunities", "region": "Global", "type": "company", "playwright": True},

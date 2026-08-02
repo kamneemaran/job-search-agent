@@ -325,12 +325,14 @@ def email_scan(
     # Get user's gmail_label preference
     label = ""
     app_password = ""
+    last_email_scan_at = ""
     try:
-        pref = sb.table("email_preferences").select("gmail_label, gmail_app_password").eq("user_id", user.id).maybe_single().execute()
+        pref = sb.table("email_preferences").select("gmail_label, gmail_app_password, last_email_scan_at").eq("user_id", user.id).maybe_single().execute()
         if pref.data:
             label = pref.data.get("gmail_label") or ""
             stored_pw = pref.data.get("gmail_app_password") or ""
             app_password = decrypt_text(stored_pw)
+            last_email_scan_at = pref.data.get("last_email_scan_at") or ""
     except Exception:
         pass
 
@@ -356,6 +358,7 @@ def email_scan(
         )
 
     user_id_str = str(user.id)[:8]
+    full_user_id = str(user.id)
     profile_slug = os.environ.get("PROFILE", "kamnee").replace(" ", "_").lower()
     tracker_file = f"job_tracker_{profile_slug}.json"
 
@@ -368,7 +371,13 @@ def email_scan(
             ess.GMAIL_USER = user_email
         if app_password:
             ess.GMAIL_PASS = app_password
-        ess.main(label=label, supabase_user_email=user_email or "")
+        ess.main(label=label, supabase_user_email=user_email or "", last_scan_override=last_email_scan_at)
+        # Persist per-user last scan time so the next click only checks emails after this date.
+        try:
+            import datetime as _dt
+            sb.table("email_preferences").update({"last_email_scan_at": _dt.datetime.now(_dt.timezone.utc).isoformat()}).eq("user_id", full_user_id).execute()
+        except Exception:
+            pass
 
     background_tasks.add_task(_run_scan)
 

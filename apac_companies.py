@@ -31,6 +31,11 @@ APAC_JOB_SOURCES = [
     {"name": "Urban Company", "url": "https://careers.urbancompany.com/", "region": "India", "type": "company", "playwright": True},
     {"name": "Meesho", "url": "https://jobs.lever.co/meesho", "region": "India", "type": "company", "ats": "lever", "ats_slug": "meesho"},
 
+    # Indian recruitment agencies
+    {"name": "Careernet", "url": "https://mycareernet.co/mycareernet/jobs", "region": "India", "type": "company", "playwright": True},
+    {"name": "Persol India", "url": "https://jobs.persolindia.com/?utm_source=internal_navigation&utm_medium=persolindia_site&utm_campaign=country_site_to_job_portal&utm_content=hero_search_jobs&industry=Information%2520Technology,Admin%252FMaintenance%252FSecurity%252FDatawarehousing,Programming%2520%2526%2520Design,Project%2520Management,QA%252FTesting%252FDocumentation,Senior%2520Management,System%2520Design%252FImplementation%252FERP%252FCRM&page=1", "region": "India", "type": "company", "playwright": True},
+    {"name": "Placement India", "url": "https://www.placementindia.com/job-search/search.php?filter=relevance&id2=refine_search&seeker_search_keyword=enter+skills%2C+designation%2C+etc&job_by_functional_area_refine%5B%5D=100004&job_by_functional_area_refine%5B%5D=103268&job_by_functional_area_refine%5B%5D=103272&job_by_functional_area_refine%5B%5D=103279&job_by_functional_area_refine%5B%5D=103280&job_by_functional_area_refine%5B%5D=100002&job_by_functional_area_refine%5B%5D=103285&job_by_functional_area_refine%5B%5D=103270&job_by_functional_area_refine%5B%5D=103275&job_by_functional_area_refine%5B%5D=103278&job_by_functional_area_refine%5B%5D=103283", "region": "India", "type": "company", "playwright": True},
+
     # Indian SAP consultancies / system integrators
     {"name": "HCL Technologies", "url": "https://careers.hcltech.com/go/NonTPDemand/9558355/", "region": "India", "type": "company", "playwright": True},
     {"name": "Tech Mahindra", "url": "https://careers.techmahindra.com/CurrentOpportunity.aspx#Advance", "region": "India", "type": "company", "playwright": True},

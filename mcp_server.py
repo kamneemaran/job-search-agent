@@ -78,6 +78,7 @@ from daily_scan import (
     search_glassdoor_sg,
     search_glassdoor_uk,
     search_glassdoor_de,
+    search_glassdoor_jp,
     search_simplyhired,
     search_weworkremotely,
     search_womenintech,

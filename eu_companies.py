@@ -1043,4 +1043,13 @@ EU_JOB_SOURCES = [
     {"name": "GrandVision", "url": "https://www.essilorluxottica.com/en/careers/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Tradeweb", "url": "https://tradeweb.dejobs.org/jobs/?q=engineer", "region": "EU", "type": "company", "playwright": True},
     {"name": "Fugro", "url": "https://www.fugro.com/careers/jobs?expertise=IT", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Backbase", "url": "https://www.backbase.com/careers/jobs?b158f050_page=1", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Thales", "url": "https://careers.thalesgroup.com/global/en/search-results", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Damen", "url": "https://damen.wd3.myworkdayjobs.com/en-GB/Damen_Careers/jobs?jobFamilyGroup=1ab29651b4431023b72e266088e50000&jobFamilyGroup=1ab29651b4431023b72e10bc293d0000", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Prodrive Technologies", "url": "https://careers.prodrive-technologies.com/vacancies", "region": "NL", "type": "company", "playwright": True},
+    {"name": "FrieslandCampina", "url": "https://mycareers.frieslandcampina.com/search/?locale=en_GB&markerViewed=&carouselIndex=&facetFilters=%7B%22mfield1%22%3A%5B%22Engineering+%26+Technology%22%2C%22IT+%26+Digital%22%5D%7D&pageNumber=0", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Signify", "url": "https://www.careers.signify.com/global/en/search-results?from=10&s=1&category=Digital", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Danone", "url": "https://careers.danone.com/en-global/jobs.html?775205820_group.propertyvalues.property=jcr%3Acontent%2Fmetadata%2Fcq%3Atags&775205820_group.propertyvalues.operation=equals&775205820_group.propertyvalues.15_values=careers%3Ajobs%2Fjob-function%2Finformation-technology&-1381620699_group.propertyvalues.property=jcr%3Acontent%2Fmetadata%2Fcq%3Atags&-1381620699_group.propertyvalues.operation=equals&-1381620699_group.propertyvalues.12_values=careers%3Ajobs%2Fjob-function%2Finformation-technology&layout=teaserList&p.offset=12&p.limit=12&fulltext=*", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Kraft Heinz", "url": "https://jobs.kraftheinz.com/careers?start=0&pid=1970324837383874&sort_by=hot&filter_department=Engineering+%26+Maintenance%2CPackaging+Development%2CProduct+Development", "region": "NL", "type": "company", "playwright": True},
+    {"name": "Johnson & Johnson", "url": "https://www.careers.jnj.com/en/jobs/?team=R%26D%20Product%20Development&team=Technology%20Product%20%26%20Platform%20Management&pagesize=20#results", "region": "NL", "type": "company", "playwright": True},
 ]
