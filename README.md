@@ -160,6 +160,15 @@ The job tracker persists across workflow runs by loading from Google Sheets at s
 
 Connect from any MCP host (Claude Desktop, Cursor, VS Code etc.) to get tools for on-demand job search, scoring, tracking, and resume parsing.
 
+#### 🚀 Multi-MCP Unified Workflow (JobPilot + Rezi + JobGPT)
+You can combine this server with the **Rezi Resume MCP** and **JobGPT MCP** to build a single, fully-automated pipeline:
+1. **Search & Score (JobPilot):** Search 15+ job boards, score roles 0-100, and generate skill gaps/STAR+R LLM context with `prepare_application`.
+2. **Tailor Resume (Rezi):** Load your resume using Rezi's MCP, and write a customized resume optimized for the role directly back into your dashboard.
+3. **Auto-Apply & Track (JobGPT):** Automatically import the job from its URL, submit your tailored resume, discover recruiter contacts, and apply.
+4. **Log Progress (JobPilot):** Sync application statuses to your master Google Sheets.
+
+See **[AGENTS.md](AGENTS.md)** for full client configurations, setup commands, and step-by-step prompts.
+
 ---
 
 ## Project Structure

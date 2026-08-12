@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "job-search-agent": {
+      "command": "/Users/kamnee.maran/Downloads/job-search-agent/.venv/bin/python",
+      "args": [
+        "/Users/kamnee.maran/Downloads/job-search-agent/mcp_server.py"
+      ],
+      "env": {}
+    },
+    "rezi": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://api.rezi.ai/mcp"
+      ],
+      "env": {}
+    },
+    "jobgpt": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.6figr.com/mcp",
+        "--header",
+        "Authorization:Bearer YOUR_JOBGPT_API_KEY"
+      ],
+      "env": {}
+    }
+  }
+}
