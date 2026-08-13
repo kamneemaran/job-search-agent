@@ -245,16 +245,16 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                         "experience": exp_req or "—",
                     })
 
-        # 2. Run Europe Job Boards directly if "europe_boards" is requested!
-        if "europe_boards" in batches_list:
-            logger.info("[DIGEST-BG-WORKER] Triggering comprehensive Europe Job Boards scrapers across Portugal, Spain, Germany, Netherlands, Luxembourg...")
-            
-            # Build queries based on core skills
-            queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
-            if not queries:
-                queries = ["Python"]
-                
-            board_mapping = [
+        # 2. Run Job Boards based on the requested batches!
+        run_eu_boards = "europe_boards" in batches_list or "boards-eu" in batches_list or "all" in batches_list
+        run_major_boards = "boards-major" in batches_list or "all" in batches_list
+        run_au_nz_boards = "boards-AU-NZ" in batches_list or "boards-au-nz" in batches_list or "all" in batches_list
+        run_remote_boards = "boards-remote" in batches_list or "remote" in batches_list or "all" in batches_list
+
+        boards_to_run = []
+
+        if run_eu_boards:
+            boards_to_run.extend([
                 ("NetEmpregos", ds.search_netempregos, ["Portugal"]),
                 ("SAPOEmprego", ds.search_sapoemprego, ["Portugal"]),
                 ("Infoempleo", ds.search_infoempleo, ["Spain"]),
@@ -270,10 +270,76 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                 ("Intermediair", ds.search_intermediair, ["Netherlands"]),
                 ("NationaleVacaturebank", ds.search_nationalevacaturebank, ["Netherlands"]),
                 ("Arbeitnow", ds.search_arbeitnow, ["Remote"])
-            ]
+            ])
             
-            for board_name, board_fn, locations in board_mapping:
-                logger.info(f"[DIGEST-BG-WORKER] Scraping Europe Board: '{board_name}'...")
+        if run_major_boards:
+            boards_to_run.extend([
+                ("LinkedIn", ds.search_linkedin, ["India", "Remote"]),
+                ("Indeed", ds.search_indeed, ["India", "Remote"]),
+                ("Naukri", ds.search_naukri, ["India"]),
+                ("Glassdoor", ds.search_glassdoor, ["India", "Remote"]),
+                ("SimplyHired", ds.search_simplyhired, ["India", "Remote"]),
+                ("WomenInTech", ds.search_womenintech, ["Remote"]),
+                ("Instahyre", ds.search_instahyre, ["India"]),
+                ("Foundit", ds.search_foundit, ["India"]),
+                ("TimesJobs", ds.search_timesjobs, ["India"]),
+                ("Xing", ds.search_xing, ["Germany", "Switzerland"]),
+                ("JobsCh", ds.search_jobsch, ["Switzerland"]),
+                ("JobsinGermany", ds.search_jobsingermany, ["Germany"]),
+                ("WorkinFinland", ds.search_workinfinland, ["Finland"]),
+                ("EURES", ds.search_eures, ["Europe"]),
+                ("LinkedInJP", ds.search_linkedin_jp, ["Japan"]),
+                ("IndeedJP", ds.search_indeed_jp, ["Japan"]),
+                ("GlassdoorJP", ds.search_glassdoor_jp, ["Japan"]),
+                ("CareerCross", ds.search_careercross, ["Japan"])
+            ])
+            
+        if run_au_nz_boards:
+            boards_to_run.extend([
+                ("Seek", ds.search_seek, ["Australia"]),
+                ("Jora", ds.search_jora, ["Australia"])
+            ])
+            
+        if run_remote_boards:
+            boards_to_run.extend([
+                ("WeWorkRemotely", ds.search_weworkremotely, ["Remote"]),
+                ("Remotive", ds.search_remotive, ["Remote"]),
+                ("ArcDev", ds.search_arcdev, ["Remote"]),
+                ("RemoteOK", ds.search_remoteok, ["Remote"]),
+                ("Himalayas", ds.search_himalayas, ["Remote"]),
+                ("SkipTheDrive", ds.search_skipthedrive, ["Remote"]),
+                ("WorkingNomads", ds.search_workingnomads, ["Remote"]),
+                ("Jobspresso", ds.search_jobspresso, ["Remote"]),
+                ("Arbeitnow", ds.search_arbeitnow, ["Remote"]),
+                ("EnglishJobSearch", ds.search_englishjobsearch, ["Remote"]),
+                ("Bulldogjob", ds.search_bulldogjob, ["Remote"]),
+                ("VisaSponsor", ds.search_visasponsor, ["Remote"]),
+                ("Incluso", ds.search_incluso, ["Remote"]),
+                ("Crossover", ds.search_crossover, ["Remote"]),
+                ("NoDesk", ds.search_nodesk, ["Remote"]),
+                ("Workew", ds.search_workew, ["Remote"]),
+                ("Kelly", ds.search_kelly, ["Remote"])
+            ])
+
+        # Deduplicate boards_to_run by board_name while preserving order
+        unique_boards = []
+        seen_board_names = set()
+        for board_name, board_fn, locations in boards_to_run:
+            if board_name not in seen_board_names:
+                seen_board_names.add(board_name)
+                unique_boards.append((board_name, board_fn, locations))
+        boards_to_run = unique_boards
+
+        if boards_to_run:
+            logger.info(f"[DIGEST-BG-WORKER] Triggering {len(boards_to_run)} Job Boards scrapers based on active batches: {batches_list}...")
+            
+            # Build queries based on core skills
+            queries = [s.strip() for s in profile.get("core_skills", [])[:3] if s.strip()]
+            if not queries:
+                queries = ["Python"]
+                
+            for board_name, board_fn, locations in boards_to_run:
+                logger.info(f"[DIGEST-BG-WORKER] Scraping Board: '{board_name}'...")
                 for query in queries:
                     for loc in locations:
                         try:
@@ -288,7 +354,7 @@ def search_jobs_for_user(profile: dict, sb=None, user_id=None, scan_id=None) -> 
                                 if key in seen:
                                     continue
                                 if key in excluded_jobs:
-                                    logger.info(f"[DIGEST-BG-WORKER] Skipping Europe Board job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
+                                    logger.info(f"[DIGEST-BG-WORKER] Skipping Board job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
                                     continue
                                     
                                 # Apply posted date filter

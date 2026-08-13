@@ -958,7 +958,6 @@ EU_JOB_SOURCES = [
     {"name": "Coopers Group", "url": "https://www.coopers.ch/de/stellen/index.php?search=&searchlang=de&region=&sector=2&type=", "region": "EU", "type": "company", "playwright": True},
     {"name": "Michael Page Switzerland", "url": "https://www.michaelpage.ch/de/jobs/technologie", "region": "EU", "type": "company", "playwright": True},
     {"name": "oprandi & partner", "url": "https://oprandi.ch/en/job-market/", "region": "EU", "type": "company", "playwright": True},
-    {"name": "Joker Personal", "url": "https://jokerpersonal.ch/jobs?q=&branches=%5B13%5D", "region": "EU", "type": "company", "playwright": True},
     {"name": "Experis Norway", "url": "https://www.experis.no/nb/stillinger?page=1&industries=IT+-+programvare,IT&sf=industries&ids={industries:[712625fec71d4c708280ab1081e3e155,8f93cb36e989448987da22c775e7cb7e]}", "region": "EU", "type": "company", "playwright": True},
     {"name": "Dfind", "url": "https://www.randstad.no/ledige-stillinger/", "region": "EU", "type": "company", "playwright": True},
     {"name": "Capus", "url": "https://capus.no/alle-stillinger/?_bransjer=it-telekommunikasjon-internett%2Cingenioryrker", "region": "EU", "type": "company", "playwright": True},
