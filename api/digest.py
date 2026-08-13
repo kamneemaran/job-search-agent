@@ -32,9 +32,14 @@ def get_digest_preferences(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(401, "Authorization required")
 
+    from api.supabase import decode_token
+    payload = decode_token(authorization)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(401, "Invalid or expired token")
+
+    user_id = payload.get("sub")
     sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
-    result = sb.table("email_preferences").select("*").eq("user_id", user.id).maybe_single().execute()
+    result = sb.table("email_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
 
     if not result:
         return DigestPreferences()
@@ -75,8 +80,13 @@ def update_digest_preferences(
     if not authorization:
         raise HTTPException(401, "Authorization required")
 
+    from api.supabase import decode_token
+    payload = decode_token(authorization)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(401, "Invalid or expired token")
+
+    user_id = payload.get("sub")
     sb = get_user_client(authorization)
-    user = sb.auth.get_user().user
 
     def _upsert(payload: dict) -> None:
         try:
@@ -95,7 +105,7 @@ def update_digest_preferences(
                 pass
 
     base = {
-        "user_id": user.id,
+        "user_id": user_id,
         "enabled": prefs.enabled,
         "frequency": prefs.frequency,
         "email": prefs.email,
@@ -111,7 +121,7 @@ def update_digest_preferences(
     }
     _upsert(dict(base))
     # Save gmail fields independently so they persist even if schedule columns are missing
-    gmail_fields = {"user_id": user.id, "gmail_label": prefs.gmail_label, "gmail_configured": prefs.gmail_configured}
+    gmail_fields = {"user_id": user_id, "gmail_label": prefs.gmail_label, "gmail_configured": prefs.gmail_configured}
     if prefs.gmail_app_password:
         gmail_fields["gmail_app_password"] = encrypt_text(_normalize_app_password(prefs.gmail_app_password))
     _upsert(gmail_fields)
@@ -716,17 +726,13 @@ def get_active_scans(
     if not authorization:
         raise HTTPException(401, "Authorization required")
     
-    try:
-        sb = get_user_client(authorization)
-        user = sb.auth.get_user().user
-        if not user:
-            raise HTTPException(401, "Invalid session")
-        user_id = user.id
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"[DIGEST-SCANS] Auth failed: {e}")
-        raise HTTPException(401, f"Authentication failed: {e}")
+    from api.supabase import decode_token
+    payload = decode_token(authorization)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(401, "Invalid or expired token")
+        
+    user_id = payload.get("sub")
+    sb = get_user_client(authorization)
     
     try:
         pref_result = sb.table("email_preferences").select("sent_history").eq("user_id", user_id).maybe_single().execute()

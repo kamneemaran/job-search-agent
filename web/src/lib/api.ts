@@ -52,30 +52,66 @@ export interface Profile {
   seniority_keywords: string[];
 }
 
+let sessionInitPromise: Promise<Session | null> | null = null;
+let isSessionInitialized = false;
+let initializedSession: Session | null = null;
+
+// Initialize subscription to update local cache when session changes
+if (typeof window !== "undefined") {
+  try {
+    const supabase = getBrowserClient();
+    supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      initializedSession = session;
+      isSessionInitialized = true;
+      if (session) {
+        sessionInitPromise = Promise.resolve(session);
+      } else {
+        sessionInitPromise = null;
+        isSessionInitialized = false;
+      }
+    });
+  } catch {}
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
     const supabase = getBrowserClient();
-    const res = await supabase.auth.getSession();
-    let session = res?.data?.session;
     
-    // If no session is found immediately on mount, wait briefly for Supabase to restore/initialize the session
-    if (!session) {
-      const promise = new Promise<Session | null>((resolve) => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, currentSession: Session | null) => {
-          if (currentSession) {
-            resolve(currentSession);
-          }
-        });
-        
-        // Timeout after 1.5 seconds if no session is initialized
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(null);
-        }, 1500);
-      });
-      session = await promise;
+    if (isSessionInitialized) {
+      const token = initializedSession?.access_token;
+      if (token) {
+        return { Authorization: `Bearer ${token}` };
+      }
+      return {};
     }
 
+    if (!sessionInitPromise) {
+      sessionInitPromise = (async () => {
+        const res = await supabase.auth.getSession();
+        let session = res?.data?.session;
+        
+        if (!session) {
+          session = await new Promise<Session | null>((resolve) => {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, currentSession: Session | null) => {
+              if (currentSession) {
+                resolve(currentSession);
+              }
+            });
+            
+            setTimeout(() => {
+              subscription.unsubscribe();
+              resolve(null);
+            }, 1500);
+          });
+        }
+        
+        initializedSession = session;
+        isSessionInitialized = true;
+        return session;
+      })();
+    }
+
+    const session = await sessionInitPromise;
     const token = session?.access_token;
     if (token) {
       return { Authorization: `Bearer ${token}` };

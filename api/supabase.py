@@ -1,9 +1,43 @@
 """Supabase client helpers for authenticated requests."""
 import os
+import base64
+import json
+import time
 from supabase import create_client, Client
 
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+
+class DecodedUser:
+    def __init__(self, user_id: str, email: str = ""):
+        self.id = user_id
+        self.email = email
+
+
+def decode_token(authorization: str | None) -> dict | None:
+    """Locally decode and validate JWT token expiration. Returns payload dict or None."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[7:]
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        payload_b64 = parts[1]
+        # Add proper padding for base64 decoding
+        payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+        payload_bytes = base64.urlsafe_b64decode(payload_b64)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+        
+        # Check expiration
+        exp = payload.get("exp")
+        if exp and exp < int(time.time()):
+            return None # Expired
+            
+        return payload
+    except Exception:
+        return None
 
 
 def get_user_client(authorization: str | None = None) -> Client:
@@ -23,19 +57,7 @@ def get_user_client(authorization: str | None = None) -> Client:
 
 def get_user_id(authorization: str | None) -> str | None:
     """Extract user ID from auth token. Returns None if not authenticated."""
-    if not authorization:
-        return None
-    try:
-        sb = get_user_client(authorization)
-        resp = sb.auth.get_user()
-        user = resp.user if hasattr(resp, "user") else resp
-        if hasattr(user, "id"):
-            return user.id
-        if isinstance(user, dict):
-            return user.get("id")
-        return getattr(user, "id", None)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"Error in get_user_id: {e}")
-        return None
+    payload = decode_token(authorization)
+    if payload:
+        return payload.get("sub")
+    return None

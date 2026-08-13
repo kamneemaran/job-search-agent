@@ -71,15 +71,92 @@ _ROLE_KEYWORDS = [
     "product", "program", "project", "technical", "solution",
 ]
 
+def find_clean_sap_role(text):
+    text_lower = text.lower()
+    clean_phrases = [
+        "sap mm functional consultant", "sap ewm functional consultant",
+        "sap mm consultant", "sap ewm consultant", "sap wm consultant",
+        "sap mm/wm consultant", "sap mm/ewm consultant", "sap logistics consultant",
+        "sap supply chain consultant", "sap sourcing & procurement consultant",
+        "sap sourcing and procurement consultant", "sap support analyst",
+        "sap functional lead", "sap functional consultant", "sap consultant"
+    ]
+    for phrase in clean_phrases:
+        if phrase in text_lower:
+            return phrase.title()
+    return None
+
+
+def extract_location(subject, body):
+    text = (subject + " " + body).lower()
+    location_map = {
+        "melbourne": "Melbourne, Australia",
+        "brisbane": "Brisbane, Australia",
+        "sydney": "Sydney, Australia",
+        "auckland": "Auckland, New Zealand",
+        "wellington": "Wellington, New Zealand",
+        "mülheim": "Mülheim, Germany",
+        "erlangen": "Erlangen, Germany",
+        "düsseldorf": "Düsseldorf, Germany",
+        "ichtershausen": "Ichtershausen, Germany",
+        "frankfurt": "Frankfurt, Germany",
+        "munich": "Munich, Germany",
+        "münchen": "Munich, Germany",
+        "starnberg": "Starnberg, Germany",
+        "hannover": "Hannover, Germany",
+        "augsburg": "Augsburg, Germany",
+        "olpe": "Olpe, Germany",
+        "kronberg": "Kronberg, Germany",
+        "berlin": "Berlin, Germany",
+        "den bosch": "Den Bosch, Netherlands",
+        "eindhoven": "Eindhoven, Netherlands",
+        "delft": "Delft, Netherlands",
+        "amsterdam": "Amsterdam, Netherlands",
+        "warsaw": "Warsaw, Poland",
+        "stockholm": "Stockholm, Sweden",
+        "malmö": "Malmö, Sweden",
+        "pune": "Pune, India",
+        "bengaluru": "Bengaluru, India",
+        "bangalore": "Bengaluru, India",
+        "hyderabad": "Hyderabad, India",
+        "chennai": "Chennai, India",
+        "mumbai": "Mumbai, India",
+        "gurugram": "Gurugram, India",
+        "gurgaon": "Gurugram, India",
+    }
+    for city, formatted in location_map.items():
+        if city in text:
+            return formatted
+    country_map = {
+        "australia": "Australia",
+        "new zealand": "New Zealand",
+        "germany": "Germany",
+        "netherlands": "Netherlands",
+        "poland": "Poland",
+        "sweden": "Sweden",
+        "switzerland": "Switzerland",
+        "india": "India",
+    }
+    for country, formatted in country_map.items():
+        if country in text:
+            return formatted
+    return ""
+
+
 def extract_role(subject, body):
     """Extract job title/role from email subject or body.
     
     Priority:
+      0. High-precision SAP role phrase matching
       1. Subject patterns: 'Application for Role', 'Your application for Role'
       2. Subject patterns: 'Role at Company', 'Role - Company'
       3. Company-reply patterns: 'Re: Role at Company'
       4. Known role keywords in subject
     """
+    clean_sap = find_clean_sap_role(subject + " " + body)
+    if clean_sap:
+        return clean_sap
+
     s = _split_subject(subject)
     s_lower = s.lower()
     body_lower = body.lower()
@@ -202,80 +279,93 @@ def extract_company(subject, sender, full_text, tracker_companies):
     """Find which company appears in the email text.
     
     Priority:
-      1. Subject line patterns: 'at Company', 'with Company', 'bei Company'
-      2. Known companies in subject (word-boundary)
-      3. Domain from sender email (@company.com -> Company)
-      4. Sender display name (when it clearly contains a company, not a person)
+      1. Non-ATS, non-public sender email domain (e.g. recruit@asml.com -> ASML)
+      2. Cleaned sender display name (e.g. "Capgemini Careers" -> Capgemini)
+      3. Subject line patterns: 'at Company', 'with Company', 'bei Company'
+      4. Known companies in subject (word-boundary)
       5. Known companies in body (first 300 chars)
       6. Tracker companies
     """
-    full_lower = full_text.lower()
+    email_addr = ""
+    display_name = ""
+    
+    m_email = re.search(r'<([^>]+)>', sender)
+    if m_email:
+        email_addr = m_email.group(1).strip().lower()
+        display_name = sender.split("<")[0].strip().replace('"', '')
+    else:
+        if "@" in sender:
+            email_addr = sender.strip().lower()
+        else:
+            display_name = sender.strip().replace('"', '')
+            
+    domain = ""
+    if email_addr and "@" in email_addr:
+        domain_part = email_addr.split("@")[-1].lower()
+        domain = domain_part.split(".")[0]
+        
+    _ats_domains = {
+        "smartrecruiters", "ashbyhq", "greenhouse", "lever", "bamboohr",
+        "workable", "icims", "jobvite", "recruitee", "comeet",
+        "personio", "breezy", "teamtailor", "pinpoint", "myworkday",
+        "workday", "jobvite"
+    }
+    _public_domains = {
+        "gmail", "outlook", "yahoo", "hotmail", "icloud", "protonmail", 
+        "mail", "zoho", "yandex", "gmx", "aol"
+    }
+    
+    # 1. Non-ATS, non-public sender email domain
+    if domain and domain not in _ats_domains and domain not in _public_domains:
+        for c in KNOWN_COMPANIES + tracker_companies:
+            if c.lower() == domain:
+                return c
+        return domain.title()
+        
+    # 2. Cleaned sender display name
+    if display_name:
+        clean_display = _clean_display(display_name)
+        if clean_display:
+            _common_names = {
+                "kalimi", "mohini", "agnes", "monika", "csorba", "pradeep", "kamnee", 
+                "maran", "john", "jane", "michael", "david", "sarah", "lisa", "thomas",
+                "georgiana", "alina", "luncanu", "denz", "welcome", "noreply", "no-reply", "donotreply"
+            }
+            words = clean_display.lower().split()
+            if not any(w in _common_names for w in words):
+                significant_words = [w for w in words if len(w) >= 3 and w not in (
+                    "human", "resources", "department", "nl", "information", "technology", "careers", "career", "jobs"
+                )]
+                if significant_words:
+                    for c in KNOWN_COMPANIES + tracker_companies:
+                        if c.lower() == clean_display.lower():
+                            return c
+                    return clean_display.title()
+
+    # 3. Subject patterns: "at Company", "with Company", "bei Company"
+    m_subject = re.search(r'\b(?:at|with|bei)\s+([A-Z][a-zA-Z0-9_-]+(?:\s[A-Z][a-zA-Z0-9_-]+)?)', subject)
+    if m_subject:
+        comp_candidate = m_subject.group(1).strip()
+        _not_companies = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "john", "jane", "you"}
+        if comp_candidate.lower() not in _not_companies:
+            return comp_candidate
+
+    # 4. Known companies in subject (word-boundary)
     s_lower = subject.lower()
-
-    # 1. Subject patterns: "at Company", "with Company", "bei Company"
-    m = re.search(r'\b(?:at|with|bei)\s+([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)', subject)
-    if m:
-        return m.group(1).strip()
-
-    # 2. Known companies in subject (word-boundary)
     for c in KNOWN_COMPANIES:
         if len(c) >= 2 and re.search(rf'\b{re.escape(c)}\b', s_lower):
             return c.title() if c.islower() else c
-
-    # 3. Sender display name (more reliable than domain for ATS-sent emails)
-    sm = re.match(r'^"?([^"<]*?)"?\s*<[^>]+@[^>]+>', sender)
-    if sm:
-        display = _clean_display(sm.group(1))
-    elif "@" in sender:
-        display = _clean_display(sender.split("@")[0].replace(".", " "))
-    else:
-        display = _clean_display(sender)
-
-    if display:
-        display_words = display.split()
-        for c in KNOWN_COMPANIES:
-            if len(c) >= 4:
-                if c in display:
-                    return c.title() if c.islower() else c
-            elif len(c) >= 2:
-                if re.search(rf'\b{re.escape(c)}\b', display):
-                    return c.title() if c.islower() else c
-        _common_names = {"kalimi", "mohini", "agnes", "monika", "csorba",
-                         "pradeep", "kamnee", "maran", "john", "jane",
-                         "michael", "david", "sarah", "lisa", "thomas",
-                         "georgiana", "alina", "luncanu", "denz",
-                         "welcome", "noreply", "no-reply", "donotreply",
-                         "best", "faculty", "market", "tesolin",
-                         "life", "godutch"}
-        significant = [w for w in display_words if len(w) >= 4
-                       and w not in _common_names
-                       and w not in ("human", "resources", "department", "nl",
-                                     "information", "technology", "recruiting",
-                                     "recruitment")]
-        if significant:
-            return max(significant, key=len).title()
-
-    # 4. Domain extraction (@company.com -> Company) — skip ATS/email-service domains
-    _ats_domains = {"smartrecruiters", "ashbyhq", "greenhouse", "lever", "bamboohr",
-                    "workable", "icims", "jobvite", "recruitee", "comeet",
-                    "personio", "breezy", "teamtailor", "pinpoint", "myworkday",
-                    "workday"}
-    m = re.search(r'@([a-zA-Z0-9-]+)\.(com|io|ai|co|de|nl|uk)', full_text[:500])
-    if m:
-        domain = m.group(1).lower()
-        if domain not in ("gmail", "outlook", "yahoo", "hotmail", "icloud", "protonmail", "mail") and domain not in _ats_domains:
-            return domain.title() if domain.islower() else domain
-
-    # 5. Known companies in body (first 300 chars)
+            
+    # 5. Tracker companies in subject
+    for c in tracker_companies:
+        if c.lower() in s_lower:
+            return c
+            
+    # 6. Known companies in body (first 300 chars)
+    full_lower = full_text.lower()
     for c in KNOWN_COMPANIES:
         if len(c) >= 4 and re.search(rf'\b{re.escape(c)}\b', full_lower[:300]):
             return c.title() if c.islower() else c
-
-    # 6. Tracker companies
-    for c in tracker_companies:
-        cl = c.lower()
-        if cl in full_lower and len(cl) > 2:
-            return c
 
     return None
 
@@ -305,15 +395,28 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
     active_labels = [label] if label else LABELS
 
     tracker = load_json(TRACKER_FILE, {"jobs": {}})
-    state = load_json(STATE_FILE, {"last_scan": None})
+    state = load_json(STATE_FILE, {"last_scan": None, "last_scan_by_label": {}})
+
+    target_label = active_labels[0] if active_labels else "Job Tracker"
+    last_scan_by_label = state.get("last_scan_by_label") or {}
+    
+    # Check last scan for this specific label
+    last_scan_date = last_scan_by_label.get(target_label)
+    
+    # If a new label is being scanned, or last_scan_date is None, force a full scan
+    if last_scan_date is None:
+        last_scan_override = "" # Ignore global override to force a full scan on new label!
 
     # last_scan_override lets the dashboard pass the user's last scan date from
     # Supabase (persisted per-user) so incremental scans only check emails after
     # that date, even though the local STATE_FILE may not exist on the server.
     if last_scan_override and not full_scan:
-        state["last_scan"] = last_scan_override
+        last_scan_date = last_scan_override
+    elif not last_scan_date and state.get("last_scan"):
+        # Fallback to general last scan if this is not a new custom label
+        last_scan_date = state.get("last_scan")
 
-    days = 90 if (full_scan or state.get("last_scan") is None) else max(1, (datetime.now() - datetime.fromisoformat(state["last_scan"])).days + 2)
+    days = 90 if (full_scan or last_scan_date is None) else max(1, (datetime.now() - datetime.fromisoformat(last_scan_date)).days + 2)
     print(f"=== {'Full' if days >= 90 else 'Incremental'} scan of {active_labels} label(s) ===", flush=True)
 
     if not active_labels:
@@ -423,8 +526,9 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
 
         company = extract_company(subject, sender, full, tracker_companies)
         role = _clean_role(extract_role(subject, body))
+        location = extract_location(subject, body)
         if company:
-            updated_companies[company] = {"status": status, "role": role}
+            updated_companies[company] = {"status": status, "role": role, "location": location}
 
     if not updated_companies:
         print("  No companies detected in emails.", flush=True)
@@ -470,6 +574,8 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
         entry["notes"] = f"Email scan: {new_status}"
         if new_info["role"] and (entry.get("title", "") == "Unknown Role" or not entry.get("title")):
             entry["title"] = new_info["role"]
+        if new_info.get("location") and (entry.get("location", "") == "Unknown" or not entry.get("location") or entry.get("location") == "Remote"):
+            entry["location"] = new_info["location"]
         updated_count += 1
 
     print(f"  Updated {updated_count} tracker entries", flush=True)
@@ -491,6 +597,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
             "url": "",
             "score": "",
             "status": status,
+            "location": info.get("location", "Remote"),
             "resume": "",
             "date_found": now,
             "date_updated": now,
@@ -517,7 +624,11 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
             print(f"  [!] '{c}' ({info['status']}) — not in tracker", flush=True)
 
     save_json(TRACKER_FILE, tracker)
-    state["last_scan"] = datetime.now().isoformat()
+    now_iso = datetime.now().isoformat()
+    if "last_scan_by_label" not in state:
+        state["last_scan_by_label"] = {}
+    state["last_scan_by_label"][target_label] = now_iso
+    state["last_scan"] = now_iso
     save_json(STATE_FILE, state)
 
     # Sync to sheet
@@ -562,8 +673,31 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
             service = build("sheets", "v4", credentials=creds)
             sheet = service.spreadsheets()
 
+            sheet_tab_name = active_labels[0] if active_labels else "Job Tracker"
+            # Auto-check and create sheet tab if not exists
             try:
-                existing = sheet.values().get(spreadsheetId=gsheet_id, range="'Job Tracker'!A:L").execute()
+                sheet_metadata = sheet.get(spreadsheetId=gsheet_id).execute()
+                sheets = sheet_metadata.get('sheets', [])
+                existing_titles = [s.get('properties', {}).get('title') for s in sheets]
+                if sheet_tab_name not in existing_titles:
+                    body = {
+                        'requests': [
+                            {
+                                'addSheet': {
+                                    'properties': {
+                                        'title': sheet_tab_name
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                    sheet.batchUpdate(spreadsheetId=gsheet_id, body=body).execute()
+                    print(f"  [gsheet] Created new sheet tab '{sheet_tab_name}'", flush=True)
+            except Exception as se:
+                print(f"  [gsheet] Failed to check/create sheet tab '{sheet_tab_name}': {se}", flush=True)
+
+            try:
+                existing = sheet.values().get(spreadsheetId=gsheet_id, range=f"'{sheet_tab_name}'!A:L").execute()
                 existing_rows = existing.get("values", [])
                 existing_by_key = {}
                 for i, row in enumerate(existing_rows[1:], start=2):
@@ -596,7 +730,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                     entry.get("score", ""),
                     entry.get("title", ""),
                     company,
-                    "",
+                    entry.get("location", "Remote"),
                     entry.get("url", ""),
                     comp_link,
                     s,
@@ -607,7 +741,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                     row_num = existing_by_key[dedup]
                     sheet.values().update(
                         spreadsheetId=gsheet_id,
-                        range=f"'Job Tracker'!A{row_num}:H{row_num}",
+                        range=f"'{sheet_tab_name}'!A{row_num}:H{row_num}",
                         valueInputOption="RAW",
                         body={"values": [row_data]}
                     ).execute()
@@ -617,7 +751,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
 
             if not existing_rows:
                 sheet.values().update(
-                    spreadsheetId=gsheet_id, range="'Job Tracker'!A1",
+                    spreadsheetId=gsheet_id, range=f"'{sheet_tab_name}'!A1",
                     valueInputOption="RAW", body={"values": [header]}
                 ).execute()
 
@@ -625,7 +759,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                 print(f"  [gsheet] Updated {updated_count_sheet} existing rows", flush=True)
             if new_rows:
                 sheet.values().append(
-                    spreadsheetId=gsheet_id, range="'Job Tracker'!A:H",
+                    spreadsheetId=gsheet_id, range=f"'{sheet_tab_name}'!A:H",
                     valueInputOption="RAW", body={"values": new_rows}
                 ).execute()
                 print(f"  [gsheet] Added {len(new_rows)} new rows", flush=True)
@@ -662,6 +796,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                         sb.table("jobs").update({
                             "status": s,
                             "notes": entry.get("notes", ""),
+                            "location": entry.get("location", "Remote"),
                             "updated_at": datetime.now().isoformat(),
                         }).eq("id", existing.data[0]["id"]).execute()
                     else:
@@ -670,6 +805,7 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                             "title": entry.get("title", ""),
                             "company": entry.get("company", ""),
                             "status": s,
+                            "location": entry.get("location", "Remote"),
                             "notes": entry.get("notes", ""),
                             "found_at": entry.get("date_found", datetime.now().isoformat()),
                             "updated_at": datetime.now().isoformat(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { searchJobs, addToTracker, getProfile, type JobResult } from "@/lib/api";
@@ -64,75 +64,76 @@ export default function SearchPage() {
     setSelectedSources(toSelect);
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim() && !hasResume) return;
-    setLoading(true);
-    setError("");
-    setSearched(true);
-    try {
-      const locList = location.split(",").map((l) => l.trim()).filter(Boolean);
-      const primaryLoc = locList[0] || "";
+   const handleSearch = useCallback(async (e: React.FormEvent) => {
+     e.preventDefault();
+     if (!query.trim() && !hasResume) return;
+     setLoading(true);
+     setError("");
+     setSearched(true);
+     try {
+       const locList = location.split(",").map((l) => l.trim()).filter(Boolean);
+       const primaryLoc = locList[0] || "";
 
-      const res = await searchJobs({
-        query: query.trim(),
-        location: primaryLoc,
-        threshold,
-        max_results: 20,
-        require_visa: requireVisa,
-        job_type: jobType,
-        work_mode: workMode,
-        locations: locList,
+       const res = await searchJobs({
+         query: query.trim(),
+         location: primaryLoc,
+         threshold,
+         max_results: 20,
+         require_visa: requireVisa,
+         job_type: jobType,
+         work_mode: workMode,
+         locations: locList,
 
-        exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
-        sources: selectedSources,
-        posted_date_filter: postedDateFilter,
-      });
-      setResults(res.jobs);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Search failed");
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+         exclude_companies: excludeCompanies.trim() ? excludeCompanies.split(",").map((s) => s.trim()).filter(Boolean) : [],
+         sources: selectedSources,
+         posted_date_filter: postedDateFilter,
+       });
+       setResults(res.jobs);
+     } catch (err: unknown) {
+       setError(err instanceof Error ? err.message : "Search failed");
+       setResults([]);
+     } finally {
+       setLoading(false);
+     }
+   }, [query, hasResume, location, threshold, requireVisa, jobType, workMode, excludeCompanies, selectedSources, postedDateFilter]);
 
-  const handleAddToTracker = async (job: JobResult) => {
-    const key = `${job.company}|${job.title}`;
-    try {
-      await addToTracker({
-        title: job.title,
-        company: job.company,
-        url: job.url,
-        score: job.score,
-        description: job.description,
-        salary: job.salary || "",
-        location: job.location,
-        posted_date: job.posted_date,
-      });
-      setTracked((prev) => new Set(prev).add(key));
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("409") || msg.includes("already")) {
-        setTracked((prev) => new Set(prev).add(key));
-        const status = msg.match(/status:\s*(\w+)/i)?.[1] || "tracked";
-        const label = status === "applied" ? "Already applied" : status === "rejected" ? "Already rejected" : status === "offer" ? "Offer received" : "Already in tracker";
-        setTrackerMsg({ key, text: label });
-        setTimeout(() => setTrackerMsg((prev) => prev?.key === key ? null : prev), 3000);
-      } else {
-        alert("Failed to add to tracker: " + msg);
-      }
-    }
-  };
+   const handleAddToTracker = useCallback(async (job: JobResult) => {
+     const key = `${job.company}|${job.title}`;
+     try {
+       await addToTracker({
+         title: job.title,
+         company: job.company,
+         url: job.url,
+         score: job.score,
+         description: job.description,
+         salary: job.salary || "",
+         location: job.location,
+         posted_date: job.posted_date,
+       });
+       setTracked((prev) => new Set(prev).add(key));
+     } catch (err: unknown) {
+       const msg = err instanceof Error ? err.message : "";
+       if (msg.includes("409") || msg.includes("already")) {
+         setTracked((prev) => new Set(prev).add(key));
+         const status = msg.match(/status:\s*(\w+)/i)?.[1] || "tracked";
+         const label = status === "applied" ? "Already applied" : status === "rejected" ? "Already rejected" : status === "offer" ? "Offer received" : "Already in tracker";
+         setTrackerMsg({ key, text: label });
+         setTimeout(() => setTrackerMsg((prev) => prev?.key === key ? null : prev), 3000);
+       } else {
+         alert("Failed to add to tracker: " + msg);
+       }
+     }
+   }, []);
 
-  const handleSendResults = async () => {
-    setSendingEmail(true);
-    setEmailSentMsg("");
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
-      const { data: session } = await (await import("@/lib/supabase/client")).getBrowserClient().auth.getSession();
-      const token = session?.session?.access_token;
+   const handleSendResults = async () => {
+     setSendingEmail(true);
+     setEmailSentMsg("");
+     try {
+       const controller = new AbortController();
+       const timeout = setTimeout(() => controller.abort(), 20000);
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/send-results`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },

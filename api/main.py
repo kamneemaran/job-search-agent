@@ -117,14 +117,17 @@ def _get_user_profile(authorization: Optional[str]) -> dict:
     if not authorization:
         raise HTTPException(status_code=401, detail="Authentication token missing")
 
+    from api.supabase import decode_token
+    payload = decode_token(authorization)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
+
     try:
         sb = get_user_client(authorization)
-        resp = sb.auth.get_user()
-        user = resp.user if hasattr(resp, "user") else resp
-        user_id = user.id if hasattr(user, "id") else (user.get("id") if isinstance(user, dict) else getattr(user, "id", None))
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Session expired or invalid")
-
         result = sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
         if not result:
             raise HTTPException(status_code=404, detail="Profile not found. Please upload a resume.")

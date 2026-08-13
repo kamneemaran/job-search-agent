@@ -1,0 +1,114 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           WEB FRONTEND PERFORMANCE ISSUES - QUICK REFERENCE                ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+CRITICAL (3 issues) - Fix immediately
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  DASHBOARD: Loading 1000+ jobs in memory
+    File: web/src/app/dashboard/page.tsx (lines 24-373)
+    Impact: O(n) memory, O(n log n) render cost
+    Fix: Implement backend pagination + useMemO for sorting
+    Effort: 4 hours
+
+2️⃣  SEARCH RESULTS: Inline functions + 20 results rendered 
+    File: web/src/app/search/page.tsx (lines 477-556)
+    Impact: 20+ function allocations per render
+    Fix: useCallback + useMemo for detectJobType
+    Effort: 2 hours
+
+3️⃣  SETTINGS: 46 useState + 1 setInterval/sec + network polling
+    File: web/src/app/settings/page.tsx (lines 17-163)
+    Impact: 86,400 renders/day from timer, 720 network reqs/day
+    Fix: useReducer + move timer to separate component
+    Effort: 3 hours
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HIGH PRIORITY (8 issues) - Fix within 1-2 weeks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4️⃣  Missing React.memo() on list items
+    Files: dashboard, search (lines 547-710, 493-553)
+    Effort: 1.5 hours | Impact: ~40% reduction in re-renders
+
+5️⃣  API session init has 1.5s timeout on every call
+    File: web/src/lib/api.ts (lines 55-121)
+    Effort: 2 hours | Impact: ~1.5s faster API calls
+
+6️⃣  Dynamic imports in event handlers (8 locations)
+    File: web/src/app/dashboard/page.tsx (lines 77, 115, 183, etc)
+    Effort: 30 minutes | Impact: ~200ms per click
+
+7️⃣  Supabase client has no session caching
+    File: web/src/lib/supabase/client.ts (lines 1-14)
+    Effort: 1 hour | Impact: Better offline support
+
+8️⃣  8 separate O(n) filters to compute counts
+    File: web/src/app/dashboard/page.tsx (lines 338-347)
+    Effort: 30 minutes | Impact: 8x faster count computation
+
+9️⃣  String parsing + regex inside map loop
+    File: web/src/app/search/page.tsx (lines 497-504)
+    Effort: 1 hour | Impact: 20x less string allocation
+
+🔟  N+1 queries in settings (6 queries instead of 1)
+    File: web/src/app/settings/page.tsx (lines 191-287)
+    Effort: 2 hours | Impact: Settings load 3-5x faster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MEDIUM PRIORITY (7 issues) - Schedule for next sprint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11. Inefficient array spread + sort operations
+12. Modal re-renders on unrelated state changes
+13. sourceUrl() function with 70 entries recreated per render
+14. Excessive event handler re-creation (4+ callbacks per card)
+15. Pagination logic runs in IIFE on every render
+16. formatDate() redefined per render
+17. Missing dependency array optimization
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOP 5 QUICK WINS (1-2 hour fixes, 30%+ perf gain)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Move dynamic imports to top-level (30 min)
+   → Before: const supabase = (await import("...")).getBrowserClient()
+   → After:  import { getBrowserClient } from "..."
+
+2. Add React.memo to job cards (1 hour)
+   → Wraps dashboard/search result items
+   → Prevents re-render when parent changes
+
+3. Use useMemo for dashboard counts (30 min)
+   → Replace 8 separate filters with 1 forEach loop
+   → Saves 8000 comparisons per render (for 1000 jobs)
+
+4. Move timer to separate component (1 hour)
+   → Extract setInterval timer from settings
+   → Only re-render timer, not whole page
+   → 86,400 renders/day → ~3,600 renders/day
+
+5. Add useCallback to event handlers (1 hour)
+   → Wrap handleAddToTracker, startEditing, etc
+   → Works with React.memo to prevent child re-renders
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ARCHITECTURE CHANGES (2-4 weeks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Implement backend pagination (API level)
+• Add virtual scrolling with react-window
+• Replace polling with WebSocket for real-time updates
+• Batch Supabase queries into single endpoint
+• Add error boundaries
+• Implement SWR or TanStack Query for caching
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ESTIMATED IMPACT:
+• Dashboard load: 2-3x faster
+• Search results: 40% faster render
+• Settings page: 3-5x faster, 90% less CPU usage
+• Overall bundle: ~15% reduction (remove dynamic imports)
+
+See PERFORMANCE_ANALYSIS.md for detailed analysis.

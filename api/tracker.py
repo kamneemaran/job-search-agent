@@ -173,11 +173,13 @@ def _require_user(authorization):
     """Get authenticated user or raise 401."""
     if not authorization:
         raise HTTPException(401, "Authentication required")
-    sb = get_user_client(authorization)
-    resp = sb.auth.get_user()
-    user = resp.user if hasattr(resp, "user") else resp
-    if not user:
+    from api.supabase import decode_token, DecodedUser
+    payload = decode_token(authorization)
+    if not payload or not payload.get("sub"):
         raise HTTPException(401, "Invalid or expired token")
+
+    sb = get_user_client(authorization)
+    user = DecodedUser(payload.get("sub"), payload.get("email", ""))
     return sb, user
 
 

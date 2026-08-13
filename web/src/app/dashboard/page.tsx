@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   getTracker,
   updateTracker,
   type TrackerJob,
 } from "@/lib/api";
+import { getBrowserClient } from "@/lib/supabase/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -72,11 +73,11 @@ export default function DashboardPage() {
     }
   };
 
-  const loadSheet = async () => {
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const loadSheet = async () => {
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/sheet`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -94,95 +95,95 @@ export default function DashboardPage() {
     loadSheet();
   }, []);
 
-  const handleStatusChange = async (title: string, company: string, status: string) => {
-    try {
-      await updateTracker({ title, company, status });
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.title === title && j.company === company
-            ? { ...j, status, date_updated: new Date().toISOString() }
-            : j
-        )
-      );
-    } catch (err) {
-      console.error("Update status failed:", err);
-    }
-  };
+   const handleStatusChange = useCallback(async (title: string, company: string, status: string) => {
+     try {
+       await updateTracker({ title, company, status });
+       setJobs((prev) =>
+         prev.map((j) =>
+           j.title === title && j.company === company
+             ? { ...j, status, date_updated: new Date().toISOString() }
+             : j
+         )
+       );
+     } catch (err) {
+       console.error("Update status failed:", err);
+     }
+   }, []);
 
-  const handleDeleteJob = async (title: string, company: string) => {
-    if (!confirm(`Are you sure you want to delete ${title} at ${company}?`)) return;
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
-      if (!token) return;
+   const handleDeleteJob = useCallback(async (title: string, company: string) => {
+     if (!confirm(`Are you sure you want to delete ${title} at ${company}?`)) return;
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
+       if (!token) return;
 
-      const res = await fetch(`${API_BASE}/api/tracker/${encodeURIComponent(title)}/${encodeURIComponent(company)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setJobs((prev) => prev.filter((j) => !(j.title === title && j.company === company)));
-      }
-    } catch (err) {
-      console.error("Failed to delete job:", err);
-    }
-  };
+       const res = await fetch(`${API_BASE}/api/tracker/${encodeURIComponent(title)}/${encodeURIComponent(company)}`, {
+         method: "DELETE",
+         headers: { Authorization: `Bearer ${token}` },
+       });
+       if (res.ok) {
+         setJobs((prev) => prev.filter((j) => !(j.title === title && j.company === company)));
+       }
+     } catch (err) {
+       console.error("Failed to delete job:", err);
+     }
+   }, []);
 
-  const startEditing = (job: TrackerJob) => {
-    setEditingKey(`${job.company}|${job.title}`);
-    setEditTitle(job.title);
-    setEditCompany(job.company);
-    setEditUrl(job.url || "");
-    setEditNotes(job.notes || "");
-    setEditLocation(job.location || "");
-    setEditSalary(job.salary || "");
-    setEditStatus(job.status);
-  };
+   const startEditing = useCallback((job: TrackerJob) => {
+     setEditingKey(`${job.company}|${job.title}`);
+     setEditTitle(job.title);
+     setEditCompany(job.company);
+     setEditUrl(job.url || "");
+     setEditNotes(job.notes || "");
+     setEditLocation(job.location || "");
+     setEditSalary(job.salary || "");
+     setEditStatus(job.status);
+   }, []);
 
-  const handleSaveEdit = async (originalTitle: string, originalCompany: string) => {
-    try {
-      await updateTracker({
-        title: originalTitle,
-        company: originalCompany,
-        status: editStatus,
-        notes: editNotes,
-        new_title: editTitle !== originalTitle ? editTitle : undefined,
-        new_company: editCompany !== originalCompany ? editCompany : undefined,
-        url: editUrl,
-        location: editLocation,
-        salary: editSalary,
-      });
+   const handleSaveEdit = useCallback(async (originalTitle: string, originalCompany: string) => {
+     try {
+       await updateTracker({
+         title: originalTitle,
+         company: originalCompany,
+         status: editStatus,
+         notes: editNotes,
+         new_title: editTitle !== originalTitle ? editTitle : undefined,
+         new_company: editCompany !== originalCompany ? editCompany : undefined,
+         url: editUrl,
+         location: editLocation,
+         salary: editSalary,
+       });
 
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.title === originalTitle && j.company === originalCompany
-            ? {
-                ...j,
-                title: editTitle,
-                company: editCompany,
-                url: editUrl,
-                notes: editNotes,
-                location: editLocation,
-                salary: editSalary,
-                status: editStatus,
-                date_updated: new Date().toISOString(),
-              }
-            : j
-        )
-      );
-      setEditingKey(null);
-    } catch (err) {
-      console.error("Save edit failed:", err);
-      alert("Failed to save changes. Make sure Title and Company do not duplicate an existing job.");
-    }
-  };
+       setJobs((prev) =>
+         prev.map((j) =>
+           j.title === originalTitle && j.company === originalCompany
+             ? {
+                 ...j,
+                 title: editTitle,
+                 company: editCompany,
+                 url: editUrl,
+                 notes: editNotes,
+                 location: editLocation,
+                 salary: editSalary,
+                 status: editStatus,
+                 date_updated: new Date().toISOString(),
+               }
+             : j
+         )
+       );
+       setEditingKey(null);
+     } catch (err) {
+       console.error("Save edit failed:", err);
+       alert("Failed to save changes. Make sure Title and Company do not duplicate an existing job.");
+     }
+   }, [editStatus, editNotes, editTitle, editCompany, editUrl, editLocation, editSalary]);
 
-  const handleSaveSheet = async () => {
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handleSaveSheet = async () => {
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/sheet`, {
         method: "PUT",
@@ -201,13 +202,13 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 3000);
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    setSheetMsg("");
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handleSync = async () => {
+     setSyncing(true);
+     setSheetMsg("");
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/sheet/sync`, {
         method: "POST",
@@ -227,13 +228,13 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 5000);
   };
 
-  const handlePull = async () => {
-    setPulling(true);
-    setSheetMsg("");
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handlePull = async () => {
+     setPulling(true);
+     setSheetMsg("");
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/sheet/pull`, {
         method: "POST",
@@ -254,13 +255,13 @@ export default function DashboardPage() {
     setTimeout(() => setSheetMsg(""), 5000);
   };
 
-  const handleEmailScan = async () => {
-    setScanning(true);
-    setSheetMsg("");
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handleEmailScan = async () => {
+     setScanning(true);
+     setSheetMsg("");
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/email-scan`, {
         method: "POST",
@@ -280,15 +281,15 @@ export default function DashboardPage() {
     setTimeout(() => setScanMsg(""), 5000);
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setImportMsg("");
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     if (!file) return;
+     setImporting(true);
+     setImportMsg("");
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const formData = new FormData();
       formData.append("file", file);
@@ -313,11 +314,11 @@ export default function DashboardPage() {
     setTimeout(() => setImportMsg(""), 5000);
   };
 
-  const handleExport = async () => {
-    try {
-      const supabase = (await import("@/lib/supabase/client")).getBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
+   const handleExport = async () => {
+     try {
+       const supabase = getBrowserClient();
+       const { data: session } = await supabase.auth.getSession();
+       const token = session?.session?.access_token;
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/tracker/export`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -334,17 +335,31 @@ export default function DashboardPage() {
     } catch {}
   };
 
-  // Client-side statistics & filters (fixed "counters resetting to 0" issue)
-  const counts = {
-    all: jobs.length,
-    new: jobs.filter((j) => j.status === "new").length,
-    applied: jobs.filter((j) => j.status === "applied").length,
-    rejected: jobs.filter((j) => j.status === "rejected").length,
-    offer: jobs.filter((j) => j.status === "offer").length,
-    interview: jobs.filter((j) => j.status === "interview").length,
-    expired: jobs.filter((j) => j.status === "expired").length,
-    na: jobs.filter((j) => j.status === "na").length,
-  };
+  // Client-side statistics & filters (optimized with useMemo)
+  const counts = useMemo(() => {
+    const result: Record<string, number> = {
+      all: jobs.length,
+      new: 0,
+      applied: 0,
+      rejected: 0,
+      offer: 0,
+      interview: 0,
+      expired: 0,
+      na: 0,
+    };
+    
+    for (const job of jobs) {
+      if (job.status === "new") result.new++;
+      else if (job.status === "applied") result.applied++;
+      else if (job.status === "rejected") result.rejected++;
+      else if (job.status === "offer") result.offer++;
+      else if (job.status === "interview") result.interview++;
+      else if (job.status === "expired") result.expired++;
+      else if (job.status === "na") result.na++;
+    }
+    
+    return result;
+  }, [jobs]);
 
   const filteredJobs = filter ? jobs.filter((j) => j.status === filter) : jobs;
 
