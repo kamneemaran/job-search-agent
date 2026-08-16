@@ -5309,75 +5309,117 @@ def _job_type_badge(m):
         return "Full-Time"
     return ""
 
-def _card_rows(matches):
-    rows = ""
-    for m in matches:
-        salary_line = _salary_html(m.get("salary_info"))
-        url = m.get("url", "#")
-        jt = _job_type_badge(m)
-        jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
-        ea = _easy_apply_ats(m.get("company", ""))
-        ea_html = f"""<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ Easy Apply ({ea})</span>""" if ea and ea in EASY_APPLY_ATS else ""
-        
-        # Extract experience requirement dynamically
-        exp_req = m.get("experience")
-        if not exp_req:
-            try:
-                from api.main import extract_experience_requirement
-                exp_req = extract_experience_requirement(
-                    m.get("description", ""),
-                    title=m.get("title", ""),
-                    url=m.get("url", "")
-                )
-            except Exception:
-                exp_req = None
-        exp_html = f"""<span style="display:inline-block;background:#fff8e1;color:#b78103;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:bold;">🎓 Exp: {exp_req}</span>""" if exp_req else ""
+def _build_job_card_html(job, show_apply_link=False, compact=False):
+    """
+    Build a single job card HTML for email templates.
+    
+    Parameters:
+    - job: dict with keys: title, company, location, score, url, salary_info, posted_at, etc.
+    - show_apply_link: if True, show a prominent "Apply Now" button (requires job['apply_url'])
+    - compact: if True, use compact layout (used in Pradeep bulk emails)
+    
+    Preserves: salary, posted_date, tracker status, suggestions, relocation_note, source
+    """
+    salary_line = _salary_html(job.get("salary_info"))
+    url = job.get("url", "#")
+    apply_url = job.get("apply_url") or url
+    
+    # Posted date formatting
+    posted = job.get("posted_at") or ""
+    if hasattr(posted, 'strftime'):
+        posted_str = posted.strftime("%Y-%m-%d")
+    elif posted:
+        posted_str = str(posted)[:10]
+    else:
+        posted_str = ""
+    
+    ago = job.get("ago", "") or ""
+    date_html = ""
+    if ago:
+        date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">{ago}</span>"""
+    elif posted_str:
+        date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {posted_str}</span>"""
+    
+    # Compact layout (for bulk emails like Pradeep)
+    if compact:
+        score_color = "#2e7d32" if job['score'] >= 85 else "#f57f17" if job['score'] >= 80 else "#1976d2"
+        return f"""
+    <div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:8px;background:#fafafa;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;">
+          <h4 style="margin:0 0 2px;font-size:14px;font-weight:600;">{job['title']}</h4>
+          <p style="margin:0 0 4px;font-size:12px;color:#666;">
+            <strong>{job['company']}</strong>
+          </p>
+          <p style="margin:0;font-size:11px;color:#999;">
+            📍 {job.get('location', 'N/A')}
+          </p>
+        </div>
+        <div style="font-size:18px;font-weight:bold;white-space:nowrap;color:{score_color};">{job['score']}%</div>
+      </div>
+      {f'<p style="margin:8px 0 0;text-align:right;"><a href="{apply_url}" style="display:inline-block;background:#1a73e8;color:white;padding:8px 14px;border-radius:4px;text-decoration:none;font-size:12px;font-weight:bold;">Apply Now →</a></p>' if show_apply_link else ''}
+    </div>"""
+    
+    # Full layout (for daily digest)
+    jt = _job_type_badge(job)
+    jt_html = f"""<span style="display:inline-block;background:#fff3e0;color:#e65100;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{jt}</span>""" if jt else ""
+    ea = _easy_apply_ats(job.get("company", ""))
+    ea_html = f"""<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ Easy Apply ({ea})</span>""" if ea and ea in EASY_APPLY_ATS else ""
+    
+    # Extract experience requirement dynamically
+    exp_req = job.get("experience")
+    if not exp_req:
+        try:
+            from api.main import extract_experience_requirement
+            exp_req = extract_experience_requirement(
+                job.get("description", ""),
+                title=job.get("title", ""),
+                url=job.get("url", "")
+            )
+        except Exception:
+            exp_req = None
+    exp_html = f"""<span style="display:inline-block;background:#fff8e1;color:#b78103;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:bold;">🎓 Exp: {exp_req}</span>""" if exp_req else ""
 
-        tr_status = m.get("tracker_status")
-        tr_html = ""
-        if tr_status:
-            tr_date = m.get("tracker_date", "")
-            tr_icon = "✅" if tr_status == "applied" else "❌" if tr_status == "rejected" else "⚠️"
-            tr_bg = "#e8f5e9" if tr_status == "applied" else "#ffebee" if tr_status == "rejected" else "#fff8e1"
-            tr_color = "#2e7d32" if tr_status == "applied" else "#c62828" if tr_status == "rejected" else "#f57f17"
-            date_label = f" on {tr_date}" if tr_date else ""
-            tr_html = f"""<br><span style="display:inline-block;background:{tr_bg};color:{tr_color};font-size:12px;padding:3px 8px;border-radius:4px;margin-top:6px;">{tr_icon} Already {tr_status}{date_label}</span>"""
-        ago = m.get("ago", "") or ""
-        posted = m.get("posted_at") or ""
-        if hasattr(posted, 'strftime'):
-            posted_str = posted.strftime("%Y-%m-%d")
-        elif posted:
-            posted_str = str(posted)[:10]
-        else:
-            posted_str = ""
-        date_html = ""
-        if ago:
-            date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">{ago}</span>"""
-        elif posted_str:
-            date_html = f"""<span style="margin-left:6px;font-size:11px;color:#999;">Posted {posted_str}</span>"""
-        co_desc = _company_description(m.get("company", ""))
-        co_desc_html = f"""<br><span style="font-size:12px;color:#888;">{co_desc}</span>""" if co_desc else ""
-        rows += f"""
+    tr_status = job.get("tracker_status")
+    tr_html = ""
+    if tr_status:
+        tr_date = job.get("tracker_date", "")
+        tr_icon = "✅" if tr_status == "applied" else "❌" if tr_status == "rejected" else "⚠️"
+        tr_bg = "#e8f5e9" if tr_status == "applied" else "#ffebee" if tr_status == "rejected" else "#fff8e1"
+        tr_color = "#2e7d32" if tr_status == "applied" else "#c62828" if tr_status == "rejected" else "#f57f17"
+        date_label = f" on {tr_date}" if tr_date else ""
+        tr_html = f"""<br><span style="display:inline-block;background:{tr_bg};color:{tr_color};font-size:12px;padding:3px 8px;border-radius:4px;margin-top:6px;">{tr_icon} Already {tr_status}{date_label}</span>"""
+    
+    co_desc = _company_description(job.get("company", ""))
+    co_desc_html = f"""<br><span style="font-size:12px;color:#888;">{co_desc}</span>""" if co_desc else ""
+    
+    return f"""
     <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
-          <h3 style="margin:0 0 4px;font-size:16px;">{m['title']}</h3>
+          <h3 style="margin:0 0 4px;font-size:16px;">{job['title']}</h3>
           <p style="margin:0 0 8px;color:#666;font-size:13px;">
-            <a href="{url}" style="color:#1a73e8;text-decoration:none;">{m['company']}</a>
-            <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{m.get('source', '')}</span>
+            <a href="{url}" style="color:#1a73e8;text-decoration:none;">{job['company']}</a>
+            <span style="display:inline-block;background:#e8f0fe;color:#1a73e8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">{job.get('source', '')}</span>
             {jt_html}{ea_html}{exp_html}
-            <span style="margin-left:6px;font-size:12px;color:#888;">{m.get('location', 'N/A')}</span>{co_desc_html}{date_html}
+            <span style="margin-left:6px;font-size:12px;color:#888;">{job.get('location', 'N/A')}</span>{co_desc_html}{date_html}
           </p>
         </div>
-        <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{m['score']}%</div>
+        <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{job['score']}%</div>
       </div>
       {salary_line}
-      <p style="margin:0 0 8px;font-size:13px;color:#444;">{m.get('relocation_note', '')}{tr_html}</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#444;">{job.get('relocation_note', '')}{tr_html}</p>
       <ul style="margin:0 0 8px;font-size:13px;color:#444;">
-        {''.join(f'<li>{s}</li>' for s in m.get('suggestions', []))}
+        {''.join(f'<li>{s}</li>' for s in job.get('suggestions', []))}
       </ul>
       <a href="{url}" style="font-size:13px;">Open job posting &rarr;</a>
     </div>"""
+
+def _card_rows(matches):
+    """Build HTML rows for jobs using the unified job card template."""
+    rows = ""
+    for m in matches:
+        rows += _build_job_card_html(m, show_apply_link=False, compact=False)
     return rows
 
 def _posted_days_ago(m):
