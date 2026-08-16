@@ -7942,77 +7942,7 @@ def search_vdab(query, location="Belgium", max_results=500):
     return []
 
 
-def search_actiris(query, location="Belgium", max_results=500):
-    """Search Actiris.brussels (Brussels employment service) for IT/Tech jobs using Playwright (paginated)."""
-    from bs4 import BeautifulSoup
-    base_url = "https://www.actiris.brussels/fr/citoyens/offres-d-emploi"
-    jobs = []
-    seen = set()
-    max_pages = 3
-    try:
-        for page in range(1, max_pages + 1):
-            # Actiris uses domain filters for IT/Tech categories
-            # domains=Q%27,Q%274,Q%273,Q%271,Q%272 = IT/Tech domains
-            url = (f"{base_url}?localisation=Tout&page={page}&"
-                   "domains=Q%27,Q%274,Q%273,Q%271,Q%272&keywordSearchType=Partout")
-            html = _playwright_html(url, wait_ms=5000)
-            if not html or len(html) <= 2000:
-                break
-            soup = BeautifulSoup(html, 'html.parser')
-            # Actiris job listings are typically in structured containers
-            cards = soup.select('[class*="offer"]')
-            if not cards:
-                cards = soup.select('[class*="job"]')
-            if not cards:
-                break
-            new_count = 0
-            for card in cards:
-                if len(jobs) >= max_results:
-                    break
-                # Extract title
-                title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]')
-                title = title_el.get_text().strip() if title_el else ""
-                
-                # Extract company
-                company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
-                company = company_el.get_text().strip() if company_el else "Unknown"
-                
-                # Extract location
-                location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
-                job_location = location_el.get_text().strip() if location_el else "Brussels"
-                
-                # Extract URL
-                link_el = card.find('a', href=True)
-                href = link_el.get("href", "") if link_el else ""
-                if href.startswith("/"):
-                    url_full = f"https://www.actiris.brussels{href}"
-                elif href.startswith("http"):
-                    url_full = href
-                else:
-                    url_full = ""
-                
-                dedup_key = f"{company}|{title}"
-                if title and dedup_key not in seen:
-                    seen.add(dedup_key)
-                    jobs.append({
-                        "title": title,
-                        "company": company,
-                        "location": job_location,
-                        "url": url_full,
-                        "description": f"Actiris: {title} at {company}",
-                        "posted_at": None
-                    })
-                    new_count += 1
-            
-            if new_count == 0:
-                break
-        
-        if jobs:
-            print(f"  [actiris] {len(jobs)} jobs for '{query}'")
-        return jobs
-    except Exception as e:
-        print(f"  [actiris] Error: {e}")
-    return []
+# Actiris removed: Not IT/Tech focused (general Brussels job board); causes Playwright browser crashes
 
 
 # ---------------------------------------------------------------------------
@@ -8620,8 +8550,7 @@ def main():
              ("LinkedInFR", search_linkedin_fr),
              ("LinkedInIT", search_linkedin_it),
              ("VDAB", search_vdab),
-             ("Actiris", search_actiris),
-         ]
+          ]
     elif args.batch == "boards-remote":
         _get_browser()
         board_scrapers = [
@@ -8648,9 +8577,9 @@ def main():
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "Actiris"} | remote_boards
-        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "Actiris"}
-        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "Actiris"}
+        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB"}
+        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB"}
 
         def _process_board(board_name, board_fn):
             collected = []
