@@ -9194,22 +9194,26 @@ def main():
         except Exception as _e:
             print(f"  [supabase] Warning: Failed to update completion status: {_e}")
 
-        # Log jobs to Supabase jobs table
-        try:
-            _logged = 0
-            for _m in all_matches:
-                _existing = (
-                    _supabase_client.table("jobs")
-                    .select("id")
-                    .eq("user_id", args.user_id)
-                    .eq("title", _m["title"])
-                    .eq("company", _m["company"])
-                    .limit(1)
-                    .execute()
-                )
-                if _existing.data:
-                    continue
-                _supabase_client.table("jobs").insert({
+         # Log jobs to Supabase jobs table
+         try:
+             # OPTIMIZATION: Fetch all existing jobs ONCE instead of querying per job
+             _all_existing = (
+                 _supabase_client.table("jobs")
+                 .select("title,company")
+                 .eq("user_id", args.user_id)
+                 .execute()
+             )
+             _existing_set = set()
+             if _all_existing.data:
+                 for _row in _all_existing.data:
+                     _existing_set.add((_row.get("title", ""), _row.get("company", "")))
+             
+             _logged = 0
+             for _m in all_matches:
+                 # Check in memory instead of querying Supabase
+                 if (_m["title"], _m["company"]) in _existing_set:
+                     continue
+                 _supabase_client.table("jobs").insert({
                     "user_id": args.user_id,
                     "title": _m["title"],
                     "company": _m["company"],
