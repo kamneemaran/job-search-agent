@@ -8040,8 +8040,12 @@ def main():
         from supabase import create_client as _sb_create
         _supabase_client = _sb_create(_sb_url, _sb_key)
 
-        # Load user profile
-        _profile_result = _supabase_client.table("profiles").select("*").eq("id", args.user_id).maybe_single().execute()
+        # Load user profile (with timeout protection)
+        try:
+            _profile_result = _supabase_client.table("profiles").select("*").eq("id", args.user_id).maybe_single().execute()
+        except Exception as _e:
+            print(f"Error: Supabase profile query timeout or failed: {_e}")
+            sys.exit(1)
         if not _profile_result.data:
             print(f"Error: No profile found for user_id={args.user_id}")
             sys.exit(1)
@@ -8057,7 +8061,7 @@ def main():
             print(f"Error: User {args.user_id} has no core_skills")
             sys.exit(1)
 
-        # Enrich skills from active resume's parsed_skills (resume parser extracts 40+ detailed keywords)
+        # Enrich skills from active resume's parsed_skills (with timeout protection)
         try:
             _resume_result = _supabase_client.table("resumes").select("parsed_skills, filename, parsed_name").eq("user_id", args.user_id).eq("is_active", True).order("created_at", desc=True).limit(5).execute()
             _best_resume_skills = []
