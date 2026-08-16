@@ -8157,25 +8157,31 @@ def main():
             print(f"  [supabase] Warning: Could not load resume skills: {_e}")
 
         # Load email from email_preferences
-        _pref_result = _supabase_client.table("email_preferences").select("*").eq("user_id", args.user_id).maybe_single().execute()
         _to_email = ""
         _batches_from_db = []
-        if _pref_result and _pref_result.data:
-            _to_email = _pref_result.data.get("email", "")
-            _batches_from_db = _pref_result.data.get("batches") or []
-            _webhook_url = _pref_result.data.get("webhook_url", "")
-
-            # Extract batches and posted_date_filter from RUNNING token if scan_id matches
-            _sent_hist = _pref_result.data.get("sent_history") or []
-            for _item in _sent_hist:
-                if isinstance(_item, str) and _item.startswith("RUNNING:"):
-                    if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _item:
-                        for _part in _item.split("|"):
-                            if _part.startswith("batches:"):
-                                _batches_from_db = _part.replace("batches:", "").split(",")
-                            elif _part.startswith("posted_date_filter:"):
-                                _supabase_posted_date_filter = _part.replace("posted_date_filter:", "").strip()
-                        break
+        try:
+            _pref_result = _supabase_client.table("email_preferences").select("*").eq("user_id", args.user_id).maybe_single().execute()
+            if _pref_result and _pref_result.data:
+                _to_email = _pref_result.data.get("email", "")
+                _batches_from_db = _pref_result.data.get("batches") or []
+                _webhook_url = _pref_result.data.get("webhook_url", "")
+                print(f"  [supabase] Loaded email_preferences: email={_to_email}, batches={_batches_from_db}")
+                
+                # Extract batches and posted_date_filter from RUNNING token if scan_id matches
+                _sent_hist = _pref_result.data.get("sent_history") or []
+                for _item in _sent_hist:
+                    if isinstance(_item, str) and _item.startswith("RUNNING:"):
+                        if _supabase_scan_id and f"scan_id:{_supabase_scan_id}" in _item:
+                            for _part in _item.split("|"):
+                                if _part.startswith("batches:"):
+                                    _batches_from_db = _part.replace("batches:", "").split(",")
+                                elif _part.startswith("posted_date_filter:"):
+                                    _supabase_posted_date_filter = _part.replace("posted_date_filter:", "").strip()
+                            break
+            else:
+                print(f"  [supabase] No email_preferences record found for user_id={args.user_id}")
+        except Exception as _pref_ex:
+            print(f"  [supabase] Warning: Could not load email_preferences: {_pref_ex}")
 
         _supabase_user_profile = {
             "core_skills": _core_skills,
@@ -8197,6 +8203,9 @@ def main():
         # Set email recipient
         if _to_email:
             os.environ["EMAIL_TO"] = _to_email
+            print(f"  [email] Recipient set to {_to_email} from Supabase email_preferences")
+        else:
+            print(f"  [email] Warning: No email found in email_preferences, will use fallback")
 
         # If --batch not provided on CLI, use batches from Supabase
         if not args.batch and _batches_from_db:
