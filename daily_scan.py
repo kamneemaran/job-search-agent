@@ -8159,6 +8159,7 @@ def main():
         # Load email from email_preferences
         _to_email = ""
         _batches_from_db = []
+        _user_fallback_email = _row.get("email", "")  # Fallback to user profile email if Supabase fetch fails
         try:
             _pref_result = _supabase_client.table("email_preferences").select("*").eq("user_id", args.user_id).maybe_single().execute()
             if _pref_result and _pref_result.data:
@@ -8204,8 +8205,11 @@ def main():
         if _to_email:
             os.environ["EMAIL_TO"] = _to_email
             print(f"  [email] Recipient set to {_to_email} from Supabase email_preferences")
+        elif _user_fallback_email:
+            os.environ["EMAIL_TO"] = _user_fallback_email
+            print(f"  [email] Warning: Using fallback email {_user_fallback_email} from user profile (Supabase fetch may have failed)")
         else:
-            print(f"  [email] Warning: No email found in email_preferences, will use fallback")
+            print(f"  [email] Warning: No email found, will use default fallback")
 
         # If --batch not provided on CLI, use batches from Supabase
         if not args.batch and _batches_from_db:
