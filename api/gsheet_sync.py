@@ -66,8 +66,8 @@ def sync_jobs_to_sheet(
 ) -> bool:
     """Write tracked jobs to a Google Sheet.
 
-    Creates a 'Job Tracker' tab with columns matching the official layout:
-    Score, Title, Company, Location, URL, Company Link, Status, Date Found
+    Creates columns matching user's tracker layout:
+    Company, Role, Location, Application Status, Date Applied, Interview/Rej Date, Job URL
     """
     sheet_id = parse_sheet_url(sheet_url)
     if not sheet_id:
@@ -78,13 +78,10 @@ def sync_jobs_to_sheet(
         service = _get_gsheet_service()
         sheets_api = service.spreadsheets()
 
-        # Ensure "Job Tracker" tab exists (or "All Jobs" if preferred)
+        # Ensure "job_matches" tab exists
         spreadsheet = sheets_api.get(spreadsheetId=sheet_id).execute()
-        tab_name = "Job Tracker"
+        tab_name = "job_matches"
         existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
-
-        if "All Jobs" in existing_tabs:
-            tab_name = "All Jobs"
 
         if tab_name not in existing_tabs:
             sheets_api.batchUpdate(
@@ -92,28 +89,33 @@ def sync_jobs_to_sheet(
                 body={"requests": [{"addSheet": {"properties": {"title": tab_name}}}]},
             ).execute()
 
-        # Build rows
-        headers = ["Score", "Title", "Company", "Location", "URL", "Company Link", "Status", "Date Found"]
+        # Build rows with columns: Company, Role, Location, Application Status, Date Applied, Interview/Rej Date, Job URL
+        headers = ["Company", "Role", "Location", "Application Status", "Date Applied", "Interview/Rej Date", "Job URL"]
         rows = [headers]
         for j in jobs:
-            company = j.get("company", "")
-            comp_link = j.get("company_link") or j.get("company_url") or ""
-            if not comp_link and company:
-                comp_link = f"https://www.linkedin.com/company/{company.lower().replace(' ', '')}"
+            # Map status to Application Status format
+            status = j.get("status", "new").lower()
+            if status == "applied":
+                app_status = "Applied"
+            elif status == "rejected":
+                app_status = "Rejected"
+            elif status == "offer":
+                app_status = "Offer"
+            else:
+                app_status = "New"
             
             rows.append([
-                str(j.get("score", 0)),
+                j.get("company", ""),
                 j.get("title", ""),
-                company,
                 j.get("location", ""),
+                app_status,
+                (j.get("date_updated") or j.get("updated_at") or "")[:10],
+                "",  # Interview/Rej Date (empty for now)
                 j.get("url", ""),
-                comp_link,
-                j.get("status", "new"),
-                (j.get("updated_at") or j.get("date_updated") or j.get("date_found") or "")[:10],
             ])
 
         # Write to sheet (clear first, then write)
-        range_str = f"'{tab_name}'!A1:H{len(rows)}"
+        range_str = f"'{tab_name}'!A1:G{len(rows)}"
         sheets_api.values().clear(
             spreadsheetId=sheet_id,
             range=tab_name,
@@ -137,7 +139,7 @@ def read_jobs_from_sheet(
 ) -> list[dict]:
     """Read tracked jobs from a Google Sheet.
 
-    Expects matching columns: Score, Title, Company, Location, URL, Company Link, Status, Date Found
+    Expects columns: Company, Role, Location, Application Status, Date Applied, Interview/Rej Date, Job URL
     """
     sheet_id = parse_sheet_url(sheet_url)
     if not sheet_id:
@@ -148,17 +150,19 @@ def read_jobs_from_sheet(
         spreadsheet = service.spreadsheets().get(spreadsheetId=sheet_id).execute()
         existing_tabs = [s["properties"]["title"] for s in spreadsheet.get("sheets", [])]
 
-        target_tab = "Job Tracker"
-        if "All Jobs" in existing_tabs:
-            target_tab = "All Jobs"
+        target_tab = "job_matches"
+        if "job_matches" in existing_tabs:
+            target_tab = "job_matches"
         elif "Job Tracker" in existing_tabs:
             target_tab = "Job Tracker"
+        elif "All Jobs" in existing_tabs:
+            target_tab = "All Jobs"
         elif existing_tabs:
             target_tab = existing_tabs[0]
 
         result = service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
-            range=f"'{target_tab}'!A:H",
+            range=f"'{target_tab}'!A:G",
         ).execute()
 
         values = result.get("values", [])
@@ -167,28 +171,34 @@ def read_jobs_from_sheet(
 
         jobs = []
         for row in values[1:]:
-            # Ensure the row is padded to at least 8 elements to prevent any IndexError
-            row = list(row) + [""] * (8 - len(row))
+            # Ensure the row is padded to at least 7 elements to prevent any IndexError
+            row = list(row) + [""] * (7 - len(row))
             
+            # Map columns: Company, Role, Location, Application Status, Date Applied, Interview/Rej Date, Job URL
+            company = row[0].strip()
             title = row[1].strip()
-            company = row[2].strip()
             if not title or not company:
                 continue
 
-            try:
-                score_val = int(float(str(row[0]).strip())) if row[0] else 0
-            except ValueError:
-                score_val = 0
+            # Map Application Status to status (applied, rejected, new, offer)
+            app_status = row[3].strip().lower()
+            status = "new"
+            if "applied" in app_status:
+                status = "applied"
+            elif "rejected" in app_status or "rej" in app_status:
+                status = "rejected"
+            elif "offer" in app_status:
+                status = "offer"
 
             jobs.append({
-                "score": score_val,
+                "score": 0,  # Not in sheet, will be calculated later
                 "title": title,
                 "company": company,
-                "location": row[3].strip(),
-                "url": row[4].strip(),
-                "company_link": row[5].strip(),
-                "status": row[6].strip().lower() or "new",
-                "date_updated": row[7].strip(),
+                "location": row[2].strip(),
+                "url": row[6].strip(),
+                "company_link": "",
+                "status": status,
+                "date_updated": row[4].strip(),  # Date Applied
             })
         return jobs
     except Exception as e:

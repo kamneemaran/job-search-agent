@@ -3313,6 +3313,12 @@ def search_linkedin_uk(query, location="United Kingdom", max_results=500):
 def search_linkedin_de(query, location="Germany", max_results=500):
     return search_linkedin(query, location, max_results)
 
+def search_linkedin_fr(query, location="France", max_results=500):
+    return search_linkedin(query, location, max_results)
+
+def search_linkedin_it(query, location="Italy", max_results=500):
+    return search_linkedin(query, location, max_results)
+
 
 def search_indeed(query, location="India", max_results=500, base_url="https://www.indeed.com"):
     """Search Indeed for jobs matching a query using Playwright (paginated)."""
@@ -7825,6 +7831,148 @@ def search_workew(query, location="Remote", max_results=500):
     return jobs if jobs else []
 
 
+def search_vdab(query, location="Belgium", max_results=500):
+    """Search VDAB.be (Belgian Flemish job board) for ICT jobs using Playwright (paginated)."""
+    from bs4 import BeautifulSoup
+    base_url = "https://www.vdab.be/vindeenjob/vacatures"
+    jobs = []
+    seen = set()
+    max_pages = 3
+    try:
+        for page in range(1, max_pages + 1):
+            # VDAB uses pagination with jobdomein=JOBCAT10 for ICT filter
+            url = f"{base_url}?jobdomein=JOBCAT10&sort=standaard&page={page}"
+            html = _playwright_html(url, wait_ms=5000)
+            if not html or len(html) <= 2000:
+                break
+            soup = BeautifulSoup(html, 'html.parser')
+            # VDAB job listings are in divs with class 'vacancy-card' or similar
+            cards = soup.select('[class*="vacancy"]')
+            if not cards:
+                cards = soup.select('div[class*="job"]')
+            if not cards:
+                break
+            new_count = 0
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                # Try to extract title, company, location, URL
+                title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]')
+                title = title_el.get_text().strip() if title_el else ""
+                
+                company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+                company = company_el.get_text().strip() if company_el else "Unknown"
+                
+                location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+                job_location = location_el.get_text().strip() if location_el else "Belgium"
+                
+                # URL: look for any link tag in the card
+                link_el = card.find('a', href=True)
+                href = link_el.get("href", "") if link_el else ""
+                if href.startswith("/"):
+                    url_full = f"https://www.vdab.be{href}"
+                elif href.startswith("http"):
+                    url_full = href
+                else:
+                    url_full = ""
+                
+                dedup_key = f"{company}|{title}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": job_location,
+                        "url": url_full,
+                        "description": f"VDAB: {title} at {company}",
+                        "posted_at": None
+                    })
+                    new_count += 1
+            
+            if new_count == 0:
+                break
+        
+        if jobs:
+            print(f"  [vdab] {len(jobs)} jobs for '{query}'")
+        return jobs
+    except Exception as e:
+        print(f"  [vdab] Error: {e}")
+    return []
+
+
+def search_actiris(query, location="Belgium", max_results=500):
+    """Search Actiris.brussels (Brussels employment service) for IT/Tech jobs using Playwright (paginated)."""
+    from bs4 import BeautifulSoup
+    base_url = "https://www.actiris.brussels/fr/citoyens/offres-d-emploi"
+    jobs = []
+    seen = set()
+    max_pages = 3
+    try:
+        for page in range(1, max_pages + 1):
+            # Actiris uses domain filters for IT/Tech categories
+            # domains=Q%27,Q%274,Q%273,Q%271,Q%272 = IT/Tech domains
+            url = (f"{base_url}?localisation=Tout&page={page}&"
+                   "domains=Q%27,Q%274,Q%273,Q%271,Q%272&keywordSearchType=Partout")
+            html = _playwright_html(url, wait_ms=5000)
+            if not html or len(html) <= 2000:
+                break
+            soup = BeautifulSoup(html, 'html.parser')
+            # Actiris job listings are typically in structured containers
+            cards = soup.select('[class*="offer"]')
+            if not cards:
+                cards = soup.select('[class*="job"]')
+            if not cards:
+                break
+            new_count = 0
+            for card in cards:
+                if len(jobs) >= max_results:
+                    break
+                # Extract title
+                title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]')
+                title = title_el.get_text().strip() if title_el else ""
+                
+                # Extract company
+                company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+                company = company_el.get_text().strip() if company_el else "Unknown"
+                
+                # Extract location
+                location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+                job_location = location_el.get_text().strip() if location_el else "Brussels"
+                
+                # Extract URL
+                link_el = card.find('a', href=True)
+                href = link_el.get("href", "") if link_el else ""
+                if href.startswith("/"):
+                    url_full = f"https://www.actiris.brussels{href}"
+                elif href.startswith("http"):
+                    url_full = href
+                else:
+                    url_full = ""
+                
+                dedup_key = f"{company}|{title}"
+                if title and dedup_key not in seen:
+                    seen.add(dedup_key)
+                    jobs.append({
+                        "title": title,
+                        "company": company,
+                        "location": job_location,
+                        "url": url_full,
+                        "description": f"Actiris: {title} at {company}",
+                        "posted_at": None
+                    })
+                    new_count += 1
+            
+            if new_count == 0:
+                break
+        
+        if jobs:
+            print(f"  [actiris] {len(jobs)} jobs for '{query}'")
+        return jobs
+    except Exception as e:
+        print(f"  [actiris] Error: {e}")
+    return []
+
+
 # ---------------------------------------------------------------------------
 # 7. MAIN
 # ---------------------------------------------------------------------------
@@ -8391,26 +8539,30 @@ def main():
     elif args.batch == "boards-AU-NZ":
         board_scrapers = board_scrapers[_split:]
     elif args.batch == "boards-eu":
-        # Pre-warm Playwright in main thread so SAPOEmprego's ThreadPoolExecutor
-        # doesn't create the browser in a subthread (causes greenlet thread errors
-        # that break all subsequent Playwright calls from the main thread).
-        _get_browser()
-        board_scrapers = [
-            ("NetEmpregos", search_netempregos),
-            ("SAPOEmprego", search_sapoemprego),
-            ("Infoempleo", search_infoempleo),
-            ("Bundesagentur", search_bundesagentur),
-            ("IamExpat", search_iamexpat),
-            ("WorkInLux", search_workinlux),
-            ("IndeedNL", search_indeed_nl),
-            ("WelcomeToNL", search_welcome_to_nl),
-            ("TogetherAbroad", search_togetherabroad),
-            ("StepStone", search_stepstone),
-            ("Adzuna", search_adzuna),
-            ("Freelancermap", search_freelancermap),
-            ("Intermediair", search_intermediair),
-            ("NationaleVacaturebank", search_nationalevacaturebank),
-        ]
+         # Pre-warm Playwright in main thread so SAPOEmprego's ThreadPoolExecutor
+         # doesn't create the browser in a subthread (causes greenlet thread errors
+         # that break all subsequent Playwright calls from the main thread).
+         _get_browser()
+         board_scrapers = [
+             ("NetEmpregos", search_netempregos),
+             ("SAPOEmprego", search_sapoemprego),
+             ("Infoempleo", search_infoempleo),
+             ("Bundesagentur", search_bundesagentur),
+             ("IamExpat", search_iamexpat),
+             ("WorkInLux", search_workinlux),
+             ("IndeedNL", search_indeed_nl),
+             ("WelcomeToNL", search_welcome_to_nl),
+             ("TogetherAbroad", search_togetherabroad),
+             ("StepStone", search_stepstone),
+             ("Adzuna", search_adzuna),
+             ("Freelancermap", search_freelancermap),
+             ("Intermediair", search_intermediair),
+             ("NationaleVacaturebank", search_nationalevacaturebank),
+             ("LinkedInFR", search_linkedin_fr),
+             ("LinkedInIT", search_linkedin_it),
+             ("VDAB", search_vdab),
+             ("Actiris", search_actiris),
+         ]
     elif args.batch == "boards-remote":
         _get_browser()
         board_scrapers = [
@@ -8437,9 +8589,9 @@ def main():
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank"} | remote_boards
-        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly"}
-        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk"}
+        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "Actiris"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "Actiris"}
+        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "Actiris"}
 
         def _process_board(board_name, board_fn):
             collected = []
@@ -9057,13 +9209,16 @@ def main():
                     "user_id": args.user_id,
                     "title": _m["title"],
                     "company": _m["company"],
-                    "url": _m.get("url", ""),
-                    "score": _m.get("score", 0),
                     "location": _m.get("location", ""),
-                    "salary": _format_salary(_m.get("salary_info", {})) if _m.get("salary_info") else "",
+                    "url": _m.get("url", ""),
                     "description": _m.get("description", "")[:10000],
+                    "score": _m.get("score", 0),
+                    "score_note": _m.get("relocation_note", ""),
+                    "salary": _format_salary(_m.get("salary_info", {})) if _m.get("salary_info") else "",
                     "source": _m.get("source", "daily_scan"),
                     "status": "new",
+                    "notes": _m.get("suggestions", ""),
+                    "posted_date": _m.get("posted_at"),
                 }).execute()
                 _logged += 1
             if _logged:
