@@ -188,15 +188,20 @@ def run_background_digest_scan(
         results = list(initial_matches) if initial_matches else []
         seen = {(j.get("title", "").lower().strip(), j.get("company", "").lower().strip()) for j in results}
 
-        # Fetch already applied or rejected jobs in the last 3 months to filter out duplicates
+        # Fetch all tracked jobs in the last 3 months to filter out exact duplicates (title+company+posted_date)
         excluded_jobs = set()
         try:
             from datetime import timedelta
             three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-            job_query = sb.table("jobs").select("title, company").eq("user_id", user_id).gte("updated_at", three_months_ago).execute()
+            job_query = sb.table("jobs").select("title, company, posted_date").eq("user_id", user_id).gte("updated_at", three_months_ago).execute()
             if job_query and job_query.data:
                 for j in job_query.data:
-                    excluded_jobs.add((j.get("title", "").lower().strip(), j.get("company", "").lower().strip()))
+                    posted_date = (j.get("posted_date") or "").split("T")[0] if j.get("posted_date") else ""
+                    excluded_jobs.add((
+                        j.get("title", "").lower().strip(),
+                        j.get("company", "").lower().strip(),
+                        posted_date
+                    ))
             logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} tracked jobs in the last 3 months to exclude from this digest.")
         except Exception as ex_db:
             logger.warning(f"[DIGEST-BG-WORKER] Warning: Failed to fetch excluded jobs from DB: {ex_db}")
@@ -245,11 +250,16 @@ def run_background_digest_scan(
                 continue
 
             for job in jobs:
-                key = (job.get("title", "").lower().strip(), job.get("company", "").lower().strip())
+                posted_date = (job.get("posted_date") or "").split("T")[0] if job.get("posted_date") else ""
+                key = (
+                    job.get("title", "").lower().strip(),
+                    job.get("company", "").lower().strip(),
+                    posted_date
+                )
                 if key in seen:
                     continue
                 if key in excluded_jobs:
-                    logger.info(f"[DIGEST-BG-WORKER] Skipping job '{job.get('title')}' at '{job.get('company')}' because it was already applied/rejected in the last 3 months.")
+                    logger.info(f"[DIGEST-BG-WORKER] Skipping job '{job.get('title')}' at '{job.get('company')}' (posted {posted_date}) because it was already tracked.")
                     continue
                 seen.add(key)
                 # Profile already swapped at outer scope (lines 116-118) — just score directly
