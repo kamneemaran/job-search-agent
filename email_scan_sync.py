@@ -798,18 +798,24 @@ def main(label: str = "", supabase_user_email: str = "", last_scan_override: str
                             "notes": entry.get("notes", ""),
                             "location": entry.get("location", "Remote"),
                             "updated_at": datetime.now().isoformat(),
-                        }).eq("id", existing.data[0]["id"]).execute()
+                         }).eq("id", existing.data[0]["id"]).execute()
                     else:
                         sb.table("jobs").insert({
                             "user_id": user_id,
                             "title": entry.get("title", ""),
                             "company": entry.get("company", ""),
-                            "status": s,
                             "location": entry.get("location", "Remote"),
+                            "url": entry.get("url", ""),
+                            "description": "",
+                            "score": int(entry["score"]) if str(entry.get("score", "")).strip().isdigit() else 0,
+                            "score_note": "",
+                            "salary": "",
+                            "source": "email_scan",
+                            "status": s,
                             "notes": entry.get("notes", ""),
                             "found_at": entry.get("date_found", datetime.now().isoformat()),
                             "updated_at": datetime.now().isoformat(),
-                            "score": int(entry["score"]) if str(entry.get("score", "")).strip().isdigit() else 0,
+                            "posted_date": entry.get("date_found", datetime.now().isoformat()),
                         }).execute()
                     synced += 1
                 print(f"  [supabase] Synced {synced} entries to tracker", flush=True)
