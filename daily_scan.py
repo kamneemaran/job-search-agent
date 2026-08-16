@@ -8190,6 +8190,7 @@ def _get_randstad_domain(country_code):
 # Robert Half - Multi-country IT/Tech & Finance recruitment agency  
 _ROBERTHALF_URLS = {
     "DE": "https://www.roberthalf.com/de/de/jobs/alle/it?lobid=RHT",
+    "NL": "https://www.roberthalf.com/nl/nl/vacatures?lobid=RHT",
 }
 
 def search_roberthalf(query, location="Europe", max_results=500):
