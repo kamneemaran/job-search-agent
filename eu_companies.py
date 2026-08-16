@@ -1050,5 +1050,17 @@ EU_JOB_SOURCES = [
     {"name": "Signify", "url": "https://www.careers.signify.com/global/en/search-results?from=10&s=1&category=Digital", "region": "NL", "type": "company", "playwright": True},
     {"name": "Danone", "url": "https://careers.danone.com/en-global/jobs.html?775205820_group.propertyvalues.property=jcr%3Acontent%2Fmetadata%2Fcq%3Atags&775205820_group.propertyvalues.operation=equals&775205820_group.propertyvalues.15_values=careers%3Ajobs%2Fjob-function%2Finformation-technology&-1381620699_group.propertyvalues.property=jcr%3Acontent%2Fmetadata%2Fcq%3Atags&-1381620699_group.propertyvalues.operation=equals&-1381620699_group.propertyvalues.12_values=careers%3Ajobs%2Fjob-function%2Finformation-technology&layout=teaserList&p.offset=12&p.limit=12&fulltext=*", "region": "NL", "type": "company", "playwright": True},
     {"name": "Kraft Heinz", "url": "https://jobs.kraftheinz.com/careers?start=0&pid=1970324837383874&sort_by=hot&filter_department=Engineering+%26+Maintenance%2CPackaging+Development%2CProduct+Development", "region": "NL", "type": "company", "playwright": True},
-    {"name": "Johnson & Johnson", "url": "https://www.careers.jnj.com/en/jobs/?team=R%26D%20Product%20Development&team=Technology%20Product%20%26%20Platform%20Management&pagesize=20#results", "region": "NL", "type": "company", "playwright": True},
+     {"name": "Johnson & Johnson", "url": "https://www.careers.jnj.com/en/jobs/?team=R%26D%20Product%20Development&team=Technology%20Product%20%26%20Platform%20Management&pagesize=20#results", "region": "NL", "type": "company", "playwright": True},
+    # --- SAP-Specific Job Boards (Pradeep Profile) ---
+    {"name": "SAP Careers", "url": "https://careers.sap.com/job-search", "region": "EU", "type": "board", "playwright": True},
+    {"name": "Dice.com (SAP Filter)", "url": "https://www.dice.com/jobs?q=SAP&l=Europe", "region": "EU", "type": "board", "playwright": True},
+    {"name": "Steppingstone.com (SAP)", "url": "https://www.steppingstone.com/en/search/jobs?keywords=SAP&region=Europe", "region": "EU", "type": "board", "playwright": True},
+    {"name": "LinkedIn (SAP MM/EWM)", "url": "https://www.linkedin.com/jobs/search/?keywords=SAP%20MM%20EWM&location=Europe", "region": "EU", "type": "board", "playwright": True},
+    # --- Top SAP Consulting Firms in Europe ---
+    {"name": "Accenture", "url": "https://www.accenture.com/us-en/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Deloitte", "url": "https://www2.deloitte.com/nl/en/pages/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Capgemini", "url": "https://www.capgemini.com/careers/", "region": "EU", "type": "company", "playwright": True},
+    {"name": "Atos", "url": "https://atos.net/en/careers", "region": "EU", "type": "company", "playwright": True},
+    {"name": "DXC Technology", "url": "https://careers.dxc.technology", "region": "EU", "type": "company", "playwright": True},
+    {"name": "SAP Fioneer", "url": "https://apply.workable.com/fioneer/#jobs", "region": "EU", "type": "company", "ats": "workable"},
 ]
