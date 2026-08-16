@@ -5520,7 +5520,7 @@ def build_email_html(matches, failed_parse=None):
 
 
 def send_email(html_body, subject="Daily Job Matches", recipient=None, raise_on_error=False):
-    gmail_address = os.environ.get("GMAIL_ADDRESS") or "kminterviewer@gmail.com"
+    gmail_address = os.environ.get("GMAIL_ADDRESS") or "kamneemaran45@gmail.com"
     gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
     sendgrid_key = os.environ.get("SENDGRID_API_KEY")
     if not recipient:

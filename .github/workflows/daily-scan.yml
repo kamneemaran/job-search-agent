@@ -86,7 +86,7 @@ on:
         default: ""
 
 env:
-  GMAIL_ADDRESS: ${{ inputs.gmail_user || secrets.GMAIL_ADDRESS }}
+  GMAIL_ADDRESS: ${{ inputs.gmail_user || secrets.GMAIL_ADDRESS || 'kamneemaran45@gmail.com' }}
   GMAIL_APP_PASSWORD: ${{ inputs.gmail_pass || secrets.GMAIL_APP_PASSWORD }}
   GSHEET_ID: ${{ inputs.gsheet_id || secrets.GSHEET_ID }}
   GMAIL_LABEL: ${{ inputs.gmail_label || 'Interview' }}
