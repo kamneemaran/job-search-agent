@@ -1124,3 +1124,4 @@ def get_skills_gap(authorization: Optional[str] = Header(None)):
         "total_jobs_analyzed": len(jobs_result.data),
         "your_skills_count": len(user_skills),
     }
+
