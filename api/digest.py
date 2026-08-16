@@ -193,14 +193,16 @@ def run_background_digest_scan(
         try:
             from datetime import timedelta
             three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-            job_query = sb.table("jobs").select("title, company, posted_date").eq("user_id", user_id).gte("updated_at", three_months_ago).execute()
+            job_query = sb.table("jobs").select("title, company, posted_date, found_at").eq("user_id", user_id).gte("updated_at", three_months_ago).execute()
             if job_query and job_query.data:
                 for j in job_query.data:
-                    posted_date = (j.get("posted_date") or "").split("T")[0] if j.get("posted_date") else ""
+                    # Use posted_date if available, fallback to found_at
+                    date_val = j.get("posted_date") or j.get("found_at") or ""
+                    date_key = (date_val.split("T")[0] if date_val else "")
                     excluded_jobs.add((
                         j.get("title", "").lower().strip(),
                         j.get("company", "").lower().strip(),
-                        posted_date
+                        date_key
                     ))
             logger.info(f"[DIGEST-BG-WORKER] Found {len(excluded_jobs)} tracked jobs in the last 3 months to exclude from this digest.")
         except Exception as ex_db:
@@ -250,7 +252,9 @@ def run_background_digest_scan(
                 continue
 
             for job in jobs:
-                posted_date = (job.get("posted_date") or "").split("T")[0] if job.get("posted_date") else ""
+                # Use posted_date if available, fallback to found_at or current date
+                date_val = job.get("posted_date") or job.get("found_at") or datetime.now().isoformat()
+                posted_date = (date_val.split("T")[0] if date_val else "")
                 key = (
                     job.get("title", "").lower().strip(),
                     job.get("company", "").lower().strip(),
