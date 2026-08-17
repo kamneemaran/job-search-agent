@@ -8561,6 +8561,217 @@ def search_michaelpage_pt(query, location="Portugal", max_results=500):
     return []
 
 
+# ---------------------------------------------------------------------------
+# ADDITIONAL EUROPEAN COUNTRIES - GREECE, BULGARIA, DENMARK, NORWAY
+# ---------------------------------------------------------------------------
+
+
+# Rabota.bg Bulgaria
+def search_rabota_bg(query, location="Bulgaria", max_results=500):
+    """Search Rabota.bg for IT/Tech jobs in Bulgaria using Playwright."""
+    from bs4 import BeautifulSoup
+    jobs = []
+    seen = set()
+    try:
+        url = "https://www.rabota.bg"
+        html = _playwright_html(url, wait_ms=3000)
+        if not html or len(html) <= 2000:
+            return jobs
+        soup = BeautifulSoup(html, 'html.parser')
+        cards = soup.select('div[class*="job"]') or soup.select('article[class*="vacancy"]') or soup.select('div[class*="result"]')
+        if not cards:
+            cards = soup.find_all('div', class_=lambda x: x and any(s in x.lower() for s in ['card', 'item', 'listing', 'offer', 'position']))
+        for card in cards:
+            if len(jobs) >= max_results:
+                break
+            title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]') or card.select_one('a')
+            title = title_el.get_text().strip() if title_el else ""
+            company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+            company = company_el.get_text().strip() if company_el else "Unknown"
+            location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+            job_location = location_el.get_text().strip() if location_el else "Bulgaria"
+            link_el = card.find('a', href=True)
+            href = link_el.get("href", "") if link_el else ""
+            if href.startswith("/"):
+                url_full = f"https://www.rabota.bg{href}"
+            elif href.startswith("http"):
+                url_full = href
+            else:
+                url_full = ""
+            dedup_key = f"{company}|{title}|rabota"
+            if title and dedup_key not in seen:
+                seen.add(dedup_key)
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": job_location,
+                    "url": url_full,
+                    "description": f"Rabota.bg: {title}",
+                    "posted_at": None
+                })
+        if jobs:
+            print(f"  [rabota-bg] {len(jobs)} jobs")
+        return jobs
+    except Exception as e:
+        print(f"  [rabota-bg] Error: {e}")
+    return []
+
+
+
+# JobIndex.dk Denmark
+def search_jobindex_dk(query, location="Denmark", max_results=500):
+    """Search JobIndex.dk for IT/Tech jobs in Denmark using Playwright."""
+    from bs4 import BeautifulSoup
+    jobs = []
+    seen = set()
+    try:
+        url = "https://www.jobindex.dk"
+        html = _playwright_html(url, wait_ms=3000)
+        if not html or len(html) <= 2000:
+            return jobs
+        soup = BeautifulSoup(html, 'html.parser')
+        cards = soup.select('div[class*="job"]') or soup.select('article[class*="vacancy"]') or soup.select('div[class*="result"]')
+        if not cards:
+            cards = soup.find_all('div', class_=lambda x: x and any(s in x.lower() for s in ['card', 'item', 'listing', 'job-card']))
+        for card in cards:
+            if len(jobs) >= max_results:
+                break
+            title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]') or card.select_one('a')
+            title = title_el.get_text().strip() if title_el else ""
+            company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+            company = company_el.get_text().strip() if company_el else "Unknown"
+            location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+            job_location = location_el.get_text().strip() if location_el else "Denmark"
+            link_el = card.find('a', href=True)
+            href = link_el.get("href", "") if link_el else ""
+            if href.startswith("/"):
+                url_full = f"https://www.jobindex.dk{href}"
+            elif href.startswith("http"):
+                url_full = href
+            else:
+                url_full = ""
+            dedup_key = f"{company}|{title}|jobindex"
+            if title and dedup_key not in seen:
+                seen.add(dedup_key)
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": job_location,
+                    "url": url_full,
+                    "description": f"JobIndex.dk: {title}",
+                    "posted_at": None
+                })
+        if jobs:
+            print(f"  [jobindex-dk] {len(jobs)} jobs")
+        return jobs
+    except Exception as e:
+        print(f"  [jobindex-dk] Error: {e}")
+    return []
+
+
+# StepStone.dk Denmark
+def search_stepstone_dk(query, location="Denmark", max_results=500):
+    """Search StepStone Denmark for IT/Tech jobs using Playwright."""
+    from bs4 import BeautifulSoup
+    jobs = []
+    seen = set()
+    try:
+        url = "https://www.stepstone.dk"
+        html = _playwright_html(url, wait_ms=3000)
+        if not html or len(html) <= 2000:
+            return jobs
+        soup = BeautifulSoup(html, 'html.parser')
+        cards = soup.select('div[class*="job"]') or soup.select('article[class*="vacancy"]') or soup.select('div[class*="result"]')
+        if not cards:
+            cards = soup.find_all('div', class_=lambda x: x and any(s in x.lower() for s in ['card', 'item', 'listing', 'job-card']))
+        for card in cards:
+            if len(jobs) >= max_results:
+                break
+            title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]') or card.select_one('a')
+            title = title_el.get_text().strip() if title_el else ""
+            company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+            company = company_el.get_text().strip() if company_el else "Unknown"
+            location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+            job_location = location_el.get_text().strip() if location_el else "Denmark"
+            link_el = card.find('a', href=True)
+            href = link_el.get("href", "") if link_el else ""
+            if href.startswith("/"):
+                url_full = f"https://www.stepstone.dk{href}"
+            elif href.startswith("http"):
+                url_full = href
+            else:
+                url_full = ""
+            dedup_key = f"{company}|{title}|stepstone-dk"
+            if title and dedup_key not in seen:
+                seen.add(dedup_key)
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": job_location,
+                    "url": url_full,
+                    "description": f"StepStone.dk: {title}",
+                    "posted_at": None
+                })
+        if jobs:
+            print(f"  [stepstone-dk] {len(jobs)} jobs")
+        return jobs
+    except Exception as e:
+        print(f"  [stepstone-dk] Error: {e}")
+    return []
+
+
+
+# StepStone.no Norway
+def search_stepstone_no(query, location="Norway", max_results=500):
+    """Search StepStone Norway for IT/Tech jobs using Playwright."""
+    from bs4 import BeautifulSoup
+    jobs = []
+    seen = set()
+    try:
+        url = "https://www.stepstone.no"
+        html = _playwright_html(url, wait_ms=3000)
+        if not html or len(html) <= 2000:
+            return jobs
+        soup = BeautifulSoup(html, 'html.parser')
+        cards = soup.select('div[class*="job"]') or soup.select('article[class*="vacancy"]') or soup.select('div[class*="result"]')
+        if not cards:
+            cards = soup.find_all('div', class_=lambda x: x and any(s in x.lower() for s in ['card', 'item', 'listing', 'job-card']))
+        for card in cards:
+            if len(jobs) >= max_results:
+                break
+            title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]') or card.select_one('a')
+            title = title_el.get_text().strip() if title_el else ""
+            company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]')
+            company = company_el.get_text().strip() if company_el else "Unknown"
+            location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
+            job_location = location_el.get_text().strip() if location_el else "Norway"
+            link_el = card.find('a', href=True)
+            href = link_el.get("href", "") if link_el else ""
+            if href.startswith("/"):
+                url_full = f"https://www.stepstone.no{href}"
+            elif href.startswith("http"):
+                url_full = href
+            else:
+                url_full = ""
+            dedup_key = f"{company}|{title}|stepstone-no"
+            if title and dedup_key not in seen:
+                seen.add(dedup_key)
+                jobs.append({
+                    "title": title,
+                    "company": company,
+                    "location": job_location,
+                    "url": url_full,
+                    "description": f"StepStone.no: {title}",
+                    "posted_at": None
+                })
+        if jobs:
+            print(f"  [stepstone-no] {len(jobs)} jobs")
+        return jobs
+    except Exception as e:
+        print(f"  [stepstone-no] Error: {e}")
+    return []
+
+
 # Actiris removed: Not IT/Tech focused (general Brussels job board); causes Playwright browser crashes
 
 
@@ -9179,6 +9390,10 @@ def main():
             ("JobsCZ", search_jobs_cz),
             ("ProfessionHU", search_profession_hu),
             ("MichaelPagePT", search_michaelpage_pt),
+            ("RabotaBG", search_rabota_bg),
+            ("JobIndexDK", search_jobindex_dk),
+            ("StepStoneDK", search_stepstone_dk),
+            ("StepStoneNO", search_stepstone_no),
         ]
     elif args.batch == "boards-remote":
         _get_browser()
@@ -9206,9 +9421,9 @@ def main():
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT"} | remote_boards
-        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT"}
-        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT"}
+        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
+        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
 
         def _process_board(board_name, board_fn):
             collected = []
