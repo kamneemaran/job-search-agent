@@ -3480,6 +3480,92 @@ def search_indeed_nl(query, location="Netherlands", max_results=500):
     return jobs
 
 
+def search_indeed_gr(query, location="Greece", max_results=500):
+    """Search Indeed Greece (gr.indeed.com) for jobs via HTTP + Playwright fallback."""
+    jobs = []
+    query_param = query.replace(" ", "+")
+    page_size = 15
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}
+    try:
+        for page_num in range(max_pages):
+            start = page_num * 10
+            page_url = f"https://gr.indeed.com/jobs?q={query_param}&l=Greece&start={start}"
+            # Try HTTP first — Indeed sends job data in initial HTML
+            html = ""
+            try:
+                resp = requests.get(page_url, headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    html = resp.text
+            except Exception:
+                pass
+            # Fall back to Playwright if HTTP returned nothing parseable
+            page_jobs = _indeed_parse_page(html, location)
+            if not page_jobs:
+                try:
+                    pw_html = _playwright_html(page_url, timeout=20000, wait_ms=3000)
+                    page_jobs = _indeed_parse_page(pw_html, location)
+                except Exception:
+                    pass
+            if not page_jobs:
+                break
+            jobs.extend(page_jobs[:max_results - len(jobs)])
+            if len(jobs) >= max_results:
+                break
+            time.sleep(1.5)
+
+        if jobs:
+            print(f"  [indeed-gr] {len(jobs)} jobs for '{query}' in Greece")
+        else:
+            print(f"  [indeed-gr] No jobs parsed for '{query}' in Greece")
+    except Exception as e:
+        print(f"  [indeed-gr] Error searching '{query}': {e}")
+    return jobs
+
+
+def search_indeed_fi(query, location="Finland", max_results=500):
+    """Search Indeed Finland (fi.indeed.com) for jobs via HTTP + Playwright fallback."""
+    jobs = []
+    query_param = query.replace(" ", "+")
+    page_size = 15
+    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}
+    try:
+        for page_num in range(max_pages):
+            start = page_num * 10
+            page_url = f"https://fi.indeed.com/jobs?q={query_param}&l=Finland&start={start}"
+            # Try HTTP first — Indeed sends job data in initial HTML
+            html = ""
+            try:
+                resp = requests.get(page_url, headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    html = resp.text
+            except Exception:
+                pass
+            # Fall back to Playwright if HTTP returned nothing parseable
+            page_jobs = _indeed_parse_page(html, location)
+            if not page_jobs:
+                try:
+                    pw_html = _playwright_html(page_url, timeout=20000, wait_ms=3000)
+                    page_jobs = _indeed_parse_page(pw_html, location)
+                except Exception:
+                    pass
+            if not page_jobs:
+                break
+            jobs.extend(page_jobs[:max_results - len(jobs)])
+            if len(jobs) >= max_results:
+                break
+            time.sleep(1.5)
+
+        if jobs:
+            print(f"  [indeed-fi] {len(jobs)} jobs for '{query}' in Finland")
+        else:
+            print(f"  [indeed-fi] No jobs parsed for '{query}' in Finland")
+    except Exception as e:
+        print(f"  [indeed-fi] Error searching '{query}': {e}")
+    return jobs
+
+
 def search_welcome_to_nl(query, location="Netherlands", max_results=500):
     """Search Welcome to NL (welcome-to-nl.nl/jobs) via Elastic App Search API.
 
@@ -9369,8 +9455,10 @@ def main():
             ("Bundesagentur", search_bundesagentur),
             ("IamExpat", search_iamexpat),
             ("WorkInLux", search_workinlux),
-            ("IndeedNL", search_indeed_nl),
-            ("WelcomeToNL", search_welcome_to_nl),
+             ("IndeedNL", search_indeed_nl),
+             ("IndeedGR", search_indeed_gr),
+             ("IndeedFI", search_indeed_fi),
+             ("WelcomeToNL", search_welcome_to_nl),
             ("TogetherAbroad", search_togetherabroad),
             ("StepStone", search_stepstone),
             ("Adzuna", search_adzuna),
@@ -9421,8 +9509,8 @@ def main():
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"} | remote_boards
-        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
+        single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
         static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
 
         def _process_board(board_name, board_fn):
