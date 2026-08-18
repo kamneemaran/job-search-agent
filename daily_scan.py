@@ -4011,7 +4011,7 @@ def search_simplyhired(query, location="India", max_results=500):
 
 
 def search_glassdoor(query, location="India", max_results=500):
-    """Search Glassdoor for jobs matching a query using Playwright (paginated)."""
+    """Search Glassdoor for jobs matching a query using HTTP requests (paginated)."""
     jobs = []
     loc_map = {"India": "113", "Remote": "0", "Germany": "96", "Netherlands": "178",
                "UK": "243", "United Kingdom": "243", "USA": "1", "United States": "1",
@@ -4019,15 +4019,20 @@ def search_glassdoor(query, location="India", max_results=500):
                "Japan": "102"}
     loc_id = loc_map.get(location, "113")
     query_param = query.replace(" ", "+")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+    }
     max_pages = 3
     try:
         for page_num in range(1, max_pages + 1):
             url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={query_param}&locT=C&locId={loc_id}&p={page_num}"
-            html = _playwright_html(url)
-            if not html:
+            resp = requests.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
                 if page_num == 1:
-                    print(f"  [glassdoor] No response for '{query}' in {location}")
+                    print(f"  [glassdoor] HTTP {resp.status_code} for '{query}' in {location}")
                 break
+            html = resp.text
             titles = re.findall(r'class="[^"]*JobCard_jobTitle[^"]*"[^>]*>\s*([^<]+)', html)
             companies = re.findall(r'class="[^"]*EmployerProfile_compactEmployerName[^"]*"[^>]*>\s*([^<]+)', html)
             if not companies:
@@ -4053,7 +4058,7 @@ def search_glassdoor(query, location="India", max_results=500):
 
             if len(jobs) >= max_results:
                 break
-            time.sleep(2)  # Polite delay between pages
+            time.sleep(1)  # Polite delay between pages
 
         if jobs:
             print(f"  [glassdoor] {len(jobs)} jobs for '{query}' in {location}")
