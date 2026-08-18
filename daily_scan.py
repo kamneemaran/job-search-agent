@@ -6180,6 +6180,100 @@ class JobTracker:
                 print("  [tracker] Email scan timed out (60s)")
                 return []
 
+    def scan_email_for_interviews(self, gmail_user, gmail_pass, days_back=7):
+        """
+        Scan Gmail inbox for interview emails and update tracker status.
+        Returns list of newly detected interviews.
+        Timeout after 30s to avoid hanging the scan.
+        """
+        def _run():
+            result_list = []
+            try:
+                # Normalize and check for encryption key failures
+                norm_pass = gmail_pass.replace("\xa0", " ").replace("\u2009", " ").strip() if gmail_pass else ""
+                if norm_pass.startswith("enc:"):
+                    print("  [!] Gmail login skipped for interview scan: The App Password is encrypted but decryption failed. Ensure APP_PASSWORD_ENCRYPTION_KEY is set correctly.")
+                    return result_list
+                mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=15)
+                mail.login(gmail_user, norm_pass)
+                mail.select("inbox")
+
+                from datetime import timedelta
+                since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
+                search_criteria = f'(SINCE {since_date})'
+
+                interview_keywords = [
+                    "interview", "scheduled interview", "interview scheduled", "interview time",
+                    "interview date", "phone interview", "video interview", "virtual interview",
+                    "next round", "next stage", "moving forward with your application",
+                    "we would like to invite", "congratulations", "selected to move forward",
+                    "schedule a time", "interview confirmation", "interview details",
+                    "we are pleased", "we are excited", "to discuss", "discuss your qualifications",
+                    "learn more about", "calendar invite", "meeting invite", "zoom", "google meet",
+                ]
+
+                result, data = mail.search(None, search_criteria)
+                if result != "OK":
+                    return result_list
+
+                for num in data[0].split():
+                    try:
+                        result, msg_data = mail.fetch(num, "(RFC822)")
+                        if result != "OK":
+                            continue
+                        raw_email = msg_data[0][1]
+                        msg = email.message_from_bytes(raw_email)
+                        subject = msg["subject"] or ""
+                        body = ""
+                        if msg.is_multipart():
+                            for part in msg.walk():
+                                if part.get_content_type() == "text/plain":
+                                    body = part.get_payload(decode=True) or b""
+                                    body = body.decode("utf-8", errors="ignore")
+                                    break
+                        else:
+                            body = msg.get_payload(decode=True) or b""
+                            body = body.decode("utf-8", errors="ignore")
+
+                        full_text = (subject + " " + body).lower()
+                        is_interview = any(kw in full_text for kw in interview_keywords)
+
+                        # Skip rejection emails even if they contain "interview" word
+                        rejection_keywords = [
+                            "unfortunately", "not moving forward", "position has been filled",
+                            "regret to inform", "not selected", "decided to move forward with other candidates",
+                            "we will not be moving forward", "thank you for your interest",
+                        ]
+                        is_rejection = any(kw in full_text for kw in rejection_keywords)
+
+                        if is_interview and not is_rejection:
+                            for key, entry in self.data["jobs"].items():
+                                # Accept both "applied" and "new" status for interviews
+                                if entry.get("status") not in ("applied", "new"):
+                                    continue
+                                company = entry["company"].lower()
+                                if company in full_text and len(company) > 3:
+                                    self.update_status(entry["title"], entry["company"], "interview",
+                                                       notes=f"Auto-detected from email: {subject[:80]}")
+                                    result_list.append((entry["title"], entry["company"], subject))
+                                    break
+                    except Exception:
+                        continue
+
+                mail.logout()
+            except Exception:
+                pass
+            return result_list
+
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            fut = pool.submit(_run)
+            try:
+                return fut.result(timeout=60)
+            except Exception:
+                print("  [tracker] Interview email scan timed out (60s)")
+                return []
+
     def load_from_gsheet(self):
         """Load tracked jobs from Google Sheets 'All Jobs' tab.
         Falls back to local file if sheets unavailable."""
@@ -9290,6 +9384,16 @@ def main():
                 print(f"    {t} @ {c} - {s[:80]}")
         else:
             print("  No new rejections found.")
+
+        print("Scanning Gmail for interview emails...")
+        interviews = tracker.scan_email_for_interviews(gmail_user, gmail_pass)
+        if interviews:
+            print(f"  Detected {len(interviews)} new interview(s):")
+            for t, c, s in interviews:
+                print(f"    {t} @ {c} - {s[:80]}")
+        else:
+            print("  No new interviews found.")
+
         sync_tracker_to_gsheet(tracker)
         return
 
