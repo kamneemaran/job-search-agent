@@ -10088,6 +10088,13 @@ def main():
         except Exception as e:
             print(f"  [gsheet] Error: {e}")
 
+    # --- Sync tracker to Google Sheets (organized by resume version) ---
+    try:
+        if sync_tracker_to_gsheet(tracker):
+            pass  # Success message already printed by sync_tracker_to_gsheet
+    except Exception as e:
+        print(f"  [gsheet] Tracker sync error: {e}")
+
     # --- Supabase: update sent_history and log jobs to tracker ---
     if args.user_id and _supabase_client:
         import time as _time_mod2
