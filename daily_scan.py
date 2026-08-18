@@ -3657,87 +3657,66 @@ def search_welcome_to_nl(query, location="Netherlands", max_results=500):
 
 
 def search_naukri(query, location="India", max_results=500):
-    """Search Naukri for jobs matching a query using their API (paginated)."""
+    """Search Naukri for jobs matching a query using Playwright scraping."""
     jobs = []
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/148.0.0.0 Safari/537.36"
-        ),
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
-        "appid": "109",
-        "clientid": "d3skt0p",
-        "systemid": "Naukri",
-        "gid": "LOCATION,INDUSTRY,EDUCATION,FAREA_ROLE",
-        "Referer": "https://www.naukri.com/",
-    })
     try:
-        session.get("https://www.naukri.com", timeout=15)
-        keyword = query.replace(" ", "+")
-        session.headers["Referer"] = f"https://www.naukri.com/{keyword.replace('+', '-')}-jobs"
-
-        max_pages = 3  # Fetch up to 3 pages
-        for page_num in range(1, max_pages + 1):
-            api_url = f"https://www.naukri.com/jobapi/v2/search?keyword={keyword}&location={location}&pageNo={page_num}"
-            resp = session.get(api_url, timeout=15)
-            if resp.status_code != 200:
-                if page_num == 1:
-                    print(f"  [naukri] Naukri HTTP {resp.status_code} for '{query}'")
-                break
-            data = resp.json()
-            listings = data.get("list", [])
-            if not listings:
-                break
-            for job in listings:
+        # Use Playwright to load the search page
+        query_slug = query.lower().replace(" ", "-")
+        url = f"https://www.naukri.com/search?k={query_slug}"
+        html = _playwright_html(url, wait_ms=5000)
+        
+        if not html:
+            print(f"  [naukri] No response for '{query}'")
+            return jobs
+        
+        # Extract job cards - looking for common patterns
+        # Pattern 1: Look for job title links
+        job_links = re.findall(r'/jobs/\d+-([^"]+)"[^>]*>([^<]+)</a>', html)
+        titles = re.findall(r'class="[^"]*jobTitle[^"]*"[^>]*>([^<]+)', html)
+        
+        # Pattern 2: Alternative - look for job divs with data attributes
+        if not titles:
+            titles = re.findall(r'<h2[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)', html)
+        
+        # Pattern 3: Look for company names
+        companies = re.findall(r'<span[^>]*class="[^"]*company[^"]*"[^>]*>([^<]+)', html)
+        if not companies:
+            companies = re.findall(r'class="[^"]*comp[^"]*"[^>]*>([^<]+)', html)
+        
+        # Pattern 4: Look for locations
+        locations = re.findall(r'<span[^>]*class="[^"]*location[^"]*"[^>]*>([^<]+)', html)
+        
+        # If we found at least some titles, try to parse jobs
+        if titles:
+            # Find all job links in the page
+            job_urls = re.findall(r'href="(/jobs/\d+[^"]*)"', html)
+            
+            for i, title in enumerate(titles[:max_results]):
+                company = companies[i].strip() if i < len(companies) else "Unknown"
+                loc = locations[i].strip() if i < len(locations) else location
+                url_path = job_urls[i] if i < len(job_urls) else ""
+                
+                # Filter by query terms (at least one must match)
+                text = f"{title.lower()} {company.lower()}"
+                query_lower = query.lower()
+                query_terms = query_lower.split()
+                if not any(term in text for term in query_terms):
+                    continue
+                
+                job_url = f"https://www.naukri.com{url_path}" if url_path else ""
+                
+                jobs.append({
+                    "title": title.strip(),
+                    "company": company,
+                    "location": loc,
+                    "url": job_url,
+                    "description": f"Naukri job: {title} at {company}",
+                    "posted_at": None,
+                })
+                
                 if len(jobs) >= max_results:
                     break
-                title = job.get("post", "").strip()
-                if not title:
-                    title = job.get("JOB_SPEC", "").strip()
-                company = job.get("companyName", "Unknown").strip()
-                loc_raw = job.get("cityfield") or ""
-                loc_clean = re.sub(r'\s{2,}', ', ', loc_raw).strip()
-                loc_clean = re.sub(r'\s*\(.*?\)\s*', '', loc_clean)
-                loc_clean = ', '.join(dict.fromkeys(loc_clean.split(', ')))
-                for tag in ["Metropolitan Cities", "Top", "Popular Locations", "Preferred Jobseeker",
-                             "Anywhere in", "South India", "West India", "North India",
-                             "Southindia", "westindia", "northindia"]:
-                    loc_clean = loc_clean.replace(tag, "").strip()
-                loc_clean = re.sub(r',\s*,', ',', loc_clean).strip(', ')
-                location_str = loc_clean if loc_clean else location
-                job_url = job.get("urlStr", "")
-                desc_snippet = job.get("jobDesc", "") or ""
-                keywords = job.get("keywords", "") or ""
-                posted_at = job.get("addDate")[:10] if job.get("addDate") else None
-
-                exp_text = ""
-                raw_exp = job.get("experience") or job.get("exp") or job.get("experienceField") or ""
-                if raw_exp:
-                    if isinstance(raw_exp, dict):
-                        min_e = raw_exp.get("minimum") or raw_exp.get("min", "")
-                        max_e = raw_exp.get("maximum") or raw_exp.get("max", "")
-                        if min_e or max_e:
-                            exp_text = f"Experience: {min_e} to {max_e} years"
-                    elif isinstance(raw_exp, str):
-                        exp_text = f"Experience: {raw_exp}"
-                    else:
-                        exp_text = f"Experience: {str(raw_exp)}"
-
-                jobs.append({
-                    "title": title,
-                    "company": company,
-                    "location": location_str,
-                    "url": job_url,
-                    "description": f"Naukri job: {title} at {company}. {exp_text}. {desc_snippet}. Skills: {keywords}",
-                    "posted_at": posted_at,
-                })
-            if len(jobs) >= max_results:
-                break
-            time.sleep(1)  # Polite delay between pages
-
+        
         if jobs:
             print(f"  [naukri] {len(jobs)} jobs for '{query}' in {location}")
         else:
@@ -3785,7 +3764,8 @@ def search_instahyre(query, location="India", max_results=500):
                 keywords = " ".join(obj.get("keywords", []) or []).lower()
                 # Client-side filter since API doesn't filter for anonymous users
                 text = f"{title.lower()} {company.lower()} {keywords}"
-                if not all(term in text for term in query_terms):
+                # Relax filter: require at least ONE term to match (not all terms)
+                if not any(term in text for term in query_terms):
                     continue
                 job_url = obj.get("public_url", "")
                 keywords_raw = ", ".join(obj.get("keywords", []) or [])
