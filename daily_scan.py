@@ -3321,56 +3321,79 @@ def search_linkedin_it(query, location="Italy", max_results=500):
 
 
 def search_indeed(query, location="India", max_results=500, base_url="https://www.indeed.com"):
-    """Search Indeed for jobs matching a query using Playwright (paginated)."""
+    """Search Indeed for jobs matching a query using HTTP requests with JSON parsing."""
     jobs = []
     loc_param = location.replace(" ", "+")
     query_param = query.replace(" ", "+")
-    page_size = 15  # Indeed shows ~15 results per page
-    max_pages = min(3, (max_results + page_size - 1) // page_size)
+    
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    })
+    
+    max_pages = 3
     try:
         for page_num in range(max_pages):
             start = page_num * 10  # Indeed uses start=0, 10, 20...
             page_url = f"{base_url}/jobs?q={query_param}&l={loc_param}&start={start}"
-            html = _playwright_html(page_url)
-            titles = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*>\s*<span[^>]*>([^<]+)', html)
-            companies = re.findall(r'data-testid="company-name"[^>]*>([^<]+)', html)
-            if not companies:
-                companies = re.findall(r'[Cc]ompany[Nn]ame[^"]*"[^>]*>\s*([^<]+)', html)
-            if not companies:
-                companies = re.findall(r'class="[^"]*companyName[^"]*"[^>]*>\s*([^<]+)', html)
-            locations = re.findall(r'data-testid="text-location"[^>]*>([^<]+)', html)
-            if not locations:
-                locations = re.findall(r'class="[^"]*companyLocation[^"]*"[^>]*>\s*([^<]+)', html)
-            links = re.findall(r'class="jcs-JobTitle[^"]*"[^>]*href="([^"]+)"', html)
-            if not links:
-                links = re.findall(r'href="/company/jobs/view/[^"]+"', html)
-            # Extract relative date strings like "Posted 3 days ago", "Just posted"
-            date_texts = re.findall(r'class="[^"]*date[^"]*"[^>]*>([^<]+)', html)
-            if not date_texts:
-                date_texts = re.findall(r'data-testid="myJobsStateDate"[^>]*>([^<]+)', html)
-
-            if not titles:
+            
+            try:
+                resp = session.get(page_url, timeout=15)
+                if resp.status_code != 200:
+                    if page_num == 0:
+                        print(f"  [indeed] HTTP {resp.status_code} for '{query}'")
+                    break
+            except Exception as e:
+                print(f"  [indeed] Connection error: {str(e)[:50]}")
+                break
+            
+            html = resp.text
+            
+            # Extract job data from JSON objects in script tags
+            # Pattern: {"jobTitle":"...", "companyName":"...", ...}
+            job_pattern = r'{[^{}]*"jobTitle"\s*:\s*"([^"]+)"[^{}]*"companyName"\s*:\s*"([^"]+)"[^{}]*?"jobUrl"\s*:\s*"([^"]+)"'
+            jobs_data = re.findall(job_pattern, html)
+            
+            if not jobs_data:
+                # Try alternate pattern without jobUrl
+                job_pattern = r'{[^{}]*"jobTitle"\s*:\s*"([^"]+)"[^{}]*"companyName"\s*:\s*"([^"]+)"'
+                jobs_data = re.findall(job_pattern, html)
+            
+            if not jobs_data:
                 break  # No more results
-
-            min_len = min(len(titles), len(companies), len(locations))
-            for i in range(min_len):
+            
+            for job_data in jobs_data:
                 if len(jobs) >= max_results:
                     break
-                job_url = base_url + links[i] if i < len(links) and links[i].startswith("/") else (links[i] if i < len(links) else "")
-                posted_at = _parse_relative_date(date_texts[i]) if i < len(date_texts) else None
+                
+                title = job_data[0].strip() if len(job_data) > 0 else ""
+                company = job_data[1].strip() if len(job_data) > 1 else "Unknown"
+                job_url = job_data[2].strip() if len(job_data) > 2 else ""
+                
+                if not title:
+                    continue
+                
+                # Clean URL if it has escape sequences
+                job_url = job_url.replace("\\", "")
+                
                 jobs.append({
-                    "title": titles[i].strip(),
-                    "company": companies[i].strip() if i < len(companies) else "Unknown",
-                    "location": locations[i].strip() if i < len(locations) else location,
+                    "title": title,
+                    "company": company,
+                    "location": location,
                     "url": job_url,
-                    "description": f"Indeed job: {titles[i]} at {companies[i]} in {locations[i]}",
-                    "posted_at": posted_at,
+                    "description": f"Indeed job: {title} at {company}",
+                    "posted_at": None,
                 })
-
+            
             if len(jobs) >= max_results:
                 break
-            time.sleep(2)  # Polite delay between pages
-
+            
+            time.sleep(1)  # Polite delay between pages
+        
         if jobs:
             print(f"  [indeed] {len(jobs)} jobs for '{query}' in {location}")
         else:
