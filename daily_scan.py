@@ -8207,67 +8207,106 @@ def search_michaelpage(query, location="Europe", max_results=500):
 
 
 # Hays - Multi-country IT/Tech recruitment agency
-_HAYS_URLS = {
-    "UK": "https://www.hays.co.uk/job-search?industryf=Technology%20%26%20Internet%20Services",
-    "DE": "https://www.hays.de/jobsuche/stellenangebote-jobs/s/IT/1/p/1",
-    "FR": "https://www.hays.fr/recherche-emploi",
-    "NL": "https://www.hays.nl/vacatures?industryf=Technology%20%26%20Internet%20Services",
-    "IE": "https://www.hays.ie/job-search/engineer-jobs?q=Engineer&industryf=Technology%20%26%20Internet%20Services",
-    "CH": "https://www.hays.ch/jobsuche/stellenangebote-jobs/s/IT/1/p/1",
-    "AT": "https://www.hays.at/jobsuche/stellenangebote-jobs/s/IT/1/p/1",
+# IMPROVED: Using URL pattern extraction for better accuracy
+_HAYS_URLS_IMPROVED = {
+    "DE": [
+        "https://www.hays.de/jobsuche?q=Backend+Engineer",
+        "https://www.hays.de/jobsuche?q=Senior+Backend",
+        "https://www.hays.de/jobsuche?q=Full+Stack",
+    ],
+    "UK": [
+        "https://www.hays.co.uk/job-search?q=Backend+Engineer",
+        "https://www.hays.co.uk/job-search?q=Senior+Software+Engineer",
+    ],
+    "NL": [
+        "https://www.hays.nl/vacatures?q=Backend+Engineer",
+    ],
+    "FR": [
+        "https://www.hays.fr/recherche-emploi?q=Backend+Engineer",
+    ],
+    "BE": [
+        "https://www.hays.be/vacatures?q=Backend+Engineer",
+    ],
 }
 
 def search_hays(query, location="Europe", max_results=500):
-    """Search Hays across multiple European countries for IT/Tech jobs using Playwright."""
+    """
+    Search Hays across multiple European countries with improved URL pattern extraction.
+    Uses regex to extract jobs from href patterns instead of CSS class matching.
+    """
+    import re
     from bs4 import BeautifulSoup
     jobs = []
     seen = set()
     try:
-        for country_code, base_url in _HAYS_URLS.items():
+        for country_code, search_urls in _HAYS_URLS_IMPROVED.items():
             if len(jobs) >= max_results:
                 break
-            try:
-                html = _playwright_html(base_url, wait_ms=3000)
-                if not html or len(html) <= 2000:
+            
+            for search_url in search_urls:
+                if len(jobs) >= max_results:
+                    break
+                
+                try:
+                    html = _playwright_html(search_url, timeout=20000, wait_ms=2000)
+                    if not html or len(html) < 5000:
+                        continue
+                    
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Look for job detail links using URL pattern matching (more reliable)
+                    # Pattern: /jobsuche/stellenangebote-jobs-detail-<TITLE>-<LOCATION>-<ID>/
+                    detail_link_pattern = r'/(jobsuche|job-search|vacatures|recherche-emploi|vacaturehays)/.*-\d+/?'
+                    detail_links = soup.find_all('a', href=re.compile(detail_link_pattern))
+                    
+                    for link in detail_links[:30]:  # Max 30 per search
+                        if len(jobs) >= max_results:
+                            break
+                        try:
+                            href = link.get('href', '')
+                            
+                            # Make absolute URL
+                            if href.startswith('/'):
+                                domain = _get_hays_domain(country_code)
+                                url_full = f"{domain}{href}"
+                            elif href.startswith('http'):
+                                url_full = href
+                            else:
+                                continue
+                            
+                            # Extract title from URL slug
+                            match = re.search(r'-(detail|job)[-/](.+?)-(\d+)[/?]', url_full)
+                            if not match:
+                                match = re.search(r'/([^/]+)-(\d+)[/?]$', url_full)
+                            
+                            if match and match.lastindex >= 2:
+                                title_slug = match.group(2) if match.lastindex >= 2 else match.group(1)
+                            else:
+                                continue
+                            
+                            title = title_slug.replace('-', ' ').title()
+                            
+                            dedup_key = f"{title}|{url_full}"
+                            if title and dedup_key not in seen:
+                                seen.add(dedup_key)
+                                jobs.append({
+                                    "title": title,
+                                    "company": "Hays",
+                                    "location": country_code,
+                                    "url": url_full,
+                                    "description": f"Hays {country_code}: {title}",
+                                    "posted_at": None
+                                })
+                        except Exception:
+                            continue
+                    
+                    time.sleep(1.5)  # Rate limiting
+                    
+                except Exception as e:
                     continue
-                soup = BeautifulSoup(html, 'html.parser')
-                cards = soup.select('div[class*="job-result"]') or soup.select('div[class*="vacancy"]') or soup.select('article[class*="job"]')
-                if not cards:
-                    cards = soup.find_all('div', class_=lambda x: x and any(s in x.lower() for s in ['result', 'listing', 'card', 'item']))
-                for card in cards:
-                    if len(jobs) >= max_results:
-                        break
-                    title_el = card.select_one('h2') or card.select_one('h3') or card.select_one('[class*="title"]') or card.select_one('a[class*="job"]')
-                    title = title_el.get_text().strip() if title_el else ""
-                    company_el = card.select_one('[class*="company"]') or card.select_one('[class*="employer"]') or card.select_one('[class*="client"]')
-                    company = company_el.get_text().strip() if company_el else "Unknown"
-                    location_el = card.select_one('[class*="location"]') or card.select_one('[class*="place"]')
-                    job_location = location_el.get_text().strip() if location_el else country_code
-                    link_el = card.find('a', href=True)
-                    href = link_el.get("href", "") if link_el else ""
-                    if href.startswith("/"):
-                        domain = _get_hays_domain(country_code)
-                        url_full = f"{domain}{href}"
-                    elif href.startswith("http"):
-                        url_full = href
-                    else:
-                        url_full = ""
-                    dedup_key = f"{company}|{title}|{country_code}"
-                    if title and dedup_key not in seen:
-                        seen.add(dedup_key)
-                        jobs.append({
-                            "title": title,
-                            "company": company,
-                            "location": job_location,
-                            "url": url_full,
-                            "description": f"Hays {country_code}: {title}",
-                            "posted_at": None
-                        })
-                time.sleep(1)
-            except Exception as e:
-                continue
+        
         if jobs:
-            print(f"  [hays] {len(jobs)} jobs across European countries")
+            print(f"  [hays] {len(jobs)} jobs across European countries (improved extraction)")
         return jobs
     except Exception as e:
         print(f"  [hays] Error: {e}")
