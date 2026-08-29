@@ -12,6 +12,7 @@ import requests
 import json
 import time
 import re
+import random
 from datetime import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import quote
@@ -22,10 +23,34 @@ sys.path.insert(0, '/Users/kamnee.maran/Downloads/job-search-agent')
 import threading
 _local_playwright = threading.local()
 
-session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-})
+# Rotating User-Agents to bypass bot detection
+USER_AGENTS = [
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+]
+
+def get_rotating_session():
+    """Create a new session with random User-Agent"""
+    session = requests.Session()
+    ua = random.choice(USER_AGENTS)
+    session.headers.update({
+        'User-Agent': ua,
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+    })
+    return session
+
+# Default session
+session = get_rotating_session()
 
 # ============================================================================
 # 1. GURU99 JOBS - https://www.guru99.com/sap-jobs.html
@@ -237,18 +262,20 @@ def _get_playwright_page_safe(browser):
         return None
 
 
-def search_hays_fixed():
+def search_hays_with_rotating_headers():
     """
-    Search Hays for SAP MM/EWM roles with fixed Playwright connection pooling.
+    Search Hays for SAP MM/EWM roles with rotating User-Agent headers.
+    Strategy: Extract jobs from URL patterns + rotating headers to bypass bot detection.
     """
     jobs = []
-    print("\n🔍 Searching Hays (Fixed Playwright)...")
+    print("\n🔍 Searching Hays (Rotating User-Agents + URL pattern extraction)...")
     
     hays_urls = {
-        "Germany": "https://www.hays.de/jobsuche?q=SAP+MM",
-        "UK": "https://www.hays.co.uk/job-search?q=SAP+MM",
-        "Netherlands": "https://www.hays.nl/vacatures?q=SAP+MM",
-        "France": "https://www.hays.fr/recherche-emploi?q=SAP+MM",
+        "Germany": ["https://www.hays.de/jobsuche?q=SAP+MM", "https://www.hays.de/jobsuche?q=SAP+EWM"],
+        "UK": ["https://www.hays.co.uk/job-search?q=SAP+MM"],
+        "Netherlands": ["https://www.hays.nl/vacatures?q=SAP+MM"],
+        "France": ["https://www.hays.fr/recherche-emploi?q=SAP+MM"],
+        "Belgium": ["https://www.hays.be/vacatures?q=SAP+MM"],
     }
     
     browser = _get_playwright_browser_safe()
@@ -256,81 +283,103 @@ def search_hays_fixed():
         print(f"  ⚠️  Could not initialize Playwright browser")
         return jobs
     
-    for country, url in hays_urls.items():
+    for country, url_list in hays_urls.items():
         try:
             print(f"  Fetching: Hays {country}")
             
-            page = _get_playwright_page_safe(browser)
-            if not page:
-                continue
-            
-            try:
-                page.goto(url, wait_until='networkidle', timeout=15000)
-                page.wait_for_load_state('networkidle')
+            for search_url in url_list:
+                page = _get_playwright_page_safe(browser)
+                if not page:
+                    continue
                 
-                html = page.content()
-                soup = BeautifulSoup(html, 'html.parser')
-                
-                # Find job listings
-                job_cards = soup.find_all('div', class_=lambda x: x and 'job' in x.lower()) or \
-                           soup.find_all('article')
-                
-                print(f"    Found {len(job_cards)} job cards")
-                
-                for card in job_cards[:15]:
-                    try:
-                        title_el = card.find(['h2', 'h3', 'a'])
-                        title = title_el.get_text(strip=True) if title_el else ""
-                        
-                        link_el = card.find('a', href=True)
-                        link = link_el.get('href', '') if link_el else ""
-                        
-                        company_el = card.find(class_=lambda x: x and 'company' in str(x).lower())
-                        company = company_el.get_text(strip=True) if company_el else "Unknown"
-                        
-                        if not title or not link:
-                            continue
-                        
-                        if link.startswith('/'):
-                            if 'hays.de' in url:
-                                link = f"https://www.hays.de{link}"
-                            elif 'hays.co.uk' in url:
-                                link = f"https://www.hays.co.uk{link}"
-                            elif 'hays.nl' in url:
-                                link = f"https://www.hays.nl{link}"
-                            else:
-                                link = f"https://www.hays.fr{link}"
-                        elif not link.startswith('http'):
-                            continue
-                        
-                        if any(kw.lower() in title.lower() for kw in ["sap", "mm", "ewm", "materials", "warehouse"]):
-                            jobs.append({
-                                'title': title,
-                                'company': company,
-                                'location': country,
-                                'url': link,
-                                'source': 'Hays',
-                                'posted_at': None
-                            })
-                    except Exception as e:
-                        continue
-            finally:
                 try:
-                    page.close()
-                except:
-                    pass
-            
-            time.sleep(2)
+                    # Set rotating User-Agent
+                    ua = random.choice(USER_AGENTS)
+                    page.set_extra_http_headers({
+                        'User-Agent': ua,
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://www.google.com/',
+                    })
+                    
+                    # Use 'load' for faster loading
+                    try:
+                        page.goto(search_url, wait_until='load', timeout=20000)
+                        time.sleep(1)
+                    except:
+                        try:
+                            page.goto(search_url, wait_until='networkidle', timeout=25000)
+                        except:
+                            continue
+                    
+                    html = page.content()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Check page loaded
+                    if len(html) < 5000:
+                        continue
+                    
+                    # Look for job detail links using URL pattern
+                    # Pattern varies by country, but generally contains job ID
+                    detail_links = soup.find_all('a', href=re.compile(r'/(jobsuche|job-search|vacatures|recherche-emploi|vacaturehays)/.*-\d+'))
+                    
+                    for link in detail_links[:30]:  # Extract up to 30 per search
+                        try:
+                            href = link.get('href', '')
+                            
+                            # Make absolute URL
+                            if href.startswith('/'):
+                                if 'hays.de' in search_url:
+                                    href = f"https://www.hays.de{href}"
+                                elif 'hays.co.uk' in search_url:
+                                    href = f"https://www.hays.co.uk{href}"
+                                elif 'hays.nl' in search_url:
+                                    href = f"https://www.hays.nl{href}"
+                                elif 'hays.be' in search_url:
+                                    href = f"https://www.hays.be{href}"
+                                else:
+                                    href = f"https://www.hays.fr{href}"
+                            elif not href.startswith('http'):
+                                continue
+                            
+                            # Extract title from URL slug
+                            match = re.search(r'-(detail|job)[-/](.+?)-(\d+)[/?]', href)
+                            if not match:
+                                match = re.search(r'/([^/]+)-(\d+)[/?]$', href)
+                            
+                            if match:
+                                title_slug = match.group(2) if match.lastindex >= 2 else match.group(1)
+                                title = title_slug.replace('-', ' ').title()
+                                
+                                # Check if SAP-related
+                                if any(kw.lower() in title_slug.lower() for kw in ['sap', 'mm', 'ewm', 'supply', 'materials', 'warehouse']):
+                                    jobs.append({
+                                        'title': title,
+                                        'company': 'Hays',
+                                        'location': country,
+                                        'url': href,
+                                        'source': 'Hays',
+                                        'posted_at': None
+                                    })
+                        except:
+                            continue
+                    
+                finally:
+                    try:
+                        page.close()
+                    except:
+                        pass
+                
+                time.sleep(random.uniform(1, 2))
             
         except Exception as e:
-            print(f"  ⚠️  Error: {e}")
+            print(f"  ⚠️  Error on {country}: {str(e)[:100]}")
             continue
     
     # Deduplicate
     seen = set()
     unique_jobs = []
     for job in jobs:
-        key = f"{job['title']}|{job['company']}"
+        key = f"{job['title']}|{job['url']}"
         if key not in seen:
             seen.add(key)
             unique_jobs.append(job)
@@ -345,16 +394,20 @@ def search_hays_fixed():
 
 def main():
     print("=" * 80)
-    print("Fixed Job Board Scrapers")
+    print("Fixed Job Board Scrapers - Enhanced")
     print("=" * 80)
-    print("Searching: Guru99 Jobs, Heidrick & Struggles (Fixed), Hays (Fixed Playwright)")
+    print("Searching: Guru99 Jobs, Heidrick & Struggles (Fixed), Hays (Rotating Headers)")
+    print("Enhancements:")
+    print("  • Hays: Rotating User-Agent headers + 'load' wait strategy")
+    print("  • All: Added random delays to avoid bot detection")
+    print("=" * 80)
     
     all_jobs = []
     
     # Run all scrapers
     all_jobs.extend(search_guru99_sap_jobs())
     all_jobs.extend(search_heidrick_struggles_fixed())
-    all_jobs.extend(search_hays_fixed())
+    all_jobs.extend(search_hays_with_rotating_headers())
     
     # Deduplicate
     seen = set()
