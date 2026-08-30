@@ -9737,8 +9737,8 @@ def main():
             # Playwright sync_api is NOT thread-safe. Keep Playwright scrapers out of the thread pool.
             pw_names = {
                 "SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", 
-                "IndeedNL", "StepStone", "Freelancermap", "Intermediair", 
-                "NationaleVacaturebank"
+                 "IndeedNL", "StepStone", "Freelancermap", "Intermediair", 
+                 "NationaleVacaturebank", "Xing", "EURES"
             }
             # Separate HTTP-based scrapers (thread pool safe) and Playwright-based scrapers
             pool_board_scrapers = [(n, f) for n, f in board_scrapers if n != "Adzuna" and n not in pw_names]
