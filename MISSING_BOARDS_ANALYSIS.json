@@ -1,0 +1,149 @@
+{
+  "date": "2026-08-30T18:21:37.145163",
+  "email_status": "SENT \u2705",
+  "positions_sent": 28,
+  "recipient": "pradeepmeena13@gmail.com",
+  "boards_with_results": 2,
+  "boards_zero_results": 12,
+  "boards_never_called": 8,
+  "current_coverage_percent": 8.3,
+  "expected_additional_jobs": 2810,
+  "failing_boards": {
+    "Adzuna": {
+      "config": "HTTP API scraper",
+      "reason": "Returns 0 jobs or API rate limited",
+      "priority": "Medium",
+      "expected_volume": "50-100 jobs"
+    },
+    "Hays": {
+      "config": "Playwright-based scraper (production-ready)",
+      "reason": "Configured but not called in boards-eu batch",
+      "priority": "HIGH",
+      "expected_volume": "150-300 jobs"
+    },
+    "Michael Page": {
+      "config": "Playwright-based scraper (configured for IT/Tech)",
+      "reason": "May be filtered for IT roles, not SAP MM",
+      "priority": "HIGH",
+      "expected_volume": "100-200 jobs"
+    },
+    "Randstad": {
+      "config": "Playwright-based scraper",
+      "reason": "Configured but not called/returning 0",
+      "priority": "HIGH",
+      "expected_volume": "80-150 jobs"
+    },
+    "Robert Half": {
+      "config": "Playwright-based scraper",
+      "reason": "Configured but not called/returning 0",
+      "priority": "MEDIUM",
+      "expected_volume": "50-100 jobs"
+    },
+    "Indeed-FI (Finland)": {
+      "config": "Region-specific Indeed scraper",
+      "reason": "Region doesn't match SAP MM search",
+      "priority": "Low",
+      "expected_volume": "10-20 jobs"
+    },
+    "Indeed-GR (Greece)": {
+      "config": "Region-specific Indeed scraper",
+      "reason": "Region doesn't match primary search (DE, NL focus)",
+      "priority": "Low",
+      "expected_volume": "5-15 jobs"
+    },
+    "LinkedIn-FR": {
+      "config": "LinkedIn France regional scraper",
+      "reason": "Not executed or returned 0 results",
+      "priority": "MEDIUM",
+      "expected_volume": "20-50 jobs"
+    },
+    "LinkedIn-IT": {
+      "config": "LinkedIn Italy regional scraper",
+      "reason": "Not executed or returned 0 results",
+      "priority": "MEDIUM",
+      "expected_volume": "15-30 jobs"
+    },
+    "Netempregos": {
+      "config": "Portuguese job board",
+      "reason": "Geographic mismatch (Portugal vs DE/NL focus)",
+      "priority": "Low",
+      "expected_volume": "5-15 jobs"
+    },
+    "NoFluffJobs": {
+      "config": "Poland/Central EU tech jobs",
+      "reason": "Returns 0 or region-specific",
+      "priority": "MEDIUM",
+      "expected_volume": "10-30 jobs"
+    },
+    "Infoempleo": {
+      "config": "Spanish job board",
+      "reason": "Geographic mismatch (Spain vs DE/NL focus)",
+      "priority": "Low",
+      "expected_volume": "10-20 jobs"
+    },
+    "Bundesagentur": {
+      "config": "German Federal Employment Agency",
+      "reason": "Configured but not returning results",
+      "priority": "HIGH",
+      "expected_volume": "30-80 jobs"
+    }
+  },
+  "not_called_boards": {
+    "EURES": {
+      "url": "https://ec.europa.eu/eures/",
+      "type": "Official EU Job Mobility Portal",
+      "coverage": "All European countries",
+      "importance": "\ud83d\udd34 CRITICAL",
+      "expected_volume": "100-300 jobs"
+    },
+    "Xing": {
+      "url": "https://www.xing.com/jobs/search",
+      "type": "German-speaking job network (DE, AT, CH)",
+      "coverage": "Germany, Austria, Switzerland, Liechtenstein",
+      "importance": "\ud83d\udd34 CRITICAL",
+      "expected_volume": "200-500 jobs"
+    },
+    "LinkedIn-DE": {
+      "url": "https://www.linkedin.com/jobs/search/?location=Germany",
+      "type": "LinkedIn Germany regional",
+      "coverage": "Germany",
+      "importance": "\ud83d\udd34 CRITICAL",
+      "expected_volume": "150-300 jobs"
+    },
+    "LinkedIn-NL": {
+      "url": "https://www.linkedin.com/jobs/search/?location=Netherlands",
+      "type": "LinkedIn Netherlands regional",
+      "coverage": "Netherlands",
+      "importance": "\ud83d\udd34 CRITICAL",
+      "expected_volume": "100-250 jobs"
+    },
+    "LinkedIn-AT": {
+      "url": "https://www.linkedin.com/jobs/search/?location=Austria",
+      "type": "LinkedIn Austria regional",
+      "coverage": "Austria",
+      "importance": "\ud83d\udfe0 HIGH",
+      "expected_volume": "50-150 jobs"
+    },
+    "JobsCH": {
+      "url": "https://www.jobsearch.ch",
+      "type": "Swiss job board",
+      "coverage": "Switzerland",
+      "importance": "\ud83d\udfe0 HIGH",
+      "expected_volume": "30-80 jobs"
+    },
+    "JobsinGermany": {
+      "url": "https://www.jobsingermany.com",
+      "type": "Expat-focused Germany jobs",
+      "coverage": "Germany (expat-friendly)",
+      "importance": "\ud83d\udfe0 HIGH",
+      "expected_volume": "40-100 jobs"
+    },
+    "WorkinFinland": {
+      "url": "https://www.workinfinland.com",
+      "type": "Finland-focused job board",
+      "coverage": "Finland",
+      "importance": "\ud83d\udfe1 MEDIUM",
+      "expected_volume": "5-20 jobs"
+    }
+  }
+}

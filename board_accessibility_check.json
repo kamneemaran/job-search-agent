@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-08-30T18:24:33.721344",
+  "total_boards": 10,
+  "boards": [
+    {
+      "board": "EURES (EU Job Portal)",
+      "type": "Official EU board",
+      "url": "https://ec.europa.eu/eures/en/job-offers?search=sap",
+      "status": "\u274c HTTP 404",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "HTTP 404 error",
+      "method": "http"
+    },
+    {
+      "board": "Xing (Germany)",
+      "type": "German job board",
+      "url": "https://www.xing.com/jobs/search?keyword=SAP+MM",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "Hays",
+      "type": "Recruitment agency",
+      "url": "https://www.hays.de/jobs/search?keywords=SAP+MM",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "Michael Page",
+      "type": "Recruitment specialist",
+      "url": "https://www.michaelpage.de/jobs/search?keywords=SAP",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "Randstad",
+      "type": "Staffing company",
+      "url": "https://www.randstad.nl/jobs/search?keywords=SAP",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "Robert Half",
+      "type": "Finance/Tech recruitment",
+      "url": "https://www.roberthalf.nl/jobs/search?keywords=SAP",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "Bundesagentur (Germany)",
+      "type": "German employment agency",
+      "url": "https://www.arbeitsagentur.de/jobsuche/arbeitsplatzsuche?k=SAP",
+      "status": "\u23f3 Needs browser",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires Playwright browser",
+      "method": "playwright"
+    },
+    {
+      "board": "LinkedIn Germany",
+      "type": "LinkedIn regional",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=SAP%20MM&location=Germany",
+      "status": "\u26a0\ufe0f Needs login",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires authentication",
+      "method": "needs_login"
+    },
+    {
+      "board": "LinkedIn Netherlands",
+      "type": "LinkedIn regional",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=SAP%20MM&location=Netherlands",
+      "status": "\u26a0\ufe0f Needs login",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "Requires authentication",
+      "method": "needs_login"
+    },
+    {
+      "board": "Adzuna",
+      "type": "Job aggregator",
+      "url": "https://www.adzuna.de/jobs/search?q=SAP",
+      "status": "\u274c HTTP 403",
+      "has_sap_jobs": "Unknown",
+      "scraper_issue": "HTTP 403 error",
+      "method": "http"
+    }
+  ]
+}
