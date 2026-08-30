@@ -1,18 +1,15 @@
 {
   "name": "Kamnee Maran",
-  "years_experience": 10,
-  "current_role": "Senior Software Engineer",
+  "years_experience": 11,
+  "current_role": "Staff Software Engineer",
   "core_skills": [
-    "java", "python", "node.js", "golang", "microservices", "distributed systems",
-    "event-driven", "kafka", "redis", "mysql", "postgresql", "mongodb",
-    "elasticsearch", "aws", "azure", "gcp", "docker", "kubernetes", "rest api",
-    "api development", "system design", "high availability", "scalable",
-    "spring boot", "backend", "cloud infrastructure", "devops",
-    "fintech", "payments", "compliance", "incident management",
-    "ci/cd", "terraform", "architecture", "soa", "data pipelines",
-    "fastapi", "grpc", "helm", "prometheus", "grafana", "gpu"
+    "java", "python", "node.js", "microservices", "distributed systems",
+    "kafka", "rabbitmq", "redis", "mysql", "mongodb", "elasticsearch", "aerospike",
+    "aws", "ec2", "s3", "rds", "iam", "cloudwatch", "docker", "kubernetes",
+    "rest api", "api development", "system design", "high availability", "scalable",
+    "spring boot", "backend", "cloud infrastructure", "ci/cd", "architecture"
   ],
-  "seniority_keywords": ["senior", "staff", "lead", "principal", "sde-3", "sde 3"],
+  "seniority_keywords": ["staff", "senior", "lead", "principal", "sde-4", "sde 4"],
   "junior_red_flags": ["junior", "intern", "entry level", "graduate", "0-2 years"],
   "title_red_flags": [
     "network engineer", "network architect", "network administrator", "network security",
