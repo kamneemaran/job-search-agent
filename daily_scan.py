@@ -9630,10 +9630,34 @@ def main():
     if args.source_types in ("all", "ats") and (args.batch == "" or args.batch == "ats"):
         _score_debug = {"filtered": 0, "low_score": 0, "top_score": 0, "top_title": ""}
         ats_empty = []
+        
+        def _fetch_with_timeout(source, timeout_sec=30):
+            """Fetch jobs with timeout - returns empty list if timeout."""
+            jobs = []
+            error = [None]
+            
+            def fetch_thread():
+                try:
+                    jobs.extend(fetch_jobs_from_source(source) or [])
+                except Exception as e:
+                    error[0] = e
+            
+            thread = threading.Thread(target=fetch_thread, daemon=True)
+            thread.start()
+            thread.join(timeout=timeout_sec)
+            
+            if thread.is_alive():
+                print(f"  [timeout] {source['name']} took >>{timeout_sec}s, skipping")
+                return []
+            if error[0]:
+                print(f"  [error] {source['name']}: {error[0]}")
+                return []
+            return jobs
+        
         for source in _interleave_sources(JOB_SOURCES):
             print(f"Scanning: {source['name']} ({source['region']}) - {source['url']}")
             t0 = datetime.now()
-            jobs = fetch_jobs_from_source(source)
+            jobs = _fetch_with_timeout(source, timeout_sec=30)  # 30s timeout per source
             if not jobs:
                 ats_empty.append(source)
             for job in jobs:
