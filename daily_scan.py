@@ -5539,56 +5539,136 @@ def build_email_html(matches, failed_parse=None):
     if not matches:
         body = "<p>No new matches above threshold today.</p>"
     else:
-        # Group by recency: Fresh (≤7d or unknown), Recent (8-30d), Older (30+d)
-        fresh = []
-        recent = []
-        older = []
-        for m in matches:
-            days = _posted_days_ago(m)
-            if days < 0 or days <= 7:
-                fresh.append(m)
-            elif days <= 30:
-                recent.append(m)
-            else:
-                older.append(m)
-
-        # Sort each group by score descending
-        fresh.sort(key=lambda x: x["score"], reverse=True)
-        recent.sort(key=lambda x: x["score"], reverse=True)
-        older.sort(key=lambda x: x["score"], reverse=True)
-
+        # Detect if this is a Pradeep/SAP profile by looking at match titles
+        is_sap_profile = any("sap" in m.get("title", "").lower() or "sap" in m.get("description", "").lower()[:200] for m in matches[:5])
+        
+        # Separate MM-only from other SAP roles (for SAP profiles)
+        mm_only_jobs = []
+        other_jobs = []
+        
+        if is_sap_profile:
+            for m in matches:
+                title_lower = m.get("title", "").lower()
+                desc_lower = m.get("description", "").lower()
+                # MM-only if has MM/Materials but NOT other modules
+                has_mm = "mm" in title_lower or "materials management" in desc_lower or "inventory" in desc_lower
+                has_other_module = any(mod in desc_lower for mod in ["fi/co", "fico", "finance", "controlling", "sd/mm", "pp/mm", "pm", "hr", "sd", "pp"])
+                
+                if has_mm and not has_other_module:
+                    mm_only_jobs.append(m)
+                else:
+                    other_jobs.append(m)
+        else:
+            other_jobs = matches
+        
+        # Group by recency: Fresh (≤7d), Recent (8-30d), Older (30+d)
+        def group_by_recency(jobs_list):
+            fresh, recent, older = [], [], []
+            for m in jobs_list:
+                days = _posted_days_ago(m)
+                if days < 0 or days <= 7:
+                    fresh.append(m)
+                elif days <= 30:
+                    recent.append(m)
+                else:
+                    older.append(m)
+            # Sort by score
+            fresh.sort(key=lambda x: x["score"], reverse=True)
+            recent.sort(key=lambda x: x["score"], reverse=True)
+            older.sort(key=lambda x: x["score"], reverse=True)
+            return fresh, recent, older
+        
+        mm_fresh, mm_recent, mm_older = group_by_recency(mm_only_jobs)
+        other_fresh, other_recent, other_older = group_by_recency(other_jobs)
+        
         sections = ""
-
-        if fresh:
-            sections += f"""
+        
+        # SAP MM-only section (if applicable)
+        if is_sap_profile and mm_only_jobs:
+            sections += """
+    <div style="border:3px solid #d32f2f;border-radius:10px;padding:15px;margin-bottom:24px;background:#fff3e0;">
+      <h2 style="color:#d32f2f;margin:0 0 8px;">🎯 SAP MM SPECIALIST ROLES (MM-only)</h2>
+      <p style="font-size:13px;color:#333;margin:0 0 12px;"><strong>Perfect fit:</strong> Materials Management roles without additional modules. High priority!</p>
+    </div>"""
+            
+            if mm_fresh:
+                sections += f"""
     <div style="border:2px solid #a5d6a7;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#2e7d32;margin:0 0 4px;">🟢 Fresh — Last 7 Days ({len(fresh)})</h3>
+      <h3 style="color:#2e7d32;margin:0 0 4px;">🟢 Fresh — Last 7 Days ({len(mm_fresh)})</h3>
       <p style="font-size:12px;color:#666;margin:0 0 12px;">Apply quickly — these are new postings</p>
-      {_card_rows(fresh)}
+      {_card_rows(mm_fresh)}
     </div>"""
-
-        if recent:
-            sections += f"""
+            
+            if mm_recent:
+                sections += f"""
     <div style="border:2px solid #ffcc80;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#e65100;margin:0 0 4px;">🟡 Recent — 1 to 4 Weeks ({len(recent)})</h3>
+      <h3 style="color:#e65100;margin:0 0 4px;">🟡 Recent — 1 to 4 Weeks ({len(mm_recent)})</h3>
       <p style="font-size:12px;color:#666;margin:0 0 12px;">Still active — most companies take 2-4 weeks to close</p>
-      {_card_rows(recent)}
+      {_card_rows(mm_recent)}
     </div>"""
-
-        if older:
-            sections += f"""
+            
+            if mm_older:
+                sections += f"""
     <div style="border:2px solid #bdbdbd;border-radius:10px;padding:12px;margin-bottom:24px;">
-      <h3 style="color:#616161;margin:0 0 4px;">⚪ Older — 30+ Days ({len(older)})</h3>
+      <h3 style="color:#616161;margin:0 0 4px;">⚪ Older — 30+ Days ({len(mm_older)})</h3>
       <p style="font-size:12px;color:#666;margin:0 0 12px;">May be filled — check if still open before applying</p>
-      {_card_rows(older)}
+      {_card_rows(mm_older)}
     </div>"""
-
+        
+        # Other SAP/General roles section
+        if other_jobs:
+            if is_sap_profile and mm_only_jobs:
+                sections += """
+    <div style="border:3px solid #1976d2;border-radius:10px;padding:15px;margin-bottom:24px;background:#e3f2fd;">
+      <h2 style="color:#1976d2;margin:0 0 8px;">📋 OTHER SAP ROLES (MM + other modules)</h2>
+      <p style="font-size:13px;color:#333;margin:0 0 12px;"><strong>Good fit:</strong> SAP roles combining MM with Finance, Supply Chain, or other modules.</p>
+    </div>"""
+            else:
+                sections += f"""
+    <div style="border:3px solid #1976d2;border-radius:10px;padding:15px;margin-bottom:24px;background:#e3f2fd;">
+      <h2 style="color:#1976d2;margin:0 0 8px;">📋 MATCHING ROLES ({len(other_jobs)})</h2>
+      <p style="font-size:13px;color:#333;margin:0 0 12px;">Job opportunities matching your profile.</p>
+    </div>"""
+            
+            if other_fresh:
+                sections += f"""
+    <div style="border:2px solid #a5d6a7;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#2e7d32;margin:0 0 4px;">🟢 Fresh — Last 7 Days ({len(other_fresh)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">Apply quickly — these are new postings</p>
+      {_card_rows(other_fresh)}
+    </div>"""
+            
+            if other_recent:
+                sections += f"""
+    <div style="border:2px solid #ffcc80;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#e65100;margin:0 0 4px;">🟡 Recent — 1 to 4 Weeks ({len(other_recent)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">Still active — most companies take 2-4 weeks to close</p>
+      {_card_rows(other_recent)}
+    </div>"""
+            
+            if other_older:
+                sections += f"""
+    <div style="border:2px solid #bdbdbd;border-radius:10px;padding:12px;margin-bottom:24px;">
+      <h3 style="color:#616161;margin:0 0 4px;">⚪ Older — 30+ Days ({len(other_older)})</h3>
+      <p style="font-size:12px;color:#666;margin:0 0 12px;">May be filled — check if still open before applying</p>
+      {_card_rows(other_older)}
+    </div>"""
+        
+        total_count = len(matches)
+        mm_count = len(mm_only_jobs)
+        other_count = len(other_jobs)
+        
+        if is_sap_profile and mm_only_jobs:
+            summary = f"<p><strong>{total_count} role(s)</strong> scored above threshold: <strong style='color:#d32f2f;'>{mm_count} MM-specialist</strong> + {other_count} other SAP</p>"
+        else:
+            summary = f"<p><strong>{total_count} role(s)</strong> scored above threshold.</p>"
+        
         body = f"""
       <h2>Daily job matches - {datetime.now().strftime('%d %b %Y')}</h2>
-      <p>{len(matches)} role(s) scored above threshold.</p>
+      {summary}
       {sections}
     """
-
+    
     failed_html = ""
     if failed_parse:
         rows = ""
@@ -5604,7 +5684,7 @@ def build_email_html(matches, failed_parse=None):
     <p style="font-size:13px;color:#666;">These company career pages could not be scanned. Check manually for relevant roles.</p>
     {rows}
     """
-
+    
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:900px;">
       {body}
