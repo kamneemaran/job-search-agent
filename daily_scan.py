@@ -9623,6 +9623,7 @@ def main():
             ("EURES", search_eures),
             ("MichaelPage", search_michaelpage),
             ("Hays", search_hays),
+            ("Randstad", search_randstad),
             ("RobertHalf", search_roberthalf),
             ("MichaelPagePL", search_michaelpage_pl),
             ("NoFluffJobs", search_nofluffjobs),
@@ -9661,9 +9662,9 @@ def main():
         au_boards = {"Seek", "Jora"}
         eu_boards = {"Xing", "JobsCh", "JobsinGermany", "WorkinFinland", "EURES"}
         remote_boards = {"WeWorkRemotely", "Remotive", "ArcDev", "RemoteOK", "SkipTheDrive", "WorkingNomads", "Jobspresso", "Arbeitnow", "EnglishJobSearch", "Bulldogjob", "VisaSponsor", "Incluso", "Crossover", "NoDesk", "Workew", "Kelly"}
-         single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"} | remote_boards
-        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
-        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
+         single_run_boards = {"NetEmpregos", "SAPOEmprego", "Infoempleo", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "WelcomeToNL", "TogetherAbroad", "StepStone", "Adzuna", "Intermediair", "NationaleVacaturebank", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"} | remote_boards
+        pw_names = {"SAPOEmprego", "Bundesagentur", "IamExpat", "WorkInLux", "IndeedNL", "IndeedGR", "IndeedFI", "StepStone", "Freelancermap", "Intermediair", "NationaleVacaturebank", "WorkingNomads", "Jobspresso", "Bulldogjob", "Crossover", "Kelly", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
+        static_boards = {"SAPOEmprego", "Infoempleo", "IamExpat", "WorkInLux", "TogetherAbroad", "VisaSponsor", "WorkingNomads", "Jobspresso", "NoDesk", "VDAB", "Xing", "EURES", "MichaelPage", "Hays", "Randstad", "RobertHalf", "MichaelPagePL", "NoFluffJobs", "eJobsRO", "JobsCZ", "ProfessionHU", "MichaelPagePT", "RabotaBG", "JobIndexDK", "StepStoneDK", "StepStoneNO"}
 
         def _process_board(board_name, board_fn):
             collected = []
