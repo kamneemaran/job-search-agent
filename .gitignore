@@ -1,22 +1,77 @@
+# Environment & Credentials (NEVER COMMIT)
 .env
+.env.local
+.env.*.local
 gsheet_token.json
-__pycache__/
-*.pyc
-.DS_Store
 gsheet_service_account.json
 credentials.json
-*.csv
-*.html
+mcp_config.json
+
+# Dependencies & Cache
+__pycache__/
+*.pyc
 .venv/
-last_scan_results.json
-last_scan_results_batch_*.json
-job_tracker*.json
-last_email_scan*.json
-ind_sponsors_cache.json
-*.pdf
+node_modules/
+
+# Build & Generated Files
+*.tsbuildinfo
+.next/
+.vercel
+next-env.d.ts
+dist/
+build/
+
+# OS & IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local Development & Testing (DO NOT COMMIT)
 *.log
+*.html
+*.pdf
+*.csv
+test_*.py
+debug_*.py
+preview.html
 session-*.md
+workflow.log
+
+# Personal Scripts (Local Only - Run Locally, Never Commit)
+search_*.py
+send_*.py
+*_email_*.py
+*_send_*.py
+run_*.py
+test_*.py
+
+# Job Data Files (Temporary)
+*_jobs.json
+*_sent_jobs.json
+*_results.json
+*_tracker*.json
+last_*.json
+last_scan_results*.json
+kamnee_*.json
+pradeep_*.json
+chandan_*.json
+gursimran_*.json
+
+# Browser State & Temp Files
 .browser_state/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Web Frontend
+web/node_modules/
+web/.next/
+web/.env*.local
+.vercel
+vercel-var.env
 
 # Web
 web/node_modules/
